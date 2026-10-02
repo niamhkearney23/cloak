@@ -6,7 +6,9 @@
   const main = document.getElementById('main');
   let status = null;
   let queue = [];
+  let questions = [];
   let activity = [];
+  const answers = {}; // question id -> typed answer
   let open = null; // { id, data, decisions: { word: 'hide' | 'allow' } }
   let busy = false;
   let notice = null;
@@ -46,7 +48,7 @@
 
   async function refresh() {
     try {
-      [status, { queue }, { activity }] = await Promise.all([api('/api/assistant/status'), api('/api/assistant/queue'), api('/api/assistant/activity')]);
+      [status, { queue }, { questions }, { activity }] = await Promise.all([api('/api/assistant/status'), api('/api/assistant/queue'), api('/api/assistant/questions'), api('/api/assistant/activity')]);
     } catch (err) {
       notice = { kind: 'warn', text: err.message };
     }
@@ -168,6 +170,54 @@
     }, (r) => (r.action === 'draft' ? 'Done. A reply draft is in the Drafts folder.' : 'Done. The AI read it and found no reply was needed.'));
   }
 
+  // ------------------------------------------------------------ questions
+
+  function questionsCard() {
+    const open = questions.filter((q) => q.status === 'open');
+    const done = questions.filter((q) => q.status !== 'open').slice(0, 8);
+    return card(`Questions for ${status.account.name.split(/\s+/)[0]} (${open.length})`, 'Things the assistant could not decide on its own. Answers can rewrite the reply draft, and "Is this a client?" answers are remembered.',
+      open.length === 0 && h('p', { class: 'hint' }, 'No questions right now.'),
+      open.map((q) => h('div', { class: 'row-card question' },
+        h('div', { class: 'q-text' }, q.text),
+        h('div', { class: 'hint' }, `Re: ${q.from} · ${q.subject || ''} · ${when(q.createdAt)}`),
+        q.kind === 'client'
+          ? h('div', { class: 'toolbar' },
+            h('button', { type: 'button', class: 'primary small', disabled: busy, onclick: () => answerQ(q, 'Yes', false) }, 'Yes, a client'),
+            h('button', { type: 'button', class: 'ghost small', disabled: busy, onclick: () => answerQ(q, 'No', false) }, 'No'),
+            h('button', { type: 'button', class: 'link', disabled: busy, onclick: () => dismissQ(q) }, 'Skip'))
+          : [
+            (() => {
+              const ta = h('textarea', { rows: 2, placeholder: 'Your answer, e.g. "Yes, but make it 4pm" or "Quote RM 3,500"', oninput: (e) => { answers[q.id] = e.target.value; } });
+              ta.value = answers[q.id] || '';
+              return ta;
+            })(),
+            h('div', { class: 'toolbar' },
+              h('button', { type: 'button', class: 'primary small', disabled: busy, onclick: () => answerQ(q, answers[q.id], true) }, 'Answer and rewrite the draft'),
+              h('button', { type: 'button', class: 'ghost small', disabled: busy, onclick: () => answerQ(q, answers[q.id], false) }, 'Just note the answer'),
+              h('button', { type: 'button', class: 'link', disabled: busy, onclick: () => dismissQ(q) }, 'Skip')),
+          ])),
+      done.length > 0 && h('details', { class: 'map' }, h('summary', {}, 'Recently answered'),
+        h('ul', {}, done.map((q) => h('li', {}, `${q.text} → ${q.status === 'dismissed' ? '(skipped)' : q.answer || '(no answer)'}`)))));
+  }
+
+  function answerQ(q, answer, redraft) {
+    if (redraft && !String(answer || '').trim()) { notice = { kind: 'warn', text: 'Type an answer first.' }; render(); return; }
+    act(async () => {
+      const r = await api(`/api/assistant/questions/${encodeURIComponent(q.id)}/answer`, { answer: answer || '', redraft });
+      delete answers[q.id];
+      return r;
+    }, (r) => {
+      if (r.addedClient) return 'Added to the client list. Their name will always be hidden.';
+      if (r.redraft === 'draft') return 'Answer saved, and a new reply draft is in the Drafts folder (the old one was replaced).';
+      if (r.redraft === 'skipped') return `Answer saved. The draft was not rewritten: ${r.reason}`;
+      return 'Answer saved.';
+    });
+  }
+
+  function dismissQ(q) {
+    act(() => api(`/api/assistant/questions/${encodeURIComponent(q.id)}/dismiss`, {}), 'Skipped.');
+  }
+
   // ------------------------------------------------------------ settings
 
   function settingsCard() {
@@ -186,6 +236,8 @@
         firmDomains: v('s-firm'), clients: v('s-clients'), neverAI: v('s-never'), notifyEmails: v('s-notify'),
         hideWords: v('s-hide'), allowWords: v('s-allow'),
         ack: { enabled: c('s-ack-on'), text: v('s-ack') },
+        calendar: { enabled: c('s-cal-on') },
+        preferences: v('s-prefs'),
         summary: { enabled: c('s-sum-on'), time: v('s-time'), timezone: v('s-tz'), weekdaysOnly: c('s-weekdays') },
         pollMinutes: v('s-poll'),
       }), 'Settings saved.');
@@ -194,6 +246,12 @@
       h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 's-ack-on', checked: s.ack.enabled }), h('span', {}, 'Send this to people outside the firm'), h('small', {}, 'At most once a day per sender. Never sent to colleagues, newsletters or automatic emails.')),
       field('Message', Object.assign(h('textarea', { id: 's-ack', rows: 2 }), { value: s.ack.text })),
       field('Firm email domains', ta('s-firm', s.firmDomains, 2, 'e.g. kearneylaw.com.my'), 'The mailbox\'s own domain is always counted as the firm. Add any others, one per line.'),
+
+      h('h3', {}, 'Calendar'),
+      h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 's-cal-on', checked: s.calendar.enabled }), h('span', {}, 'Pencil meetings, hearings and deadlines from emails into the calendar'), h('small', {}, 'Added as tentative entries marked "Cloak suggestion", with a reminder. No one is invited. Keep or delete them.')),
+
+      h('h3', {}, 'Things the assistant should always remember'),
+      field('Standing instructions', ta('s-prefs', s.preferences, 4, 'One per line, e.g.\nSign off with "Best regards"\nI don\'t take family law matters: politely refer them on\nNever suggest meetings on Fridays'), 'Used for every draft. Names in here are hidden before anything goes to the AI.'),
 
       h('h3', {}, 'Confidentiality'),
       field('Clients', ta('s-clients', s.clients, 4, 'One per line, e.g.\nTan Ah Kow\nSyarikat Maju Jaya Sdn. Bhd.'), 'Always hidden. Names in the mailbox\'s contacts are hidden too.'),
@@ -218,7 +276,7 @@
 
   const LABELS = {
     draft: 'Draft saved', read: 'Read, no reply needed', ack: 'Acknowledgement sent', queued: 'Waiting for check',
-    never: 'Left for the lawyer', skipped: 'Skipped', summary: 'Summary sent', error: 'Problem', connected: 'Connected', disconnected: 'Disconnected',
+    never: 'Left for the lawyer', skipped: 'Skipped', calendar: 'Pencilled into calendar', question: 'Question asked', answer: 'Question answered', summary: 'Summary sent', error: 'Problem', connected: 'Connected', disconnected: 'Disconnected',
   };
 
   function activityCard() {
@@ -231,7 +289,8 @@
           (a.from || a.subject) && h('div', {}, a.from && h('b', {}, a.from), a.from && a.subject ? ' · ' : '', a.subject || ''),
           a.summary && h('div', { class: 'hint' }, a.urgency === 'high' ? '⚑ Urgent · ' : '', a.summary, a.deadline ? ` · Deadline: ${a.deadline}` : ''),
           a.detail && h('div', { class: 'hint' }, a.detail),
-          a.approvedBy && h('div', { class: 'hint' }, `Checked by ${a.approvedBy}`),
+          a.approvedBy && h('div', { class: 'hint' }, `By ${a.approvedBy}`),
+          a.redraft && h('div', { class: 'hint' }, a.redraft),
           a.warning && h('div', { class: 'alert warn' }, a.warning),
           a.sentToAI && h('details', {}, h('summary', {}, 'What the AI saw'), h('pre', { class: 'payload', html: esc(a.sentToAI).replace(/\{\{[^}]+\}\}/g, (m) => `<span class="tok">${m}</span>`) }))))));
   }
@@ -246,6 +305,7 @@
       h('p', { class: 'intro' }, 'New emails are checked by Cloak on this server. Names and details are hidden before anything goes to the AI, and put back afterwards. Replies are saved as drafts for the lawyer to check and send.'),
       notice && h('div', { class: `alert ${notice.kind}` }, notice.text, ' ', h('button', { type: 'button', class: 'link', onclick: () => { notice = null; render(); } }, 'Dismiss')),
       connectionCard(),
+      status.account && questionsCard(),
       status.account && queueCard(),
       status.account && settingsCard(),
       activityCard());

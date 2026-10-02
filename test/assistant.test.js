@@ -13,14 +13,16 @@ const REAL = ['Ahmad', 'Ismail', 'Wong', 'Kah Fai', 'Siti', 'Mathew', 'Lee', '80
 
 function fakeMailbox() {
   const mb = {
-    messages: new Map(), drafts: [], replies: [], sent: [], categories: new Map(), events: [],
+    messages: new Map(), drafts: [], replies: [], sent: [], categories: new Map(), events: [], created: [], deleted: [],
     add(msg) { mb.messages.set(msg.id, { categories: [], internetMessageHeaders: [], toRecipients: [{ emailAddress: { name: ME.name, address: ME.email } }], ...msg }); },
   };
   mb.graph = {
     me: async () => ({ displayName: ME.name, mail: ME.email }),
     newMessages: async (since) => [...mb.messages.values()].filter((m) => m.receivedDateTime >= since).map((m) => ({ id: m.id, subject: m.subject, from: m.from, receivedDateTime: m.receivedDateTime })),
     message: async (id) => structuredClone(mb.messages.get(id)),
-    createReplyDraft: async (id, comment) => { mb.drafts.push({ id, comment }); },
+    createReplyDraft: async (id, comment) => { mb.drafts.push({ id, comment }); return { id: `draft-${mb.drafts.length}` }; },
+    deleteDraft: async (id) => { mb.deleted.push(id); return true; },
+    createEvent: async (e) => { mb.created.push(e); return { id: `ev-${mb.created.length}` }; },
     reply: async (id, comment) => { mb.replies.push({ id, comment }); },
     addCategory: async (id, cat) => { mb.categories.set(id, cat); },
     sendMail: async (m) => { mb.sent.push(m); },
@@ -33,9 +35,14 @@ function fakeMailbox() {
 function fakeAI() {
   const ai = {
     seen: [],
-    async triage(text) {
+    opts: [],
+    events: [],
+    questions: [],
+    async triage(text, opts = {}) {
       ai.seen.push(text);
-      return { category: 'client', urgency: 'high', needs_reply: true, summary: '{{SENDER}} wants a meeting on Friday.', deadline: 'Friday', reply: 'Dear {{SENDER.FIRST}},\n\nThank you. [confirm Friday]\n\nRegards,\n{{ME}}' };
+      ai.opts.push(opts);
+      if (opts.notes) ai.seen.push(opts.notes);
+      return { category: 'client', urgency: 'high', needs_reply: true, summary: '{{SENDER}} wants a meeting on Friday.', deadline: 'Friday', reply: 'Dear {{SENDER.FIRST}},\n\nThank you. [confirm Friday]\n\nRegards,\n{{ME}}', events: ai.events, questions: ai.questions };
     },
     async digest(text) { ai.seen.push(text); return '- Reply to {{PERSON_1}} about Friday.'; },
   };
@@ -249,4 +256,111 @@ test('stored data is encrypted and needs the right key', async () => {
   assert.ok(!raw.includes(ME.email));
   const wrong = createStore({ dir, key: crypto.randomBytes(32).toString('hex') });
   await assert.rejects(wrong.load(), /wrong CLOAK_DATA_KEY/);
+});
+
+
+test('meetings and deadlines are pencilled in as tentative, with names restored and no one invited', async () => {
+  ai.events = [
+    { title: 'Meeting with {{SENDER}} re deposit', kind: 'meeting', start: '2026-10-09T15:00', minutes: 60, location: 'Our office' },
+    { title: 'Deadline: file defence', kind: 'deadline', start: '2026-10-20', minutes: 0, location: '' },
+    { title: 'Old thing', kind: 'meeting', start: '2026-09-01T10:00', minutes: 30, location: '' },
+  ];
+  mb.add(clientEmail());
+  await assistant.checkMail();
+  assert.equal(mb.created.length, 2, 'past dates are skipped');
+  const [meeting, deadline] = mb.created;
+  assert.equal(meeting.subject, '[Cloak suggestion] Meeting with Ahmad bin Ismail re deposit');
+  assert.equal(meeting.startUtc, '2026-10-09T07:00:00.000Z', '3pm Kuala Lumpur is 7am UTC');
+  assert.equal(meeting.endUtc, '2026-10-09T08:00:00.000Z');
+  assert.equal(meeting.attendees, undefined);
+  assert.equal(deadline.allDay, true);
+  assert.equal(deadline.startDate, '2026-10-20');
+  assert.equal(deadline.endDate, '2026-10-21');
+  assertNoRealNames(ai.seen);
+  assert.match(ai.opts[0].today, /Monday, 5 October 2026|Monday 5 October 2026/);
+
+  // The same entry is not added twice.
+  mb.add(clientEmail({ id: 'm2', receivedDateTime: '2026-10-05T00:20:00Z' }));
+  await assistant.checkMail();
+  assert.equal(mb.created.length, 2);
+});
+
+test('calendar pencilling can be switched off', async () => {
+  await store.update((d) => { d.settings.calendar.enabled = false; });
+  ai.events = [{ title: 'Meeting', kind: 'meeting', start: '2026-10-09T15:00', minutes: 60, location: '' }];
+  mb.add(clientEmail());
+  await assistant.checkMail();
+  assert.equal(mb.created.length, 0);
+});
+
+test('unknown outside sender writing about client work: "is this a client?" and yes adds them', async () => {
+  mb.add(clientEmail());
+  await assistant.checkMail();
+  let d = await store.load();
+  const q = d.questions.find((x) => x.kind === 'client');
+  assert.ok(q);
+  assert.match(q.text, /Is Ahmad bin Ismail \(ahmad\.ismail@gmail\.com\) a client\?/);
+  const r = await assistant.answerQuestion(q.id, { answer: 'Yes' }, 'mathew');
+  assert.equal(r.addedClient, true);
+  d = await store.load();
+  assert.ok(d.settings.clients.includes('Ahmad bin Ismail'));
+  assert.equal(d.questions.find((x) => x.id === q.id).status, 'answered');
+  // Not asked again for the same person.
+  mb.add(clientEmail({ id: 'm2', receivedDateTime: '2026-10-05T00:20:00Z' }));
+  await assistant.checkMail();
+  d = await store.load();
+  assert.equal(d.questions.filter((x) => x.kind === 'client').length, 1);
+});
+
+test('the AI\'s questions are saved with names restored; answering rewrites the draft without leaking names', async () => {
+  ai.questions = ['Do you want to meet {{SENDER.FIRST}} on Friday at 3pm?'];
+  mb.add(clientEmail());
+  await assistant.checkMail();
+  let d = await store.load();
+  const q = d.questions.find((x) => x.kind === 'free');
+  assert.equal(q.text, 'Do you want to meet Ahmad on Friday at 3pm?');
+  assert.equal(mb.drafts.length, 1);
+
+  ai.seen = [];
+  ai.questions = [];
+  const r = await assistant.answerQuestion(q.id, { answer: 'Yes, but 4pm, and bring Siti Rahmah too', redraft: true }, 'mathew');
+  assert.equal(r.redraft, 'draft');
+  assert.equal(mb.drafts.length, 2, 'a new draft');
+  assert.deepEqual(mb.deleted, ['draft-1'], 'the old draft is replaced');
+  const notes = ai.opts.at(-1).notes;
+  assert.match(notes, /Yes, but 4pm/);
+  assert.doesNotMatch(notes, /Siti|Rahmah|Ahmad/, 'names in the answer are hidden');
+  assertNoRealNames(ai.seen);
+  d = await store.load();
+  assert.equal(d.questions.find((x) => x.id === q.id).answer, 'Yes, but 4pm, and bring Siti Rahmah too');
+  assert.equal(mb.created.length, 0, 'a rewrite does not pencil things in again');
+});
+
+test('standing instructions go with every email, names hidden', async () => {
+  await store.update((d) => { d.settings.preferences = ['Sign off with "Best regards"', 'Refer family law matters to Puan Noraini Hassan']; });
+  mb.add(clientEmail());
+  await assistant.checkMail();
+  const notes = ai.opts[0].notes;
+  assert.match(notes, /Best regards/);
+  assert.doesNotMatch(notes, /Noraini|Hassan/);
+  assertNoRealNames(ai.seen);
+});
+
+test('daily summary lists questions and pencilled entries', async () => {
+  ai.questions = ['Should I quote the usual fee?'];
+  ai.events = [{ title: 'Call with {{SENDER}}', kind: 'call', start: '2026-10-06T10:00', minutes: 30, location: '' }];
+  mb.add(clientEmail());
+  await assistant.checkMail();
+  await assistant.sendSummary({ force: true });
+  const mail = mb.sent.find((m) => m.to.includes(ME.email));
+  assert.match(mail.html, /Questions for you/);
+  assert.match(mail.html, /Should I quote the usual fee\?/);
+  assert.match(mail.html, /Pencilled into your calendar/);
+  assert.match(mail.html, /Call with Ahmad bin Ismail/);
+});
+
+test('zonedToUtc handles Singapore and London summer time', async () => {
+  const { zonedToUtc } = await import('../server/assistant/worker.js');
+  assert.equal(zonedToUtc('2026-10-09T15:00', 'Asia/Singapore').toISOString(), '2026-10-09T07:00:00.000Z');
+  assert.equal(zonedToUtc('2026-07-01T09:00', 'Europe/London').toISOString(), '2026-07-01T08:00:00.000Z');
 });

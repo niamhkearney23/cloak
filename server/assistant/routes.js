@@ -32,6 +32,8 @@ function cleanSettings(input, current) {
     }
     s.summary.weekdaysOnly = !!input.summary.weekdaysOnly;
   }
+  if ('preferences' in input) s.preferences = list(input.preferences, 50).map((p) => p.slice(0, 300));
+  if (input.calendar) s.calendar.enabled = !!input.calendar.enabled;
   if ('pollMinutes' in input) s.pollMinutes = Math.min(60, Math.max(1, Number(input.pollMinutes) || 5));
   if ('paused' in input) s.paused = !!input.paused;
   return s;
@@ -110,6 +112,7 @@ export function createAssistantRoutes({ store, assistant, ms, makeGraph, allowed
         account: d.account ? { name: d.account.name, email: d.account.email, connectedAt: d.account.connectedAt, connectedBy: d.account.connectedBy, needsReconnect: !!d.account.needsReconnect } : null,
         settings: d.settings,
         waiting: d.queue.filter((q) => q.status === 'waiting').length,
+        questions: d.questions.filter((q) => q.status === 'open').length,
         lastCheck: d.lastCheck,
         lastSummaryDate: d.lastSummaryDate,
       });
@@ -158,6 +161,24 @@ export function createAssistantRoutes({ store, assistant, ms, makeGraph, allowed
         send(200, { ok: true });
         return true;
       }
+    }
+    if (req.method === 'GET' && pathname === '/api/assistant/questions') {
+      const d = await store.load();
+      send(200, { questions: d.questions.slice(0, 100) });
+      return true;
+    }
+    const qm = /^\/api\/assistant\/questions\/([^/]+)\/(answer|dismiss)$/.exec(pathname);
+    if (qm && req.method === 'POST') {
+      const body = await json();
+      if (qm[2] === 'answer') {
+        const result = await assistant.answerQuestion(qm[1], { answer: String(body.answer || ''), redraft: !!body.redraft }, user || 'local user');
+        audit('assistant_answer', { user, redraft: result.redraft || null });
+        send(200, result);
+      } else {
+        await assistant.dismissQuestion(qm[1], user || 'local user');
+        send(200, { ok: true });
+      }
+      return true;
     }
     if (req.method === 'POST' && pathname === '/api/assistant/run') {
       await json();

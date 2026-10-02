@@ -9,6 +9,7 @@
 // Real names never go to the AI: only screenEmail()'s cloaked text does, and
 // the name map stays in this process.
 
+import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { domainOf, firmDomains, isAutomated, screenEmail, unsureWords } from './screen.js';
 
@@ -52,6 +53,22 @@ function fmtTime(iso, timeZone) {
   return new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
 }
 
+/** Local wall-clock time ("2026-10-09T15:00") in a time zone, as a UTC Date. */
+export function zonedToUtc(local, timeZone) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(local);
+  if (!m) return null;
+  const guess = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  const p = localParts(new Date(guess), timeZone);
+  const offset = Date.UTC(p.y, p.m - 1, p.d, p.h, p.min) - guess;
+  return new Date(guess - offset);
+}
+
+function addDays(date, n) {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
 function graphTime(t) {
   // Calendar times come back in UTC without a "Z".
   return t && t.dateTime ? new Date(/[zZ]|[+-]\d\d:\d\d$/.test(t.dateTime) ? t.dateTime : `${t.dateTime}Z`) : null;
@@ -90,18 +107,106 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
     return false;
   }
 
+  /** The lawyer's standing preferences, plus any answer to a question. */
+  function notesFor(settings, extra = '') {
+    return [
+      ...settings.preferences.map((p) => `- ${p}`),
+      extra,
+    ].filter(Boolean).join('\n');
+  }
+
+  /** Pencil the AI's dated items into the calendar as tentative entries. */
+  async function pencilIn({ graph, msg, screened, settings, events }) {
+    if (!settings.calendar.enabled || !events?.length) return [];
+    const tz = settings.summary.timezone || 'Asia/Kuala_Lumpur';
+    const today = localParts(now(), tz).date;
+    const from = msg.from?.emailAddress || {};
+    const added = [];
+    for (const e of events.slice(0, 5)) {
+      const title = screened.cloak.uncloak(e.title || '').text.trim().slice(0, 200);
+      const location = screened.cloak.uncloak(e.location || '').text.trim().slice(0, 200);
+      const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(e.start || '');
+      const date = String(e.start || '').slice(0, 10);
+      if (!title || !/^\d{4}-\d{2}-\d{2}/.test(date) || date < today || date > addDays(today, 730)) continue;
+      const key = `${title.toLowerCase()}|${e.start}`;
+      if ((await store.load()).pencilled[key]) continue;
+      const note = `Pencilled in by Cloak from an email from ${from.name || from.address} ("${msg.subject || ''}"). Check the details, then keep or delete this entry.`;
+      const subject = `[Cloak suggestion] ${title}`;
+      let when;
+      if (dateOnly || e.kind === 'deadline') {
+        await graph.createEvent({ subject, allDay: true, startDate: date, endDate: addDays(date, 1), location, note });
+        when = date;
+      } else {
+        const start = zonedToUtc(e.start, tz);
+        if (!start || Number.isNaN(start.getTime())) continue;
+        const minutes = Math.min(Math.max(Number(e.minutes) || 60, 15), 8 * 60);
+        await graph.createEvent({ subject, startUtc: start.toISOString(), endUtc: new Date(start.getTime() + minutes * 60_000).toISOString(), location, note });
+        when = e.start.replace('T', ' ');
+      }
+      await store.update((d) => { d.pencilled[key] = Date.now(); });
+      added.push({ title, when });
+    }
+    if (added.length) {
+      await record({ action: 'calendar', messageId: msg.id, from: from.name || from.address, subject: msg.subject, detail: added.map((a) => `${a.when}: ${a.title}`).join('; ') });
+    }
+    return added;
+  }
+
+  /** Save the AI's questions (and "is this a client?") for the lawyer. */
+  async function saveQuestions({ msg, screened, settings, me, result, contactsList }) {
+    const from = msg.from?.emailAddress || {};
+    const sender = String(from.address || '').toLowerCase();
+    const items = (result.questions || []).slice(0, 4).map((q) => ({ kind: 'free', text: screened.cloak.uncloak(q).text.trim() })).filter((q) => q.text);
+
+    // A real person outside the firm, not a known client or contact, writing
+    // about what looks like client work: ask whether they are a client.
+    const known = settings.clients.some((c) => String(c).toLowerCase() === String(from.name || '').toLowerCase())
+      || contactsList.some((c) => (c.emailAddresses || []).some((e) => String(e.address).toLowerCase() === sender));
+    const external = !firmDomains(me, settings).has(domainOf(sender));
+    const data = await store.load();
+    if (external && !known && from.name && result.category === 'client'
+      && !data.questions.some((q) => q.kind === 'client' && q.fromAddress === sender)) {
+      items.unshift({ kind: 'client', text: `Is ${from.name} (${sender}) a client? If yes, their name will always be hidden and treated as a client.` });
+    }
+    if (!items.length) return 0;
+    await store.update((d) => {
+      for (const q of items) {
+        d.questions.unshift({
+          id: crypto.randomUUID(), kind: q.kind, text: q.text, messageId: msg.id,
+          from: from.name || sender, fromAddress: sender, subject: msg.subject,
+          status: 'open', createdAt: now().toISOString(),
+        });
+      }
+      d.questions.length = Math.min(d.questions.length, 300);
+    });
+    await record({ action: 'question', messageId: msg.id, from: from.name || sender, subject: msg.subject, detail: items.map((q) => q.text).join(' / ') });
+    return items.length;
+  }
+
   /** Ask the AI for a draft, put names back, and save it in Drafts. */
-  async function draftReply({ graph, msg, screened, approvedBy }) {
-    const result = await ai.triage(screened.cloaked);
+  async function draftReply({ graph, msg, screened, approvedBy, settings, me, contactsList = [], redraftOf }) {
+    const tz = settings.summary.timezone || 'Asia/Kuala_Lumpur';
+    const today = new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now());
+    const result = await ai.triage(screened.cloaked, { today: `${today} (${localParts(now(), tz).date})`, timezone: tz, notes: screened.cloakedNotes });
     const summary = screened.cloak.uncloak(result.summary);
     const reply = screened.cloak.uncloak(result.reply || '');
     const unknown = [...new Set([...summary.unknown, ...reply.unknown])];
     const from = msg.from?.emailAddress || {};
     let action = 'read';
+    let draftId;
     if (result.needs_reply && reply.text.trim()) {
-      await graph.createReplyDraft(msg.id, reply.text);
+      if (redraftOf) {
+        // Replace the earlier draft rather than leaving two.
+        const old = (await store.load()).activity.find((a) => a.messageId === msg.id && a.draftId);
+        if (old && graph.deleteDraft) await graph.deleteDraft(old.draftId).catch(() => {});
+      }
+      draftId = (await graph.createReplyDraft(msg.id, reply.text))?.id;
       await graph.addCategory(msg.id, CATEGORY.draft, msg.categories || []);
       action = 'draft';
+    }
+    if (!redraftOf) {
+      await pencilIn({ graph, msg, screened, settings, events: result.events });
+      await saveQuestions({ msg, screened, settings, me, result, contactsList });
     }
     await record({
       action,
@@ -114,8 +219,10 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
       category: result.category,
       deadline: result.deadline ? screened.cloak.uncloak(result.deadline).text : '',
       approvedBy,
+      redraft: redraftOf ? `Rewritten after the answer to: ${redraftOf}` : undefined,
+      draftId,
       warning: unknown.length ? `The AI used codes it was not given (${unknown.join(', ')}); check the draft.` : undefined,
-      sentToAI: screened.cloaked,
+      sentToAI: screened.cloakedNotes ? `${screened.cloaked}\n\n[Lawyer's notes]\n${screened.cloakedNotes}` : screened.cloaked,
     });
     return action;
   }
@@ -145,7 +252,7 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
       return 'skipped';
     }
 
-    const screened = screenEmail({ msg, me, settings, contacts: contactsList });
+    const screened = screenEmail({ msg, me, settings, contacts: contactsList, notes: notesFor(settings) });
     if (screened.verdict === 'never') {
       await graph.addCategory(msg.id, CATEGORY.personal, msg.categories || []);
       await record({ action: 'never', messageId: msg.id, from: from.name || sender, subject: msg.subject, detail: screened.reasons.join('; ') });
@@ -162,7 +269,7 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
       await record({ action: 'queued', messageId: msg.id, from: from.name || sender, subject: msg.subject, detail: screened.reasons.join('; ') });
       return 'queued';
     }
-    return draftReply({ graph, msg, screened });
+    return draftReply({ graph, msg, screened, settings, me, contactsList });
   }
 
   async function notifyReviewers({ graph, settings, count }) {
@@ -226,7 +333,7 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
     const ctx = await context();
     if (!ctx) throw new Error('The mailbox is not connected.');
     const msg = await ctx.graph.message(id);
-    const screened = screenEmail({ msg, me: ctx.me, settings: ctx.settings, contacts: await contacts(ctx.graph) });
+    const screened = screenEmail({ msg, me: ctx.me, settings: ctx.settings, contacts: await contacts(ctx.graph), notes: notesFor(ctx.settings) });
     return { id, from: msg.from?.emailAddress, subject: msg.subject, receivedAt: msg.receivedDateTime, verdict: screened.verdict, reasons: screened.reasons, suspects: screened.suspects, cloaked: screened.cloaked };
   }
 
@@ -242,10 +349,11 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
     });
     const ctx = await context();
     const msg = await ctx.graph.message(id);
-    const screened = screenEmail({ msg, me: ctx.me, settings: ctx.settings, contacts: await contacts(ctx.graph) });
+    const contactsList = await contacts(ctx.graph);
+    const screened = screenEmail({ msg, me: ctx.me, settings: ctx.settings, contacts: contactsList, notes: notesFor(ctx.settings) });
     if (screened.verdict === 'unsure') return { status: 'more', suspects: screened.suspects, cloaked: screened.cloaked };
     if (screened.verdict === 'never') return { status: 'never' };
-    const action = await draftReply({ graph: ctx.graph, msg, screened, approvedBy: reviewer });
+    const action = await draftReply({ graph: ctx.graph, msg, screened, approvedBy: reviewer, settings: ctx.settings, me: ctx.me, contactsList });
     await store.update((d) => {
       const q = d.queue.find((x) => x.id === id);
       if (q) Object.assign(q, { status: 'approved', decidedBy: reviewer, decidedAt: new Date().toISOString(), result: action });
@@ -263,6 +371,55 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
       if (q) Object.assign(q, { status: 'personal', decidedBy: reviewer, decidedAt: new Date().toISOString() });
     });
     await record({ action: 'never', messageId: id, from: msg.from?.emailAddress?.name, subject: msg.subject, detail: `Marked "handle personally" by ${reviewer}` });
+  }
+
+  /**
+   * The lawyer answers a question. "Is X a client?" -> yes adds them to the
+   * client list. Other answers can be used to rewrite the reply draft.
+   */
+  async function answerQuestion(id, { answer = '', redraft = false }, user) {
+    const data = await store.load();
+    const q = data.questions.find((x) => x.id === id);
+    if (!q || q.status !== 'open') throw Object.assign(new Error('That question has already been dealt with.'), { status: 409 });
+    answer = String(answer).trim().slice(0, 2000);
+    let result = { status: 'answered' };
+
+    if (q.kind === 'client') {
+      const yes = /^(y|yes|ya|ye|betul)\b/i.test(answer);
+      if (yes) {
+        await store.update((d) => {
+          if (!d.settings.clients.some((c) => String(c).toLowerCase() === q.from.toLowerCase())) d.settings.clients.push(q.from);
+        });
+      }
+      result = { status: 'answered', addedClient: yes };
+    } else if (redraft && answer) {
+      const ctx = await context();
+      const msg = await ctx.graph.message(q.messageId);
+      const contactsList = await contacts(ctx.graph);
+      const screened = screenEmail({
+        msg, me: ctx.me, settings: ctx.settings, contacts: contactsList,
+        notes: notesFor(ctx.settings, `The lawyer was asked: "${q.text}"\nThe lawyer answered: "${answer}"\nRewrite the reply draft to reflect this answer.`),
+      });
+      if (screened.verdict !== 'sure') {
+        result = { status: 'answered', redraft: 'skipped', reason: screened.verdict === 'never' ? 'This email is on the "never send to AI" list.' : 'This email needs a staff check before the AI can see it again.' };
+      } else {
+        const action = await draftReply({ graph: ctx.graph, msg, screened, approvedBy: user, settings: ctx.settings, me: ctx.me, contactsList, redraftOf: q.text });
+        result = { status: 'answered', redraft: action };
+      }
+    }
+    await store.update((d) => {
+      const x = d.questions.find((y) => y.id === id);
+      Object.assign(x, { status: 'answered', answer, answeredBy: user, answeredAt: now().toISOString() });
+    });
+    await record({ action: 'answer', messageId: q.messageId, from: q.from, subject: q.subject, detail: `${q.text} → ${answer || '(no answer)'}${result.redraft === 'draft' ? ' (new draft saved)' : ''}`, approvedBy: user });
+    return result;
+  }
+
+  async function dismissQuestion(id, user) {
+    await store.update((d) => {
+      const x = d.questions.find((y) => y.id === id);
+      if (x && x.status === 'open') Object.assign(x, { status: 'dismissed', answeredBy: user, answeredAt: now().toISOString() });
+    });
   }
 
   /** Build and send the morning summary to the lawyer. */
@@ -294,6 +451,8 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
     const read = recent.filter((a) => a.action === 'read');
     const personal = recent.filter((a) => a.action === 'never');
     const waiting = data.queue.filter((q) => q.status === 'waiting');
+    const openQuestions = data.questions.filter((q) => q.status === 'open');
+    const pencilled = recent.filter((a) => a.action === 'calendar');
 
     const meetingLine = (e) => {
       const who = (e.attendees || []).map((a) => a.emailAddress?.name || a.emailAddress?.address).filter((n) => n && n !== me.name).slice(0, 6).join(', ');
@@ -321,6 +480,7 @@ export function createAssistant({ store, makeGraph, ai, publicUrl = '', now = ()
         'OTHER EMAILS READ:',
         ...(read.length ? read.map((a) => `- ${a.subject}: ${a.summary}`) : ['- none']),
         `EMAILS WAITING FOR A STAFF CHECK: ${waiting.length}`,
+        `QUESTIONS WAITING FOR YOUR ANSWER: ${openQuestions.length}`,
         `EMAILS LEFT FOR YOU PERSONALLY: ${personal.length}`,
       ].join('\n');
       let cloaked = c.cloak(notes);
@@ -347,6 +507,8 @@ ${section(`Today's meetings (${meetings.length})`, list(meetings.map((m) => `<b>
 ${section(`Reply drafts waiting in your Drafts folder (${drafts.length})`, list(drafts.map((a) => `${a.urgency === 'high' ? '<b style="color:#b3261e">URGENT</b> ' : ''}<b>${esc(a.from)}</b>: ${esc(a.subject)}<br><span style="color:#555">${esc(a.summary)}${a.deadline ? ` · Deadline: ${esc(a.deadline)}` : ''}</span>`)))}
 ${read.length ? section(`Other emails, no reply needed (${read.length})`, list(read.map((a) => `<b>${esc(a.from)}</b>: ${esc(a.subject)}`))) : ''}
 ${personal.length ? section(`Left for you personally, not sent to AI (${personal.length})`, list(personal.map((a) => `<b>${esc(a.from || '')}</b>: ${esc(a.subject || '')}`))) : ''}
+${openQuestions.length ? section(`Questions for you (${openQuestions.length})`, `${list(openQuestions.slice(0, 10).map((q) => `${esc(q.text)}<br><span style="color:#777">Re: ${esc(q.from)}, ${esc(q.subject || '')}</span>`))}${link ? `<p style="margin:8px 0 0"><a href="${esc(link)}">Answer them here</a>. Your answers can rewrite the draft and teach the assistant.</p>` : ''}`) : ''}
+${pencilled.length ? section('Pencilled into your calendar', list(pencilled.map((a) => `${esc(a.detail)}<br><span style="color:#777">From ${esc(a.from || '')}: tentative, marked "Cloak suggestion". Keep or delete.</span>`))) : ''}
 ${waiting.length ? section('Waiting for a staff check', `<p style="margin:0">${waiting.length} email${waiting.length === 1 ? ' is' : 's are'} waiting for a quick check before a draft can be prepared.${link ? ` <a href="${esc(link)}">Open the check list</a>` : ''}</p>`) : ''}
 <p style="color:#888;font-size:12px;margin-top:28px">Prepared by Cloak. Names and confidential details were hidden before anything was sent to the AI. Every reply draft needs your review before sending.</p>
 </div>`;
@@ -381,6 +543,8 @@ ${waiting.length ? section('Waiting for a staff check', `<p style="margin:0">${w
     reviewItem,
     approve,
     handlePersonally,
+    answerQuestion,
+    dismissQuestion,
     sendSummary,
     tick,
     start() {

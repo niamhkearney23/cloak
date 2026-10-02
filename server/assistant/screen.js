@@ -127,7 +127,7 @@ export function unsureWords(cloaked, allowWords = []) {
  * Cloak one email and decide where it goes. `contacts` is the mailbox's
  * contact list; only contacts actually mentioned in the email are used.
  */
-export function screenEmail({ msg, me, settings, contacts = [] }) {
+export function screenEmail({ msg, me, settings, contacts = [], notes = '' }) {
   const from = msg.from?.emailAddress || {};
   const reasons = [];
 
@@ -184,5 +184,13 @@ export function screenEmail({ msg, me, settings, contacts = [] }) {
     verdict = 'unsure';
     reasons.push(`Might be names: ${suspects.slice(0, 8).map((s) => s.text).join(', ')}${suspects.length > 8 ? '…' : ''}`);
   }
-  return { verdict, reasons, suspects, cloak: c, cloaked };
+  // The lawyer's own preferences and answers. They are the lawyer's words, so
+  // anything name-like in them that Cloak doesn't recognise is simply hidden.
+  let cloakedNotes = '';
+  if (notes.trim()) {
+    cloakedNotes = c.cloak(notes);
+    for (const s of unsureWords(cloakedNotes, settings.allowWords)) c.addLiteral('NAME', s.text);
+    cloakedNotes = c.cloak(notes);
+  }
+  return { verdict, reasons, suspects, cloak: c, cloaked, cloakedNotes };
 }

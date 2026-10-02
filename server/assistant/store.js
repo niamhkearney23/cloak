@@ -30,6 +30,11 @@ export const DEFAULT_SETTINGS = {
   summary: { enabled: true, time: '07:00', timezone: 'Asia/Kuala_Lumpur', weekdaysOnly: true },
   pollMinutes: 5,
   paused: false,
+  // Pencil meetings, hearings and deadlines from emails into the calendar as
+  // tentative "Cloak suggestion" entries (no one is invited).
+  calendar: { enabled: true },
+  // Standing instructions from the lawyer, e.g. "Sign off 'Best regards'".
+  preferences: [],
 };
 
 function blankData() {
@@ -39,6 +44,8 @@ function blankData() {
     processed: {},
     acked: {},
     queue: [],
+    questions: [],
+    pencilled: {},
     activity: [],
     lastCheck: null,
     lastSummaryDate: null,
@@ -73,7 +80,8 @@ export function createStore({ dir, key }) {
     if (data) return data;
     try {
       const loaded = decrypt(await readFile(file));
-      data = { ...blankData(), ...loaded, settings: { ...structuredClone(DEFAULT_SETTINGS), ...loaded.settings } };
+      const defaults = structuredClone(DEFAULT_SETTINGS);
+      data = { ...blankData(), ...loaded, settings: { ...defaults, ...loaded.settings, calendar: { ...defaults.calendar, ...loaded.settings?.calendar } } };
     } catch (err) {
       if (err.code !== 'ENOENT') throw new Error(`Could not open the assistant data file (wrong CLOAK_DATA_KEY?): ${err.message}`);
       data = blankData();

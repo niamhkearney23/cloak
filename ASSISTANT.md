@@ -1,6 +1,11 @@
 # Email assistant (Outlook / Microsoft 365)
 
-The email assistant reads the lawyer's new emails, hides every confidential detail, gets the AI to write a reply, puts the details back, and saves the reply in their **Drafts** folder. It also sends a fixed acknowledgement to people outside the firm, and a summary every morning with the day's meetings.
+The email assistant reads the lawyer's new emails, hides every confidential detail, gets the AI to write a reply, puts the details back, and saves the reply in their **Drafts** folder. It also:
+
+- sends a fixed acknowledgement to people outside the firm,
+- **pencils meetings, hearings and deadlines into the calendar** as tentative "Cloak suggestion" entries (no one is invited),
+- **asks the lawyer questions** when something needs their decision ("Do you want to accept Friday 3pm?", "Is this person a client?"). Answers can rewrite the draft, and are remembered,
+- emails a summary every morning: meetings, drafts waiting, questions, and what was pencilled in.
 
 **The AI never sees real names or confidential details.** Only the hidden version is sent. The list linking codes to real details stays on the firm's server.
 
@@ -18,6 +23,8 @@ New email arrives
         │
         ├─ Cloak is SURE everything is hidden → AI writes a reply → names put back
         │                                       → saved in Drafts, tagged "Cloak: draft ready"
+        │                                       → dates pencilled into the calendar (tentative)
+        │                                       → questions saved for the lawyer
         │
         └─ Cloak is UNSURE (a word might be a name it doesn't know)
               → tagged "Cloak: waiting for check", nothing sent to AI
@@ -48,7 +55,7 @@ You need someone with access to the firm's **Microsoft 365 admin** (or your IT p
 3. On the overview page, copy the **Application (client) ID** and the **Directory (tenant) ID**.
 4. **Certificates & secrets → New client secret**. Choose 24 months. Copy the **Value** straight away; it's only shown once. Put a reminder in the calendar to renew it before it expires.
 5. **API permissions → Add a permission → Microsoft Graph → Delegated permissions**, and tick:
-   `offline_access`, `openid`, `profile`, `User.Read`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.Read`, `Contacts.Read`.
+   `offline_access`, `openid`, `profile`, `User.Read`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite`, `Contacts.Read`.
    Then click **Grant admin consent** if your organisation requires it.
 
 ### 2. Add the settings on Render
@@ -61,7 +68,7 @@ Open the Cloak service on Render → **Environment**, and fill in:
 | `MS_CLIENT_ID` | Application (client) ID from step 1.3 |
 | `MS_TENANT_ID` | Directory (tenant) ID from step 1.3 |
 | `MS_CLIENT_SECRET` | Secret value from step 1.4 |
-| `CLOAK_ASSISTANT_USERS` | Cloak user names allowed to use the assistant, e.g. `nk,mathew` |
+| `CLOAK_ASSISTANT_USERS` | Cloak user names allowed to use the assistant, e.g. `nk,mathew`. Include the lawyer, so he can answer his questions. |
 
 `CLOAK_DATA_KEY` and the storage disk are created automatically by `render.yaml`. Keep `CLOAK_DATA_KEY` safe: if it changes, the stored connection and settings can't be read and the mailbox must be connected again.
 
@@ -80,6 +87,10 @@ Save. The site restarts in about a minute.
 From then on, new emails are handled every 5 minutes. Old emails already in the inbox are left alone.
 
 ## Everyday use
+
+- **The lawyer** answers questions on the **Email assistant** page (linked from the morning summary). For "Is this a client?" he clicks Yes or No. For other questions he types an answer and clicks **Answer and rewrite the draft**: the old draft is replaced with a new one. Unsent drafts only; nothing he has sent is ever touched.
+- **Calendar entries** appear as tentative, marked "[Cloak suggestion]", with a reminder. He keeps or deletes them. Nobody else is invited or notified.
+- **Standing instructions** (Settings → "Things the assistant should always remember") apply to every draft, e.g. "Sign off with 'Best regards'" or "Never suggest Friday meetings".
 
 - **In Outlook**, the lawyer sees categories on emails: *Cloak: draft ready*, *Cloak: waiting for check*, *Cloak: handle personally*. Drafts are in the **Drafts** folder, as replies in the right thread.
 - **You** get a short notice (no content) when something needs checking. Open **Email assistant → Check before AI**.

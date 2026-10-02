@@ -7,7 +7,7 @@
 
 import crypto from 'node:crypto';
 
-export const SCOPES = ['offline_access', 'openid', 'profile', 'User.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.Read', 'Contacts.Read'];
+export const SCOPES = ['offline_access', 'openid', 'profile', 'User.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.ReadWrite', 'Contacts.Read'];
 const GRAPH = 'https://graph.microsoft.com/v1.0';
 
 export function msConfigFromEnv(env = process.env) {
@@ -144,6 +144,20 @@ export function createGraph({ ms, getTokens, saveTokens, fetchImpl = fetch }) {
 
     createReplyDraft: (id, comment) => call('POST', `/me/messages/${encodeURIComponent(id)}/createReply`, { body: { comment } }),
 
+    /** Delete a reply draft, but only if it is still an unsent draft. */
+    async deleteDraft(id) {
+      let m;
+      try {
+        m = await call('GET', `/me/messages/${encodeURIComponent(id)}?$select=id,isDraft`);
+      } catch (err) {
+        if (err.status === 404) return false;
+        throw err;
+      }
+      if (!m || m.isDraft !== true) return false;
+      await call('DELETE', `/me/messages/${encodeURIComponent(id)}`);
+      return true;
+    },
+
     reply: (id, comment) => call('POST', `/me/messages/${encodeURIComponent(id)}/reply`, { body: { comment } }),
 
     async addCategory(id, category, existing = []) {
@@ -170,5 +184,26 @@ export function createGraph({ ms, getTokens, saveTokens, fetchImpl = fetch }) {
     },
 
     contacts: () => all('/me/contacts?$select=displayName,emailAddresses,companyName&$top=200'),
+
+    /**
+     * Pencil an entry into the calendar. No attendees are added, so no
+     * invitations are sent to anyone. Times are UTC ISO strings; all-day
+     * entries use plain dates (YYYY-MM-DD).
+     */
+    createEvent: ({ subject, startUtc, endUtc, allDay, startDate, endDate, location, note }) => call('POST', '/me/events', {
+      body: {
+        subject,
+        isAllDay: !!allDay,
+        start: allDay ? { dateTime: `${startDate}T00:00:00`, timeZone: 'UTC' } : { dateTime: startUtc.replace(/Z$/, ''), timeZone: 'UTC' },
+        end: allDay ? { dateTime: `${endDate}T00:00:00`, timeZone: 'UTC' } : { dateTime: endUtc.replace(/Z$/, ''), timeZone: 'UTC' },
+        showAs: 'tentative',
+        categories: ['Cloak suggestion'],
+        isReminderOn: true,
+        reminderMinutesBeforeStart: allDay ? 24 * 60 : 60,
+        location: location ? { displayName: location } : undefined,
+        body: { contentType: 'text', content: note || '' },
+        responseRequested: false,
+      },
+    }),
   };
 }
