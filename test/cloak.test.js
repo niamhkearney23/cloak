@@ -122,3 +122,70 @@ test('findSuspects flags names that were not cloaked', () => {
 test('findSuspects ignores a single capitalised word at the start of a sentence', () => {
   assert.deepEqual(findSuspects('Subsequently the Plaintiff went home. Thereafter she rested.'), []);
 });
+
+test('Malaysian and Singapore identifiers are hidden and restored', () => {
+  const samples = {
+    MY_IC: ['900101-14-5678', '900101 14 5678', '900101145678', 'A1234567', 'RF123456'],
+    SG_NRIC: ['S1234567D', 'G7654321K', 'SXXXX567D'],
+    PASSPORT: ['A12345678', 'E1234567A'],
+    COMPANY_NO: ['202001012345', '1234567-X', 'JM0123456-X', 'LLP0012345-LGN'],
+    UEN: ['201912345K', '53123456A', 'T08LL1234A'],
+    TAX_NO: ['IG12345678090', 'SG 1234567890', 'W10-1808-31000123'],
+    CASE_NO: ['WA-22NCvC-123-01/2024', 'W-02(NCVC)(W)-1234-07/2023', 'HC/OC 123/2024'],
+    VEHICLE: ['SBA 1234 A'],
+    CARD: ['4111 1111 1111 1111'],
+    PHONE: ['012-345 6789', '+60 3-2123 4567', '9123 4567', '+65 6123 4567'],
+  };
+  for (const [type, values] of Object.entries(samples)) {
+    for (const v of values) {
+      const c = new Cloak();
+      const text = `Details: ${v}.`;
+      const out = c.cloak(text);
+      assert.match(out, new RegExp(`^Details: \\{\\{${type}_1\\}\\}\\.$`), `${v} -> ${out}`);
+      assert.equal(c.uncloak(out).text, text);
+    }
+  }
+});
+
+test('labelled numbers are hidden whatever their format', () => {
+  const c = new Cloak();
+  const out = c.cloak('Account No. 5141 2345 6789, policy no: POL/2023/88812, EPF No. 12345678, Ref: KCL/LIT/2024/015, Geran 12345 Lot 678, vehicle registration no. PJB 4567, police report no. IP/2024/1234.');
+  assert.doesNotMatch(out, /5141|88812|12345678|KCL|12345|678|PJB|IP\/2024/);
+  assert.match(out, /Account No\. \{\{ID_NUMBER_1\}\}/);
+});
+
+test('postcodes in Malaysian and Singapore addresses are hidden', () => {
+  const c = new Cloak();
+  assert.equal(c.cloak('12 Jalan Ampang, 50450 Kuala Lumpur.'), '12 Jalan Ampang, {{POSTCODE_1}} Kuala Lumpur.');
+  assert.equal(c.cloak('10 Orchard Road, Singapore 238823'), '10 Orchard Road, Singapore {{POSTCODE_2}}');
+});
+
+test('amounts, years, rules and legislation are left alone', () => {
+  const c = new Cloak();
+  const text = 'He lost RM 25,000.00, RM5000, RM 123456789 and S$5000 in 2023 under Order 18 rule 19 of the Rules of Court 2012 (ROC 2012), section 3(1)(a) of the Civil Law Act 1956, paragraph 12. He paid 12000 dollars.';
+  assert.equal(c.cloak(text), text);
+});
+
+test('Malay, Chinese and Indian names: titles, bin/binti, a/l and Sdn Bhd', () => {
+  const c = new Cloak();
+  c.addPerson('PLAINTIFF', 'Tan Sri Tan Ah Kow');
+  c.addPerson('DEFENDANT', 'Siti binti Abdullah');
+  c.addPerson('PERSON', 'Ravi a/l Muthu');
+  c.addOrganisation('DEFENDANT', 'Syarikat Maju Sdn. Bhd.');
+  const out = c.cloak('Mr Tan, Puan Siti, Encik Ravi, Abdullah, Muthu and Syarikat Maju met Tan Ah Kow.');
+  assert.doesNotMatch(out, /Tan|Siti|Ravi|Abdullah|Muthu|Maju/);
+  assert.equal(c.uncloak(out).text, 'Mr Tan, Puan Siti, Encik Ravi, Abdullah, Muthu and Syarikat Maju met Tan Ah Kow.');
+});
+
+test('a party ID number typed in the form is hidden even in an odd format', () => {
+  const c = new Cloak();
+  c.addPerson('PLAINTIFF', 'Lim Mei Ling', { idNo: 'XY-99-AB' });
+  assert.equal(c.cloak('Lim Mei Ling (XY-99-AB)'), '{{PLAINTIFF_1}} ({{PLAINTIFF_1.ID_NO}})');
+});
+
+test('findSuspects knows Malay titles and place words', () => {
+  const found = findSuspects('The Plaintiff met Encik Razak at Jalan Ampang, Kuala Lumpur. Madam Lim Siew Ling attended the Sessions Court.').map((s) => s.text);
+  assert.ok(found.includes('Razak'));
+  assert.ok(found.includes('Lim Siew Ling'));
+  assert.ok(!found.some((f) => /Kuala|Sessions|Jalan/.test(f)), found.join('|'));
+});

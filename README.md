@@ -15,7 +15,7 @@ Documents it drafts:
 1. **Case details.** Pick the court and jurisdiction, then enter the parties, anyone else named in the facts, and the solicitors.
 2. **The facts.** Write what happened in plain words, using real names.
 3. **Pick documents.** Tick what you need. Witness statements, affidavits and replies ask a couple of extra questions.
-4. **Check what's hidden.** Cloak swaps every name, address, firm, record number, email, phone number, postcode, PPSN, NI number and IBAN for a code like `{{PLAINTIFF_1}}`. You see exactly what will be sent, along with any capitalised words that *might* be names it missed. Hide them with one click, or mark them as fine. You must tick "nothing in it identifies anyone" before anything is sent.
+4. **Check what's hidden.** Cloak swaps every name, address, firm and ID number for a code like `{{PLAINTIFF_1}}` (see the list below). You see exactly what will be sent, along with any capitalised words that *might* be names it missed. Hide them with one click, or mark them as fine. You must tick "nothing in it identifies anyone" before anything is sent.
 5. **Your drafts.** Only the cloaked text goes to the drafter. When the drafts come back, Cloak puts the real names back in, in your browser. You can then edit, download as Word, print or save as PDF, or copy.
 
 ```
@@ -29,6 +29,43 @@ Documents it drafts:
 
  The name map (code → real name) never leaves the browser.
 ```
+
+## What gets hidden
+
+**Names you enter**, including the person's surname or first name used on its own ("Encik Ahmad", "Mr Tan", "Ms O'Neill"), names with bin/binti, a/l, a/p, s/o, d/o, titles such as Tan Sri, Datuk, Puan and Encik, and company names without "Sdn. Bhd.", "Pte. Ltd." or "Limited".
+
+**ID numbers found automatically**, even if nobody typed them into the form:
+
+| | Examples |
+|---|---|
+| Malaysian MyKad / MyKid / MyPR | 900101-14-5678, 900101145678, old IC A1234567, police RF123456 |
+| Singapore NRIC / FIN | S1234567D, G7654321K, masked SXXXX567D |
+| Passports | A12345678 (MY), E1234567A (SG) |
+| Malaysian company numbers | 202001012345, 1234567-X, JM0123456-X, LLP0012345-LGN |
+| Singapore UEN | 201912345K, 53123456A, T08LL1234A |
+| Tax numbers | IG12345678090, SG 1234567890, SST W10-1808-31000123 |
+| Court case numbers | WA-22NCvC-123-01/2024, W-02(NCVC)(W)-1234-07/2023, HC/OC 123/2024 |
+| Vehicles | SBA 1234 A; Malaysian plates when labelled ("registration no. WXY 1234") |
+| Phone numbers | 012-345 6789, +60 3-2123 4567, 9123 4567, +65 6123 4567 |
+| Postcodes | 50450 Kuala Lumpur, Singapore 238823 |
+| Cards, IBANs, emails, web links | 4111 1111 1111 1111 |
+| Anything with a label | IC No., Account No., Policy No., EPF/KWSP, SOCSO, CPF, MRN, police report no., Geran, Lot, Ref, invoice, licence, permit, chassis, IMEI and more |
+| Any long number | 9 or more digits in a row |
+
+Irish PPSNs, UK National Insurance numbers, Eircodes and UK postcodes are also covered.
+
+**Not hidden on purpose:** amounts of money, dates, and references to laws and rules (e.g. "Rules of Court 2012", "Order 18 rule 19"), because the drafts need them.
+
+## Jurisdictions
+
+Malaysia (Peninsular, and Sabah and Sarawak), Singapore, Northern Ireland, Ireland, England and Wales, New South Wales and Victoria, or any other court you type in. Picking one fills in court-name suggestions and the usual party names (e.g. Claimant in Singapore). Malaysian documents can be drafted in English or Bahasa Malaysia. In Singapore the writ is replaced by the Originating Claim, and the app labels it that way.
+
+## For the firm's records
+
+- **Checked by:** whoever reviews the hidden text enters their name or initials before sending.
+- **Send record:** after drafting, "Download send record" saves a file showing the date and time, who checked it, what kinds of details were hidden, and exactly what text was sent. It shows that names and identifiers were replaced before anything left the firm, which helps with PDPA record-keeping. (The facts themselves, such as injuries and dates, are still sent, so this is a strong safeguard rather than full anonymisation.) The name map is not included.
+- **DRAFT mark:** printed and Word copies carry "DRAFT, for review. Privileged and confidential." This can be switched off.
+- **Gender:** each person's gender is passed to the AI as "female/male individual", without their name, so pronouns come out right.
 
 ## Running it
 

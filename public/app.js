@@ -12,14 +12,34 @@
 
   // ---------------------------------------------------------------- constants
 
+  // courts: suggestions for the court name box. terms: usual party names.
   const JURISDICTIONS = [
-    { value: 'Northern Ireland', court: 'In the High Court of Justice in Northern Ireland, King\'s Bench Division' },
-    { value: 'Ireland', court: 'The High Court' },
-    { value: 'England and Wales', court: 'In the High Court of Justice, King\'s Bench Division' },
-    { value: 'Scotland', court: 'Court of Session' },
-    { value: 'Australia (New South Wales)', court: 'Supreme Court of New South Wales, Common Law Division' },
-    { value: 'Australia (Victoria)', court: 'In the Supreme Court of Victoria at Melbourne, Common Law Division' },
-    { value: 'Other', court: 'Type the full court name' },
+    { value: 'Malaysia (Peninsular)', terms: 'pd', languages: true, courts: [
+      'In the High Court of Malaya at Kuala Lumpur',
+      'In the High Court of Malaya at Shah Alam',
+      'In the High Court of Malaya at Johor Bahru',
+      'In the High Court of Malaya at Pulau Pinang',
+      'In the Sessions Court at Kuala Lumpur',
+      'In the Magistrates\' Court at Kuala Lumpur',
+    ] },
+    { value: 'Malaysia (Sabah and Sarawak)', terms: 'pd', languages: true, courts: [
+      'In the High Court in Sabah and Sarawak at Kota Kinabalu',
+      'In the High Court in Sabah and Sarawak at Kuching',
+      'In the Sessions Court at Kota Kinabalu',
+      'In the Sessions Court at Kuching',
+    ] },
+    { value: 'Singapore', terms: 'cd', courts: [
+      'In the General Division of the High Court of the Republic of Singapore',
+      'In the Singapore International Commercial Court',
+      'In the District Court of the Republic of Singapore',
+      'In the Magistrate\'s Court of the Republic of Singapore',
+    ] },
+    { value: 'Northern Ireland', terms: 'pd', courts: ['In the High Court of Justice in Northern Ireland, King\'s Bench Division', 'In the County Court for the Division of Belfast'] },
+    { value: 'Ireland', terms: 'pd', courts: ['The High Court', 'The Circuit Court', 'The District Court'] },
+    { value: 'England and Wales', terms: 'cd', courts: ['In the High Court of Justice, King\'s Bench Division', 'In the County Court at Central London'] },
+    { value: 'Australia (New South Wales)', terms: 'pd', courts: ['Supreme Court of New South Wales, Common Law Division', 'District Court of New South Wales'] },
+    { value: 'Australia (Victoria)', terms: 'pd', courts: ['In the Supreme Court of Victoria at Melbourne, Common Law Division', 'In the County Court of Victoria at Melbourne'] },
+    { value: 'Other', terms: 'pd', courts: [] },
   ];
 
   const TERMS = {
@@ -44,8 +64,9 @@
     { key: 'drafts', label: 'Your drafts' },
   ];
 
-  const blankParty = () => ({ kind: 'person', name: '', description: '', address: '' });
-  const blankPerson = () => ({ name: '', role: '', address: '' });
+  const blankParty = () => ({ kind: 'person', name: '', gender: '', idNo: '', description: '', address: '' });
+  const blankPerson = () => ({ name: '', role: '', gender: '', address: '' });
+  const GENDERS = [{ value: '', label: 'Not stated' }, { value: 'female', label: 'Female' }, { value: 'male', label: 'Male' }];
   const blankFirm = () => ({ name: '', address: '', ref: '', email: '', phone: '' });
 
   function blankState() {
@@ -55,6 +76,7 @@
       court: '',
       recordNo: '',
       terms: 'pd',
+      language: 'English',
       actFor: 'p',
       plaintiffs: [blankParty()],
       defendants: [blankParty()],
@@ -74,6 +96,8 @@
         reply: { on: false, defence: '', counterclaim: false, notes: '' },
       },
       checked: false,
+      checkedBy: '',
+      markDraft: true,
       run: null, // { map, results: { docType: { status, cloaked, text, unknown, error, model, truncated } } }
       activeDraft: null,
     };
@@ -155,7 +179,7 @@
     const obj = keys.reduce((o, k) => o[k], state);
     obj[last] = value;
     // Anything that changes what gets sent invalidates the "I've checked" tick.
-    if (!path.startsWith('run') && path !== 'checked' && path !== 'step' && path !== 'activeDraft') state.checked = false;
+    if (!path.startsWith('run') && !['checked', 'checkedBy', 'markDraft', 'step', 'activeDraft'].includes(path)) state.checked = false;
     save();
   }
 
@@ -170,13 +194,15 @@
       control = h('textarea', { id, rows: opts.rows || 4, placeholder: opts.placeholder || '', oninput: (e) => setPath(path, e.target.value) });
       control.value = value;
     } else if (opts.type === 'select') {
-      control = h('select', { id, onchange: (e) => { setPath(path, e.target.value); if (opts.rerender) render(); } },
+      control = h('select', { id, onchange: (e) => { setPath(path, e.target.value); if (opts.onchange) opts.onchange(e.target.value); if (opts.rerender) render(); } },
         opts.options.map((o) => h('option', { value: o.value, selected: o.value === value }, o.label)));
     } else if (opts.type === 'checkbox') {
       control = h('input', { id, type: 'checkbox', checked: !!value, onchange: (e) => { setPath(path, e.target.checked); if (opts.rerender) render(); } });
       return h('label', { class: 'check', for: id }, control, h('span', {}, label), opts.hint && h('small', {}, opts.hint));
     } else {
-      control = h('input', { id, type: 'text', value, placeholder: opts.placeholder || '', autocomplete: 'off', oninput: (e) => setPath(path, e.target.value) });
+      const listId = opts.suggestions && opts.suggestions.length ? id + '-list' : null;
+      control = h('input', { id, type: 'text', value, list: listId, placeholder: opts.placeholder || '', autocomplete: 'off', oninput: (e) => { setPath(path, e.target.value); if (opts.oninput) opts.oninput(e.target.value); } });
+      if (listId) control = [control, h('datalist', { id: listId }, opts.suggestions.map((v) => h('option', { value: v })))];
     }
     return h('div', { class: 'field' + (opts.wide ? ' wide' : '') },
       h('label', { for: id }, label, opts.optional && h('span', { class: 'optional' }, ' (optional)')),
@@ -247,8 +273,8 @@
 
   function addParty(c, prefix, p) {
     if (!p.name.trim()) return;
-    if (p.kind === 'org') c.addOrganisation(prefix, p.name, { address: p.address });
-    else c.addPerson(prefix, p.name, { address: p.address });
+    if (p.kind === 'org') c.addOrganisation(prefix, p.name, { address: p.address, idNo: p.idNo });
+    else c.addPerson(prefix, p.name, { address: p.address, idNo: p.idNo });
   }
 
   function addFirm(c, token, f) {
@@ -270,6 +296,10 @@
     return state.people[Number(i)]?.role || 'witness';
   }
 
+  function genderWord(g) {
+    return g === 'female' ? 'female individual' : g === 'male' ? 'male individual' : 'individual (gender not stated)';
+  }
+
   /** The case brief in plain words (real names). It is cloaked before sending. */
   function buildBrief() {
     const t = T();
@@ -278,12 +308,14 @@
     L.push(`Court: ${state.court || '[not stated]'}`);
     L.push(`Record number: ${state.recordNo || '[to be assigned]'}`);
     L.push(`Party terminology: ${t.p} / ${t.d}`);
+    L.push(`Language of the documents: ${state.language || 'English'}`);
     L.push(`We act for: the ${state.actFor === 'p' ? t.p : t.d}`);
     L.push('');
     L.push('PARTIES');
     const partyLine = (label, p) => [
       `${label}: ${p.name}`,
-      p.kind === 'org' ? 'a company' : null,
+      p.kind === 'org' ? 'a company' : genderWord(p.gender),
+      (p.idNo || '').trim() ? `${p.kind === 'org' ? 'company no.' : 'IC / NRIC / passport no.'}: ${p.idNo}` : null,
       p.description.trim() || null,
       p.address.trim() ? `address: ${p.address}` : null,
     ].filter(Boolean).join(' | ');
@@ -305,7 +337,7 @@
     if (others.length) {
       L.push('');
       L.push('OTHER PEOPLE');
-      others.forEach((p) => L.push(`- ${p.name}${p.role.trim() ? ' | ' + p.role : ''}${p.address.trim() ? ' | address: ' + p.address : ''}`));
+      others.forEach((p) => L.push([`- ${p.name}`, genderWord(p.gender), p.role.trim(), p.address.trim() && `address: ${p.address}`].filter(Boolean).join(' | ')));
     }
     L.push('');
     L.push('FACTS');
@@ -352,13 +384,53 @@
     const brief = c.cloak(buildBrief());
     const docs = DOCS.filter((d) => state.docs[d.key].on).map((d) => ({
       key: d.key,
-      label: d.label,
+      label: docLabel(d.key),
       instructions: c.cloak(buildInstructions(d.key)),
     }));
     const allText = [brief, ...docs.map((d) => d.instructions)].join('\n');
     const allow = new Set(state.allow.map((a) => a.toLowerCase()));
     const suspects = findSuspects(allText).filter((s) => !allow.has(s.text.toLowerCase()));
     return { cloak: c, brief, docs, suspects };
+  }
+
+  const CATEGORIES = [
+    ['People and companies', /^(PLAINTIFF|DEFENDANT|CLAIMANT|APPLICANT|RESPONDENT|PERSON|COUNSEL)(_\d+)?$/],
+    ['Law firms', /_SOLICITORS$/],
+    ['IC, NRIC, passport and company numbers', /^(MY_IC|SG_NRIC|PASSPORT|PPSN|NINO|COMPANY_NO|UEN)_|\.ID_NO$/],
+    ['Tax numbers', /^TAX_NO_/],
+    ['Addresses and postcodes', /(\.ADDRESS$|^POSTCODE_|^EIRCODE_)/],
+    ['Phone numbers, emails and links', /(\.EMAIL$|\.PHONE$|^PHONE_|^EMAIL_|^URL_)/],
+    ['Case and record numbers', /^(CASE_NO_|RECORD_NO$)/],
+    ['Bank, card and other ID numbers', /^(CARD|IBAN|ID_NUMBER|NUMBER)_|\.REF$/],
+    ['Vehicle registrations', /^VEHICLE_/],
+    ['Other things you asked to hide', /^HIDDEN_/],
+  ];
+
+  /** How many distinct things were hidden, grouped for people to read. */
+  function hiddenSummary(table) {
+    const counts = new Map();
+    for (const { token, match } of table) {
+      if (match === false) continue;
+      const hit = CATEGORIES.find(([, re]) => re.test(token));
+      if (hit) counts.set(hit[0], (counts.get(hit[0]) || 0) + 1);
+    }
+    return CATEGORIES.map(([label]) => [label, counts.get(label) || 0]).filter(([, n]) => n > 0);
+  }
+
+  // Some jurisdictions call a document something else.
+  function docLabel(key) {
+    const d = DOCS.find((x) => x.key === key);
+    if (state.jurisdiction === 'Singapore' && key === 'writ') return 'Originating Claim';
+    return d.label;
+  }
+
+  function docBlurb(key) {
+    const d = DOCS.find((x) => x.key === key);
+    if (state.jurisdiction === 'Singapore') {
+      if (key === 'writ') return 'Starts the case under the Rules of Court 2021 (it replaced the writ). Usually served with the Statement of Claim.';
+      if (key === 'witness_statement') return 'One person\'s account. Note: trial evidence in Singapore is normally given by affidavit of evidence-in-chief (AEIC). Tick Affidavit for that.';
+    }
+    return d.blurb;
   }
 
   // ------------------------------------------------------------ draft render
@@ -385,10 +457,17 @@
     p { margin: 0 0 12pt; text-align: justify; }
     p.c { text-align: center; }
     mark.unknown { background: #ffe08a; }
+    p.mark { text-align: right; font-size: 9pt; color: #888; font-family: Arial, sans-serif; }
   `;
 
+  function draftMark() {
+    if (!state.markDraft) return '';
+    const date = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    return `<p class="mark">DRAFT, for review. Privileged and confidential. ${esc(date)}</p>`;
+  }
+
   function standaloneHtml(title, text) {
-    return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${draftToHtml(text)}</body></html>`;
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>${DOC_CSS}</style></head><body>${draftMark()}${draftToHtml(text)}</body></html>`;
   }
 
   function download(filename, content, type) {
@@ -403,7 +482,7 @@
     const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8"><title>${esc(label)}</title>
 <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
-<style>${DOC_CSS}</style></head><body>${draftToHtml(text)}</body></html>`;
+<style>${DOC_CSS}</style></head><body>${draftMark()}${draftToHtml(text)}</body></html>`;
     download(`${fileSafe(label)}.doc`, '﻿' + html, 'application/msword');
   }
 
@@ -431,8 +510,15 @@
     return [
       card('Court', 'Where the case is, and what the parties are called.',
         h('div', { class: 'grid' },
-          field('Jurisdiction', 'jurisdiction', { type: 'select', rerender: true, options: [{ value: '', label: 'Choose…' }, ...JURISDICTIONS.map((j) => ({ value: j.value, label: j.value }))] }),
-          field('Court name', 'court', { placeholder: jur ? jur.court : 'e.g. The High Court' }),
+          field('Jurisdiction', 'jurisdiction', { type: 'select', rerender: true, options: [{ value: '', label: 'Choose…' }, ...JURISDICTIONS.map((j) => ({ value: j.value, label: j.value }))],
+            onchange: (v) => {
+              const j = JURISDICTIONS.find((x) => x.value === v);
+              if (j) state.terms = j.terms;
+              if (!j || !j.languages) state.language = 'English';
+              save();
+            } }),
+          field('Court name', 'court', { placeholder: jur && jur.courts[0] ? jur.courts[0] : 'Type the full court name', suggestions: jur ? jur.courts : [], hint: jur && jur.courts.length ? 'Pick from the list or type your own.' : null }),
+          jur && jur.languages && field('Language of the documents', 'language', { type: 'select', options: [{ value: 'English', label: 'English' }, { value: 'Bahasa Malaysia', label: 'Bahasa Malaysia' }] }),
           field('Record / case number', 'recordNo', { optional: true, placeholder: 'Leave blank if not issued yet' }),
           field('The parties are called', 'terms', { type: 'select', rerender: true, options: [
             { value: 'pd', label: 'Plaintiff and Defendant' },
@@ -443,11 +529,12 @@
         )),
       partyCard('plaintiffs', t.p + 's', 'p'),
       partyCard('defendants', t.d + 's', 'd'),
-      card('Other people', 'Anyone else named in the facts: witnesses, doctors, Gardaí / police officers, employers. They will be hidden too.',
+      card('Other people', 'Anyone else named in the facts: witnesses, doctors, police officers, employers. They will be hidden too.',
         ...state.people.map((p, i) => h('div', { class: 'row-card' },
           h('div', { class: 'grid' },
             field('Name', `people.${i}.name`),
-            field('Who are they?', `people.${i}.role`, { placeholder: 'e.g. eye witness, treating GP' }),
+            field('Gender', `people.${i}.gender`, { type: 'select', options: GENDERS, hint: 'So the drafts use the right he / she.' }),
+            field('Who are they?', `people.${i}.role`, { placeholder: 'e.g. eye witness, treating doctor' }),
             field('Address', `people.${i}.address`, { optional: true, wide: true }),
           ),
           h('button', { type: 'button', class: 'link danger', onclick: () => { state.people.splice(i, 1); setPath('people', state.people); render(); } }, 'Remove'))),
@@ -457,10 +544,10 @@
         firmFields('ourFirm'),
         h('h3', {}, `Other side's solicitors`),
         firmFields('otherFirm'),
-        h('div', { class: 'grid' }, field('Counsel (barrister)', 'counsel', { optional: true }))),
-      card('Anything else to hide', 'Other names or details that could identify someone, such as a school, a workplace, or a car registration. One per line.',
+        h('div', { class: 'grid' }, field('Counsel', 'counsel', { optional: true }))),
+      card('Anything else to hide', 'ID numbers, phone numbers, emails, postcodes, bank accounts and case numbers are found automatically. Add anything else that could identify someone, such as a school, a workplace, a building or a nickname. One per line.',
         (() => {
-          const ta = h('textarea', { rows: 3, placeholder: 'e.g. St Mary\'s Primary School\n191-D-12345', oninput: (e) => setPath('hide', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)) });
+          const ta = h('textarea', { rows: 3, placeholder: 'e.g. SMK Taman Desa\nBlock 123 Ang Mo Kio', oninput: (e) => setPath('hide', e.target.value.split('\n').map((s) => s.trim()).filter(Boolean)) });
           ta.value = state.hide.join('\n');
           return h('div', { class: 'field wide' }, ta);
         })()),
@@ -468,13 +555,22 @@
     ];
   };
 
+  // Example names in placeholders that suit the jurisdiction.
+  function ex() {
+    if (/Malaysia/.test(state.jurisdiction)) return { person: 'Tan Ah Kow / Siti binti Abdullah', org: 'Syarikat Maju Jaya Sdn. Bhd.' };
+    if (state.jurisdiction === 'Singapore') return { person: 'Lim Mei Ling', org: 'Lion City Logistics Pte. Ltd.' };
+    return { person: 'Mary O\'Neill', org: 'Acme Haulage Limited' };
+  }
+
   function partyCard(list, title, side) {
     return card(title, null,
       ...state[list].map((p, i) => h('div', { class: 'row-card' },
         h('div', { class: 'grid' },
           field('Person or company?', `${list}.${i}.kind`, { type: 'select', rerender: true, options: [{ value: 'person', label: 'Person' }, { value: 'org', label: 'Company / organisation' }] }),
-          field(p.kind === 'org' ? 'Full company name' : 'Full name', `${list}.${i}.name`, { placeholder: p.kind === 'org' ? 'e.g. Acme Haulage Limited' : 'e.g. Mary O\'Neill' }),
-          field('Description', `${list}.${i}.description`, { optional: true, placeholder: p.kind === 'org' ? 'e.g. a haulage company' : 'e.g. a retired teacher' }),
+          field(p.kind === 'org' ? 'Full company name' : 'Full name', `${list}.${i}.name`, { placeholder: p.kind === 'org' ? `e.g. ${ex().org}` : `e.g. ${ex().person}` }),
+          p.kind !== 'org' && field('Gender', `${list}.${i}.gender`, { type: 'select', options: GENDERS, hint: 'So the drafts use the right he / she.' }),
+          field(p.kind === 'org' ? 'Company no. / UEN' : 'IC / NRIC / passport no.', `${list}.${i}.idNo`, { optional: true, placeholder: p.kind === 'org' ? 'e.g. 202001012345 (1234567-X)' : 'e.g. 900101-14-5678' }),
+          field('Description', `${list}.${i}.description`, { optional: true, placeholder: p.kind === 'org' ? 'e.g. a logistics company' : 'e.g. a retired teacher' }),
           field('Address', `${list}.${i}.address`, { optional: true, wide: true }),
         ),
         state[list].length > 1 && h('button', { type: 'button', class: 'link danger', onclick: () => { state[list].splice(i, 1); setPath(list, state[list]); render(); } }, 'Remove'))),
@@ -504,7 +600,7 @@
         h('div', { class: 'doc-list' }, DOCS.map((d) => {
           const on = state.docs[d.key].on;
           return h('div', { class: 'doc-option' + (on ? ' on' : '') },
-            field(d.label, `docs.${d.key}.on`, { type: 'checkbox', rerender: true, hint: d.blurb }),
+            field(docLabel(d.key), `docs.${d.key}.on`, { type: 'checkbox', rerender: true, hint: docBlurb(d.key) }),
             on && h('div', { class: 'doc-extra' }, docExtra(d.key, opts)));
         }))),
       nav('facts', DOCS.some((d) => state.docs[d.key].on) ? 'check' : null, 'Next: hide the names →'),
@@ -526,7 +622,7 @@
         field('Who is swearing it?', `${base}.deponent`, { type: 'select', rerender: true, options: opts }),
         field('Their occupation', `${base}.occupation`, { optional: true }),
         field('Sworn or affirmed?', `${base}.oath`, { type: 'select', options: [{ value: 'swear', label: 'Sworn (oath)' }, { value: 'affirm', label: 'Affirmed' }] }),
-        field('What is it for?', `${base}.purpose`, { optional: true, wide: true, placeholder: 'e.g. to ground a motion for judgment in default of defence' }),
+        field('What is it for?', `${base}.purpose`, { optional: true, wide: true, placeholder: /Malaysia|Singapore/.test(state.jurisdiction) ? 'e.g. in support of an application for summary judgment' : 'e.g. to ground a motion for judgment in default of defence' }),
         notes);
     }
     if (key === 'reply') {
@@ -548,6 +644,8 @@
     if (state.docs.witness_statement.on && !state.docs.witness_statement.witness) problems.push('Choose whose witness statement it is.');
     if (state.docs.affidavit.on && !state.docs.affidavit.deponent) problems.push('Choose who is swearing the affidavit.');
     if (state.docs.reply.on && !state.docs.reply.defence.trim()) problems.push('Paste the Defence for the Reply.');
+    const summary = hiddenSummary(map);
+    const canSend = () => state.checked && !!state.checkedBy.trim() && problems.length === 0;
 
     const highlight = (text) => esc(text).replace(/\{\{[^}]+\}\}/g, (m) => `<span class="tok">${m}</span>`);
 
@@ -561,6 +659,9 @@
             h('button', { type: 'button', class: 'small primary', onclick: () => { setPath('hide', [...state.hide, s.text]); render(); } }, 'Hide it'),
             h('button', { type: 'button', class: 'small ghost', onclick: () => { setPath('allow', [...state.allow, s.text]); render(); } }, 'It\'s fine'))))),
         p.suspects.length === 0 && h('div', { class: 'alert ok' }, 'No obvious names left in the text. Still read it through before you send.'),
+        summary.length > 0 && h('div', { class: 'summary' },
+          h('b', {}, 'Hidden: '),
+          summary.map(([label, n]) => h('span', { class: 'chip' }, `${label}: ${n}`))),
         h('h3', {}, 'Cloaked case brief'),
         h('pre', { class: 'payload', html: highlight(p.brief) }),
         p.docs.filter((d) => d.instructions.trim()).map((d) => [h('h3', {}, `${d.label}: extra instructions`), h('pre', { class: 'payload', html: highlight(d.instructions) })]),
@@ -569,10 +670,14 @@
           h('table', {}, h('thead', {}, h('tr', {}, h('th', {}, 'Code'), h('th', {}, 'Real value'))),
             h('tbody', {}, map.map((r) => h('tr', {}, h('td', {}, h('code', {}, `{{${r.token}}}`)), h('td', {}, r.value))))))),
       card('Send for drafting', null,
+        h('div', { class: 'grid' }, field('Checked by (your name or initials)', 'checkedBy', {
+          hint: 'Kept in the send record on this computer. Not sent to the AI.',
+          oninput: () => { document.getElementById('send-btn').disabled = !canSend(); },
+        })),
         field('I have read the grey box and nothing in it identifies anyone', 'checked', { type: 'checkbox', rerender: true }),
         h('div', { class: 'nav' },
           h('button', { type: 'button', class: 'ghost', onclick: () => go('docs') }, '← Back'),
-          h('button', { type: 'button', class: 'primary', disabled: !state.checked || problems.length > 0, onclick: () => runDrafts(p) },
+          h('button', { type: 'button', id: 'send-btn', class: 'primary', disabled: !canSend(), onclick: () => runDrafts(p, summary) },
             `Draft ${p.docs.length} document${p.docs.length === 1 ? '' : 's'} →`))),
     ];
   };
@@ -583,20 +688,25 @@
     const keys = Object.keys(run.results);
     if (!state.activeDraft || !run.results[state.activeDraft]) state.activeDraft = keys[0];
     const r = run.results[state.activeDraft];
-    const doc = DOCS.find((d) => d.key === state.activeDraft);
+    const doc = { ...DOCS.find((d) => d.key === state.activeDraft) };
+    doc.label = run.labels?.[doc.key] || doc.label;
 
     return [
       h('div', { class: 'tabs', role: 'tablist' }, keys.map((k) => {
         const res = run.results[k];
         const d = DOCS.find((x) => x.key === k);
         return h('button', { type: 'button', role: 'tab', 'aria-selected': String(k === state.activeDraft), class: 'tab ' + res.status,
-          onclick: () => { state.activeDraft = k; save(); render(); } }, d.label, h('span', { class: 'dot', title: res.status }));
+          onclick: () => { state.activeDraft = k; save(); render(); } }, run.labels?.[k] || d.label, h('span', { class: 'dot', title: res.status }));
       })),
       h('section', { class: 'card draft' },
         r.status === 'working' && h('div', { class: 'working' }, h('span', { class: 'spinner' }), `Drafting the ${doc.label}… this can take a minute or two.`),
         r.status === 'error' && h('div', { class: 'alert warn' }, h('b', {}, 'Drafting failed: '), r.error,
           h('div', {}, h('button', { type: 'button', class: 'secondary', onclick: () => redraft(state.activeDraft) }, 'Try again'))),
         r.status === 'done' && draftView(doc, r)),
+      h('div', { class: 'run-bar' },
+        field('Mark printed and Word copies as DRAFT', 'markDraft', { type: 'checkbox' }),
+        h('button', { type: 'button', class: 'ghost', onclick: downloadSendRecord }, 'Download send record'),
+        run.sentAt && h('small', { class: 'hint' }, `Sent ${new Date(run.sentAt).toLocaleString('en-GB')}${run.checkedBy ? `, checked by ${run.checkedBy}` : ''}`)),
       h('p', { class: 'disclaimer' }, 'These are first drafts for a solicitor to check. Check every fact, date, amount and name, and fill in anything in [square brackets], before a document is signed, sworn, issued or served.'),
       nav('check', null),
     ];
@@ -676,10 +786,15 @@
     if (state.run === run) render();
   }
 
-  function runDrafts(payload) {
+  function runDrafts(payload, summary) {
     editing = false;
     showCloaked = false;
     state.run = {
+      sentAt: new Date().toISOString(),
+      checkedBy: state.checkedBy.trim(),
+      jurisdiction: state.jurisdiction,
+      summary,
+      labels: Object.fromEntries(payload.docs.map((d) => [d.key, d.label])),
       map: payload.cloak.toJSON(),
       brief: payload.brief,
       instructions: Object.fromEntries(payload.docs.map((d) => [d.key, d.instructions])),
@@ -694,6 +809,36 @@
     editing = false;
     showCloaked = false;
     draftOne(key, state.run.brief, state.run.instructions[key]);
+  }
+
+  /**
+   * A record of exactly what left the firm: when, who checked it, what was
+   * hidden, and the cloaked text itself. The name map is not included.
+   */
+  function downloadSendRecord() {
+    const run = state.run;
+    if (!run) return;
+    const models = [...new Set(Object.values(run.results).map((r) => r.model).filter(Boolean))].join(', ') || 'n/a';
+    const docs = Object.keys(run.results).map((k) => run.labels?.[k] || k);
+    const sections = [`<h2>Case brief</h2><pre>${esc(run.brief)}</pre>`]
+      .concat(Object.entries(run.instructions).filter(([, v]) => v.trim()).map(([k, v]) => `<h2>${esc(run.labels?.[k] || k)}: instructions</h2><pre>${esc(v)}</pre>`));
+    const rows = [
+      ['Matter', [state.recordNo, state.ourFirm.ref].filter((x) => x && x.trim()).join(' / ') || 'not stated'],
+      ['Sent', new Date(run.sentAt).toLocaleString('en-GB')],
+      ['Checked by', run.checkedBy || 'not recorded'],
+      ['Jurisdiction', run.jurisdiction || state.jurisdiction],
+      ['Documents', docs.join(', ')],
+      ['Drafting service', models],
+      ['Items hidden', (run.summary || []).map(([l, n]) => `${l}: ${n}`).join('; ') || 'none'],
+    ];
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Cloak send record</title>
+<style>body{font:14px/1.5 Arial,sans-serif;max-width:860px;margin:30px auto;color:#111}table{border-collapse:collapse}td{padding:4px 14px 4px 0;vertical-align:top}td:first-child{font-weight:bold;white-space:nowrap}pre{white-space:pre-wrap;background:#f3f3f3;padding:12px;border:1px solid #ddd;font-size:12px}.note{background:#eef5ee;border:1px solid #9c9;padding:10px}</style></head>
+<body><h1>Cloak send record</h1>
+<p class="note">This is exactly what was sent to the AI drafting service. Names and identifiers were replaced with codes before sending. The list linking codes to real details stayed on the sender's computer and was not sent.</p>
+<table>${rows.map(([a, b]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td></tr>`).join('')}</table>
+${sections.join('\n')}
+</body></html>`;
+    download(`${fileSafe('send record')}.html`, html, 'text/html');
   }
 
   // ----------------------------------------------------------------- render
