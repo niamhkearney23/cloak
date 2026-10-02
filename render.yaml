@@ -1,0 +1,26 @@
+# One-click setup on Render (https://render.com): New > Blueprint > pick this
+# repository. Render asks for the values marked "sync: false".
+services:
+  - type: web
+    name: cloak-drafting
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: npm ci --omit=dev
+    startCommand: node server/server.js
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "1"
+      - key: CLOAK_SECRET
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CLOAK_USERS
+        sync: false
+      - key: CLOAK_FIRM_NAME
+        sync: false

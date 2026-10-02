@@ -88,6 +88,10 @@ Settings (environment variables):
 | `CLOAK_MOCK` | auto | `1` forces demo mode, `0` forces live mode |
 | `PORT` / `HOST` | `3000` / `127.0.0.1` | Where the server listens |
 
+## Putting it online for your team
+
+See **[DEPLOY.md](DEPLOY.md)**. It covers a step-by-step Render setup in Singapore, staff logins (`npm run add-user`), and running on your own server with Docker.
+
 ## Privacy notes
 
 - The name map and the case details are stored only in the browser (`localStorage`) on the computer being used. Use **Clear everything** when you finish a matter on a shared computer. **Save matter file** downloads everything, real names included, as a JSON file, so store it as you would any client file.

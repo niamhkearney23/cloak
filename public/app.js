@@ -765,6 +765,7 @@
       body: JSON.stringify({ docType, brief, instructions }),
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 401) throw new Error('You have been signed out. Save the matter file, refresh the page, sign in, then press Try again.');
     if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
     return data;
   }
@@ -890,7 +891,33 @@ ${sections.join('\n')}
     el.hidden = false;
     el.textContent = s.mode === 'live' ? 'Live drafting' : 'Demo mode: no AI key set';
     el.className = 'mode ' + s.mode;
+    if (s.firmName) {
+      const firm = document.getElementById('firm-name');
+      firm.textContent = s.firmName;
+      firm.hidden = false;
+    }
+    if (s.user) {
+      document.getElementById('user-name').textContent = s.user;
+      document.getElementById('logout-form').hidden = false;
+      if (!state.checkedBy) {
+        state.checkedBy = s.user;
+        save();
+        if (state.step === 'check') render();
+      }
+    }
   }).catch(() => {});
+
+  // Signing out also clears this browser, so the next person on a shared
+  // computer cannot see the matter.
+  document.getElementById('logout-form').addEventListener('submit', (e) => {
+    if (!confirm('Log out and clear this matter from this browser?\n\nUse "Save matter file" first if you want to keep working on it later.')) {
+      e.preventDefault();
+      return;
+    }
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    try { localStorage.removeItem(STORE_KEY); } catch { /* ignore */ }
+  });
 
   render();
 })();
