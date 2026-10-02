@@ -189,3 +189,14 @@ test('findSuspects knows Malay titles and place words', () => {
   assert.ok(found.includes('Lim Siew Ling'));
   assert.ok(!found.some((f) => /Kuala|Sessions|Jalan/.test(f)), found.join('|'));
 });
+
+test('three-part names: each part is hidden on its own', () => {
+  const c = new Cloak();
+  c.addPerson('ME', 'Mathew Thomas Philip', { token: 'ME' });
+  const out = c.cloak('Dear Mr Philip, or Mr Thomas, or Mathew. MATHEW THOMAS PHILIP.');
+  assert.equal(out, 'Dear Mr {{ME.SURNAME}}, or Mr {{ME.MIDDLE}}, or {{ME.FIRST}}. {{ME}}.');
+  assert.equal(c.uncloak(out).text, 'Dear Mr Philip, or Mr Thomas, or Mathew. Mathew Thomas Philip.');
+  const s = new Cloak();
+  s.addPerson('PLAINTIFF', 'Siti Nurhaliza binti Abdullah');
+  assert.equal(s.cloak('Nurhaliza said'), '{{PLAINTIFF_1.MIDDLE}} said');
+});

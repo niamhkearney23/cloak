@@ -237,6 +237,11 @@
         if (surname.length >= 2) this.register(`${base}.SURNAME`, surname);
         const core = words[words.length - 1];
         if (core !== surname && core.length >= 3) this.register(`${base}.SURNAME_CORE`, core);
+        // Middle names on their own too: "Mr Thomas" for Mathew Thomas Philip,
+        // "Nurhaliza" for Siti Nurhaliza binti Abdullah.
+        words.slice(1, start).forEach((w, i) => {
+          if (w.length >= 3 && !PARTICLES.has(w.toLowerCase())) this.register(`${base}.MIDDLE${i ? i + 1 : ''}`, w);
+        });
         if (first.length >= 2) this.register(`${base}.FIRST`, first);
       }
       this.addDetails(base, extra);
