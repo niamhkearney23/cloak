@@ -9,6 +9,11 @@ services:
     buildCommand: npm ci --omit=dev
     startCommand: node server/server.js
     healthCheckPath: /healthz
+    # Keeps the email assistant's encrypted data across restarts.
+    disk:
+      name: cloak-data
+      mountPath: /var/data
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,9 +23,24 @@ services:
         value: "1"
       - key: CLOAK_SECRET
         generateValue: true
+      - key: CLOAK_DATA_KEY
+        generateValue: true
+      - key: CLOAK_DATA_DIR
+        value: /var/data
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: CLOAK_USERS
         sync: false
       - key: CLOAK_FIRM_NAME
+        sync: false
+      # Email assistant (see ASSISTANT.md). Leave blank until you set it up.
+      - key: CLOAK_PUBLIC_URL
+        sync: false
+      - key: CLOAK_ASSISTANT_USERS
+        sync: false
+      - key: MS_CLIENT_ID
+        sync: false
+      - key: MS_CLIENT_SECRET
+        sync: false
+      - key: MS_TENANT_ID
         sync: false

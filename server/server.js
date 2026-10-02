@@ -16,6 +16,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { DOCUMENTS, SYSTEM_PROMPT, buildUserPrompt } from './prompts.js';
 import { mockDraft } from './mock.js';
 import { createAuth, parseUsers, rateLimiter } from './auth.js';
+import { createStore } from './assistant/store.js';
+import { createGraph, msConfigFromEnv } from './assistant/graph.js';
+import { createAI } from './assistant/ai.js';
+import { createAssistant } from './assistant/worker.js';
+import { createAssistantRoutes } from './assistant/routes.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(here, '..', 'public');
@@ -55,6 +60,12 @@ export function configFromEnv(env = process.env) {
     secureCookies: env.COOKIE_SECURE === '1' || env.NODE_ENV === 'production',
     draftsPerHour: Number(env.CLOAK_DRAFTS_PER_HOUR || 60),
     firmName: env.CLOAK_FIRM_NAME || '',
+    // Email assistant (optional): needs CLOAK_DATA_KEY to store its data.
+    dataKey: env.CLOAK_DATA_KEY || '',
+    dataDir: env.CLOAK_DATA_DIR || path.resolve(here, '..', 'data'),
+    publicUrl: env.CLOAK_PUBLIC_URL || '',
+    ms: msConfigFromEnv(env),
+    assistantUsers: new Set(String(env.CLOAK_ASSISTANT_USERS || '').split(',').map((u) => u.trim().toLowerCase()).filter(Boolean)),
   };
 }
 
@@ -96,11 +107,39 @@ function loginPage({ error, firmName }) {
 </html>`;
 }
 
-export function createApp(config = configFromEnv()) {
+/**
+ * deps lets tests swap in a fake mailbox: { store, makeGraph, ai, startWorker }.
+ */
+export function createApp(config = configFromEnv(), deps = {}) {
   const auth = createAuth({ users: config.users, secret: config.secret || crypto.randomBytes(32).toString('hex') });
   const loginLimit = rateLimiter(10, 15 * 60_000);
   const draftLimit = rateLimiter(config.draftsPerHour, 60 * 60_000);
   const client = config.mock ? null : new Anthropic();
+
+  // --- email assistant
+  let assistant = null;
+  let assistantRoutes = null;
+  const store = deps.store || (config.dataKey ? createStore({ dir: config.dataDir, key: config.dataKey }) : null);
+  if (store) {
+    const graphFor = deps.makeGraph || ((tokenIO) => createGraph({ ms: config.ms, ...tokenIO }));
+    const makeGraph = (tokenIO) => graphFor(tokenIO || {
+      getTokens: async () => (await store.load()).account?.tokens,
+      saveTokens: (t) => store.update((d) => { if (d.account) d.account.tokens = t; }),
+    });
+    assistant = createAssistant({
+      store,
+      makeGraph: () => makeGraph(),
+      ai: deps.ai || createAI({ mock: config.mock, model: config.model }),
+      publicUrl: config.publicUrl,
+      log: (line) => console.log(line),
+    });
+    assistantRoutes = createAssistantRoutes({
+      store, assistant, ms: deps.ms !== undefined ? deps.ms : config.ms, makeGraph,
+      allowedUsers: config.assistantUsers, authEnabled: auth.enabled, audit,
+      fetchImpl: deps.fetchImpl,
+    });
+    if (deps.startWorker !== false) assistant.start();
+  }
 
   function isSecure(req) {
     if (config.trustProxy && String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() === 'https') return true;
@@ -227,6 +266,7 @@ export function createApp(config = configFromEnv()) {
   async function serveStatic(req, res, pathname) {
     let rel = pathname;
     if (rel === '/') rel = '/index.html';
+    if (rel === '/assistant') rel = '/assistant.html';
     const file = path.resolve(PUBLIC_DIR, '.' + rel);
     if (!file.startsWith(PUBLIC_DIR + path.sep) || path.basename(file) === 'package.json') {
       return send(req, res, 404, 'Not found', 'text/plain; charset=utf-8');
@@ -270,6 +310,15 @@ export function createApp(config = configFromEnv()) {
         return redirect(req, res, '/login');
       }
 
+      if (assistantRoutes) {
+        const handled = await assistantRoutes(req, res, {
+          pathname, url, user, readJson,
+          send: (status, body, type) => send(req, res, status, body, type),
+          redirect: (location) => redirect(req, res, location),
+        });
+        if (handled) return;
+      }
+
       if (req.method === 'GET' && pathname === '/api/status') {
         return send(req, res, 200, {
           mode: config.mock ? 'demo' : 'live',
@@ -277,16 +326,19 @@ export function createApp(config = configFromEnv()) {
           user,
           auth: auth.enabled,
           firmName: config.firmName || null,
+          assistant: !!assistantRoutes && (!auth.enabled || config.assistantUsers.has(user)),
         });
       }
       if (req.method === 'POST' && pathname === '/api/draft') return await handleDraft(req, res, user);
       if (req.method === 'GET' || req.method === 'HEAD') return await serveStatic(req, res, pathname);
       send(req, res, 405, { error: 'Method not allowed' });
     } catch (err) {
+      if (!err.status) console.error(err);
       send(req, res, err.status || 500, { error: err.status ? err.message : 'Server error' });
     }
   });
-
+  server.on('close', () => assistant?.stop());
+  server.assistant = assistant;
   return server;
 }
 

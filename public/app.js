@@ -891,6 +891,7 @@ ${sections.join('\n')}
     el.hidden = false;
     el.textContent = s.mode === 'live' ? 'Live drafting' : 'Demo mode: no AI key set';
     el.className = 'mode ' + s.mode;
+    if (s.assistant) document.getElementById('assistant-link').hidden = false;
     if (s.firmName) {
       const firm = document.getElementById('firm-name');
       firm.textContent = s.firmName;

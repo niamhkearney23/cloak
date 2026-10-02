@@ -428,5 +428,10 @@
       .sort((a, b) => b.count - a.count || a.text.localeCompare(b.text));
   }
 
-  return { Cloak, findSuspects, TOKEN_RE };
+  /** True for words that are normally capitalised in legal text and are not names. */
+  function isCommonWord(word) {
+    return COMMON.has(String(word).toLowerCase().replace(/['’]s$/, ''));
+  }
+
+  return { Cloak, findSuspects, isCommonWord, TOKEN_RE };
 });

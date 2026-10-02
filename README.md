@@ -88,6 +88,10 @@ Settings (environment variables):
 | `CLOAK_MOCK` | auto | `1` forces demo mode, `0` forces live mode |
 | `PORT` / `HOST` | `3000` / `127.0.0.1` | Where the server listens |
 
+## Email assistant
+
+Cloak can also look after a lawyer's Outlook / Microsoft 365 inbox. It writes reply drafts with names hidden from the AI, sends a fixed acknowledgement to outside senders, holds anything it's unsure about for a person to check, and emails a morning summary with the day's meetings. See **[ASSISTANT.md](ASSISTANT.md)**.
+
 ## Putting it online for your team
 
 See **[DEPLOY.md](DEPLOY.md)**. It covers a step-by-step Render setup in Singapore, staff logins (`npm run add-user`), and running on your own server with Docker.

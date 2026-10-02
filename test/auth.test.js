@@ -60,7 +60,7 @@ test('correct login gives a session cookie that works, and logout ends it', asyn
   assert.equal(res.status, 303);
   const cookie = res.headers.get('set-cookie');
   assert.match(cookie, /HttpOnly/);
-  assert.match(cookie, /SameSite=Strict/);
+  assert.match(cookie, /SameSite=Lax/);
   const session = cookie.split(';')[0];
 
   const status = await (await fetch(`${base}/api/status`, { headers: { cookie: session } })).json();

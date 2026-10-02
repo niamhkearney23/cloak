@@ -78,6 +78,10 @@ When it's done, Render shows the address, something like `https://cloak-drafting
 
 ---
 
+## Adding the email assistant
+
+Once the site is running, follow **[ASSISTANT.md](ASSISTANT.md)** to connect the lawyer's Outlook mailbox and calendar. The `render.yaml` setup already includes the small storage disk and the encryption key it needs.
+
 ## Running it on your own server instead
 
 If the firm has its own server or a cloud account (AWS, Azure, Google Cloud, DigitalOcean, Alibaba Cloud…), use Docker:
