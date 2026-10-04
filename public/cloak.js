@@ -379,7 +379,7 @@
     perak kedah kelantan terengganu pahang negeri sembilan melaka malacca perlis
     sdn bhd berhad pte private plt llp sessions magistrates magistrate general division appellate tribunal
     mahkamah tinggi sesyen majistret rayuan persekutuan malaya plaintif defendan afidavit writ saman tuntutan pernyataan
-    encik puan cik tuan datuk dato datin tan sri seri tengku tunku haji hajah madam mdm yang berhormat
+    encik puan cik tuan datuk dato datin sri seri tengku tunku haji hajah madam mdm yang berhormat
     bin binti a/l a/p s/o d/o jalan lorong taman persiaran lebuh lebuhraya kampung kampong blk block avenue drive
     ringgit rm sgd myr dollars cents
     pdpa evidence contracts limitation companies civil law act ordinance enactment
@@ -427,9 +427,12 @@
     // Names after a title are usually caught above; make sure they always are.
     for (const t of titledNames) if (!counts.has(t)) bump(t);
 
+    // "Boon Huat" inside "Tan Boon Huat" is the same person: keep the longer.
+    const texts = [...counts.keys()];
     return [...counts.entries()]
       .map(([t, count]) => ({ text: t, count }))
       .filter((s) => s.text.length > 1)
+      .filter((s) => !texts.some((o) => o !== s.text && o.length > s.text.length && new RegExp(`(^|\\s)${s.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`).test(o)))
       .sort((a, b) => b.count - a.count || a.text.localeCompare(b.text));
   }
 

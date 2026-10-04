@@ -200,3 +200,11 @@ test('three-part names: each part is hidden on its own', () => {
   s.addPerson('PLAINTIFF', 'Siti Nurhaliza binti Abdullah');
   assert.equal(s.cloak('Nurhaliza said'), '{{PLAINTIFF_1.MIDDLE}} said');
 });
+
+test('Chinese surname Tan is not an ordinary word, and overlapping suspects merge', () => {
+  const found = findSuspects('Our director, Mr Tan Boon Huat, will sign. Tan Boon Huat agreed.').map((s) => s.text);
+  assert.deepEqual(found, ['Tan Boon Huat']);
+  const c = new Cloak();
+  c.addPerson('PLAINTIFF', 'Tan Sri Lim Kok Wing');
+  assert.equal(c.cloak('Tan Sri Lim Kok Wing'), '{{PLAINTIFF_1}}');
+});
