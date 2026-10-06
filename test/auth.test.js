@@ -109,3 +109,12 @@ test('parseUsers rejects bad entries', () => {
   assert.throws(() => parseUsers('Bad Name:s1$a$b'));
   assert.equal(parseUsers('').size, 0);
 });
+
+test('placeholder setting values count as not set', async () => {
+  const { configFromEnv } = await import('../server/server.js');
+  const c = configFromEnv({ ANTHROPIC_API_KEY: 'later', CLOAK_USERS: '-', MS_CLIENT_ID: 'later', MS_CLIENT_SECRET: 'x', CLOAK_PUBLIC_URL: 'https://a.example.com', CLOAK_FIRM_NAME: ' Kearney & Co ' });
+  assert.equal(c.mock, true);
+  assert.equal(c.users.size, 0);
+  assert.equal(c.ms, null);
+  assert.equal(c.firmName, 'Kearney & Co');
+});

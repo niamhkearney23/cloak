@@ -48,7 +48,17 @@ const CSP = [
   "form-action 'self'",
 ].join('; ');
 
-export function configFromEnv(env = process.env) {
+// Hosting dashboards sometimes insist on a value, so placeholders such as
+// "later" or "-" count as not set.
+const PLACEHOLDER = /^(|-+|\.|n\/?a|none|null|later|todo|tbc|tbd|blank|empty|x+)$/i;
+export function cleanEnv(env) {
+  const out = {};
+  for (const [k, v] of Object.entries(env)) out[k] = PLACEHOLDER.test(String(v ?? '').trim()) ? '' : String(v).trim();
+  return out;
+}
+
+export function configFromEnv(rawEnv = process.env) {
+  const env = cleanEnv(rawEnv);
   return {
     model: env.CLOAK_MODEL || 'claude-opus-5',
     // Demo mode drafts from a fixed template so the app can be tried without
