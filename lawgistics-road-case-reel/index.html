@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Instrument Serif";
+        src: url("fonts/InstrumentSerif-400.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        src: url("fonts/InstrumentSerif-400-italic.woff2") format("woff2");
+        font-weight: 400;
+        font-style: italic;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("fonts/Inter-400.woff2") format("woff2");
+        font-weight: 400 500;
+        font-style: normal;
+      }
+
+      :root {
+        --paper: #efe8dc;
+        --paper-hi: #f7f2e8;
+        --ink: #1a1a1a;
+        --red: #1e3559; /* accent: navy */
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--paper);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Instrument Serif", Georgia, serif;
+      }
+
+      /* ---------- shared layout ---------- */
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+      .inner {
+        position: absolute;
+        inset: 0;
+        padding: 300px 80px 420px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .kicker {
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 24px;
+        letter-spacing: 0.34em;
+        text-transform: uppercase;
+        color: var(--ink);
+        margin-bottom: 48px;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+      .kicker .dash {
+        display: block;
+        width: 56px;
+        height: 2px;
+        background: var(--red);
+        transform-origin: left center;
+      }
+      .hl {
+        font-size: 136px;
+        line-height: 0.96;
+        letter-spacing: -0.005em;
+        text-transform: uppercase;
+        max-width: 920px;
+      }
+      .hl .line {
+        display: block;
+      }
+      .hl .line + .line {
+        margin-top: 0.04em;
+      }
+      .hl i {
+        font-style: italic;
+      }
+      .hl.s-sm {
+        font-size: 96px;
+      }
+      .hl.s-md {
+        font-size: 112px;
+      }
+      .hl.s-lg {
+        font-size: 150px;
+      }
+      .big-num {
+        font-size: 340px;
+        line-height: 0.85;
+        letter-spacing: -0.02em;
+        display: block;
+        padding-top: 0.14em;
+      }
+      .big-num.sm {
+        font-size: 300px;
+      }
+
+      /* cut-out paper rectangle pasted over a key word */
+      .key {
+        position: relative;
+        display: inline-block;
+        padding: 0.03em 0.1em 0.01em;
+        margin-left: -0.1em;
+      }
+      .key .w {
+        position: relative;
+        z-index: 0;
+      }
+      .key .paper {
+        position: absolute;
+        inset: 0;
+        display: block;
+        background: var(--red);
+        z-index: 1;
+        overflow: hidden;
+      }
+      .key .paper .pw {
+        position: absolute;
+        left: 0;
+        top: 0;
+        padding: 0.03em 0.1em 0.01em;
+        white-space: nowrap;
+        color: var(--paper-hi);
+      }
+      .key.ink .paper {
+        background: var(--ink);
+      }
+
+      .rule {
+        display: block;
+        width: 100%;
+        height: 2px;
+        background: var(--ink);
+        transform-origin: left center;
+        margin-top: 48px;
+      }
+      .rule.red {
+        background: var(--red);
+      }
+      .rule.thin {
+        height: 1px;
+      }
+      .meta {
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 24px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        margin-top: 22px;
+      }
+      .meta.red {
+        color: var(--red);
+      }
+      .meta.small {
+        font-size: 18px;
+        letter-spacing: 0.22em;
+        text-transform: none;
+        line-height: 1.5;
+        opacity: 0.8;
+      }
+
+      /* folios */
+      .folio {
+        position: absolute;
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 22px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--ink);
+      }
+      .folio.tl {
+        top: 190px;
+        left: 80px;
+      }
+      .folio.tr {
+        top: 190px;
+        right: 80px;
+      }
+      .folio.br {
+        bottom: 330px;
+        right: 80px;
+      }
+      #masthead-rule {
+        position: absolute;
+        left: 80px;
+        right: 80px;
+        top: 234px;
+        height: 1px;
+        background: var(--ink);
+        transform-origin: left center;
+        opacity: 0.55;
+      }
+
+      /* ---------- photo figure: a print pasted onto the page ---------- */
+      .fig {
+        position: relative;
+        width: 820px;
+        background: var(--paper-hi);
+        padding: 14px 14px 46px;
+        border: 1px solid rgba(26, 26, 26, 0.28);
+        box-shadow: 0 16px 36px rgba(26, 26, 26, 0.16);
+        margin-bottom: 52px;
+      }
+      .fig .ph {
+        width: 100%;
+        height: 560px;
+        overflow: hidden;
+        background: #d9d0c0;
+      }
+      .fig .ph.tall {
+        height: 620px;
+      }
+      .fig .ph.plan {
+        height: 440px; /* matches the drawing's 792×440 viewBox at 792px wide */
+      }
+      .fig .ph img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform-origin: center center;
+      }
+      .fig .cap,
+      .fig .num {
+        position: absolute;
+        bottom: 13px;
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 17px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+        color: var(--ink);
+      }
+      .fig .cap {
+        left: 14px;
+        opacity: 0.75;
+      }
+      .fig .num {
+        right: 14px;
+        color: var(--red);
+      }
+
+      /* ---------- site plan ---------- */
+      .plan svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .plan text {
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        fill: var(--ink);
+      }
+
+      /* ---------- share bar ---------- */
+      .share {
+        margin-top: 44px;
+        width: 100%;
+      }
+      .share .bar {
+        position: relative;
+        height: 34px;
+        border: 2px solid var(--ink);
+        width: 100%;
+      }
+      .share .fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 66.67%;
+        background: var(--red);
+        transform-origin: left center;
+        display: block;
+      }
+      .share .tick {
+        position: absolute;
+        left: 66.67%;
+        top: -14px;
+        bottom: -14px;
+        width: 2px;
+        background: var(--ink);
+        display: block;
+      }
+      .share .labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 18px;
+      }
+      .share .labels .meta {
+        margin-top: 0;
+      }
+
+      /* ---------- source + closing ---------- */
+      .cite {
+        font-size: 60px;
+        line-height: 1.08;
+        text-transform: uppercase;
+        max-width: 920px;
+      }
+      .cite .v {
+        font-style: italic;
+        text-transform: none;
+        color: var(--red);
+      }
+      .brand {
+        font-size: 150px;
+        line-height: 0.95;
+        letter-spacing: -0.01em;
+        text-transform: uppercase;
+      }
+      .tagline {
+        font-size: 76px;
+        font-style: italic;
+        line-height: 1;
+        margin-top: 26px;
+      }
+      .byline {
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 22px;
+        letter-spacing: 0.34em;
+        text-transform: uppercase;
+        margin-top: 90px;
+      }
+      .credits {
+        font-family: "Inter", sans-serif;
+        font-size: 15px;
+        letter-spacing: 0.06em;
+        line-height: 1.6;
+        margin-top: 36px;
+        max-width: 760px;
+        opacity: 0.7;
+      }
+
+      /* ---------- grain ---------- */
+      #grain {
+        position: absolute;
+        inset: 0;
+        z-index: 50;
+        opacity: 0.12;
+        mix-blend-mode: multiply;
+        pointer-events: none;
+      }
+      #grain svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="83" data-width="1080" data-height="1920">
+      <!-- ===== S0 · masthead ===== -->
+      <section id="s0" class="clip screen" data-start="0" data-duration="1.3" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">High Court update · № 02</span></div>
+          <div class="hl s-lg">
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">Lawgistics</span></span></span>
+          </div>
+          <span class="rule"></span>
+        </div>
+      </section>
+
+      <!-- persistent page furniture -->
+      <div id="furniture" class="clip" data-start="1.1" data-duration="74.7" data-track-index="2">
+        <div class="folio tl">Lawgistics</div>
+        <div class="folio tr">High Court update</div>
+        <div id="masthead-rule"></div>
+      </div>
+
+      <!-- ===== S1 · 1968 ===== -->
+      <section id="s1" class="clip screen" data-start="1.1" data-duration="6.6" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">Kuala Lumpur · 1968</span></div>
+          <div class="fig">
+            <div class="ph"><img src="assets/photos/road-1968.jpg" alt="" /></div>
+            <div class="cap">Fig. 01 — A two-lane road, private land</div>
+            <div class="num">1968</div>
+          </div>
+          <div class="hl s-sm">
+            <span class="line">A road is laid</span>
+            <span class="line">across <i>private</i> <span class="key"><span class="paper"></span><span class="w">Land.</span></span></span>
+          </div>
+          <div class="folio br">01 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S2 · every day since ===== -->
+      <section id="s2" class="clip screen" data-start="7.7" data-duration="3.1" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">Ever since</span></div>
+          <div class="fig">
+            <div class="ph"><img src="assets/photos/duke-highway.jpg" alt="" /></div>
+            <div class="cap">Fig. 02 — Traffic, Kuala Lumpur</div>
+            <div class="num">Every day</div>
+          </div>
+          <div class="hl s-sm">
+            <span class="line">Cars have</span>
+            <span class="line">driven over it</span>
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">Every day.</span></span></span>
+          </div>
+          <div class="folio br">02 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S3 · 58 years ===== -->
+      <section id="s3" class="clip screen" data-start="10.8" data-duration="5.1" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">1968 — 2026</span></div>
+          <div class="hl s-md">
+            <span class="line"><span class="big-num">58</span></span>
+            <span class="line"><i>years.</i> Everyone</span>
+            <span class="line">assumed it was</span>
+            <span class="line"><span class="key ink"><span class="paper"></span><span class="w">Acquired.</span></span></span>
+          </div>
+          <span class="rule"></span>
+          <div class="folio br">03 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S4 · to court ===== -->
+      <section id="s4" class="clip screen" data-start="15.9" data-duration="4.6" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">The registered co-owners</span></div>
+          <div class="fig">
+            <div class="ph"><img src="assets/photos/kl-skyline.jpg" alt="" /></div>
+            <div class="cap">Fig. 03 — Kuala Lumpur</div>
+            <div class="num">2026</div>
+          </div>
+          <div class="hl s-sm">
+            <span class="line">Two owners</span>
+            <span class="line">went to <span class="key"><span class="paper"></span><span class="w">Court.</span></span></span>
+          </div>
+          <div class="folio br">04 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S5 · where is the paperwork ===== -->
+      <section id="s5" class="clip screen" data-start="20.5" data-duration="2.5" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">One simple question</span></div>
+          <div class="fig">
+            <div class="ph"><img src="assets/photos/letters.jpg" alt="" /></div>
+            <div class="cap">Fig. 04 — The file</div>
+            <div class="num">?</div>
+          </div>
+          <div class="hl s-sm">
+            <span class="line">Where is the</span>
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">Paperwork?</span></span></span>
+          </div>
+          <div class="folio br">05 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S6 · nothing produced ===== -->
+      <section id="s6" class="clip screen" data-start="23" data-duration="6.5" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">The government could not produce it</span></div>
+          <div class="hl s-md">
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">No</span></span> gazette</span>
+            <span class="line">declaration.</span>
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">No</span></span> award.</span>
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">No</span></span> notice</span>
+            <span class="line">of <i>possession.</i></span>
+          </div>
+          <span class="rule"></span>
+          <div class="folio br">06 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S7 · the Act ===== -->
+      <section id="s7" class="clip screen" data-start="29.5" data-duration="6.6" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">Land Acquisition Act 1960</span></div>
+          <div class="hl">
+            <span class="line">None of the</span>
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">Required</span></span></span>
+            <span class="line"><i>documents.</i></span>
+          </div>
+          <span class="rule"></span>
+          <div class="meta">Declaration · Award · Possession</div>
+          <div class="folio br">07 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S8 · title stood ===== -->
+      <section id="s8" class="clip screen" data-start="36.1" data-duration="4.4" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">The High Court ruled</span></div>
+          <div class="hl s-md">
+            <span class="line">The registered</span>
+            <span class="line">title</span>
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">Still stood.</span></span></span>
+          </div>
+          <span class="rule red"></span>
+          <div class="folio br">08 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S9 · site plan / trespass ===== -->
+      <section id="s9" class="clip screen" data-start="40.5" data-duration="8" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">Every day the road sat there</span></div>
+          <div class="fig">
+            <div class="ph plan" id="s9-plan">
+              <svg viewBox="0 0 792 440" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <pattern id="hatch" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                    <line x1="0" y1="0" x2="0" y2="14" stroke="#1e3559" stroke-width="2.2" />
+                  </pattern>
+                  <clipPath id="plot-clip">
+                    <rect id="plot-clip-rect" x="0" y="0" width="0" height="440" />
+                  </clipPath>
+                </defs>
+                <!-- paper background -->
+                <rect width="792" height="440" fill="#f7f2e8" />
+                <!-- neighbouring lots, faint -->
+                <g stroke="#1a1a1a" stroke-opacity="0.35" fill="none" stroke-width="1.5">
+                  <rect x="40" y="40" width="150" height="150" />
+                  <rect x="40" y="250" width="150" height="150" />
+                  <rect x="602" y="40" width="150" height="150" />
+                  <rect x="602" y="250" width="150" height="150" />
+                </g>
+                <!-- the strip of private land -->
+                <g clip-path="url(#plot-clip)">
+                  <polygon id="plot-fill" points="226,36 566,36 566,404 226,404" fill="url(#hatch)" fill-opacity="0.85" />
+                </g>
+                <polygon id="plot-edge" points="226,36 566,36 566,404 226,404" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linejoin="round" pathLength="1" />
+                <!-- the road crossing it -->
+                <g id="road">
+                  <path id="road-a" d="M 20 150 C 200 140, 420 130, 772 140" fill="none" stroke="#1a1a1a" stroke-width="3" pathLength="1" />
+                  <path id="road-b" d="M 20 290 C 200 280, 420 270, 772 280" fill="none" stroke="#1a1a1a" stroke-width="3" pathLength="1" />
+                  <path id="road-c" d="M 20 220 C 200 210, 420 200, 772 210" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-dasharray="18 14" />
+                </g>
+                <!-- labels -->
+                <text id="lbl-area" x="396" y="372" font-size="20" text-anchor="middle">736.44 m² · private title</text>
+                <text id="lbl-road" x="700" y="128" font-size="15" text-anchor="end">Public road · 1968</text>
+                <text id="lbl-n" x="736" y="420" font-size="13" text-anchor="end">N ↑ · not to scale</text>
+              </svg>
+            </div>
+            <div class="cap">Fig. 05 — The strip</div>
+            <div class="num">736.44 m²</div>
+          </div>
+          <div class="hl s-sm">
+            <span class="line">Every day, a <i>fresh</i></span>
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">Trespass.</span></span></span>
+          </div>
+          <div class="meta small" id="s9-defences">Limitation — failed &nbsp;·&nbsp; Acquiescence — failed</div>
+          <div class="folio br">09 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S10 · tear up the road? ===== -->
+      <section id="s10" class="clip screen" data-start="48.5" data-duration="3.8" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">The remedy</span></div>
+          <div class="fig">
+            <div class="ph"><img src="assets/photos/car-jaguar.jpg" alt="" /></div>
+            <div class="cap">Fig. 06 — The road stays</div>
+            <div class="num">In use</div>
+          </div>
+          <div class="hl s-sm">
+            <span class="line">Tear up the road?</span>
+            <span class="line"><span class="key ink"><span class="paper"></span><span class="w">Not realistic.</span></span></span>
+          </div>
+          <div class="folio br">10 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S11 · damages ===== -->
+      <section id="s11" class="clip screen" data-start="52.3" data-duration="9.3" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">Damages instead</span></div>
+          <div class="hl s-md">
+            <span class="line"><span class="big-num sm">RM4.8</span></span>
+            <span class="line"><span class="key"><span class="paper"></span><span class="w">Million.</span></span></span>
+          </div>
+          <div class="share" id="s11-share">
+            <div class="bar"><span class="fill"></span><span class="tick"></span></div>
+            <div class="labels">
+              <div class="meta red">⅔ owners' share</div>
+              <div class="meta">RM7.2M market value</div>
+            </div>
+          </div>
+          <div class="folio br">11 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S12a · the lesson ===== -->
+      <section id="s12a" class="clip screen" data-start="61.6" data-duration="3.2" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">The lesson</span></div>
+          <div class="hl">
+            <span class="line">A registered</span>
+            <span class="line">title <span class="key"><span class="paper"></span><span class="w">Holds</span></span></span>
+          </div>
+          <span class="rule red"></span>
+          <div class="folio br">12 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S12b · until the state proves ===== -->
+      <section id="s12b" class="clip screen" data-start="64.8" data-duration="4.6" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">The lesson</span></div>
+          <div class="hl s-md">
+            <span class="line">Until the state</span>
+            <span class="line"><i>proves</i> it</span>
+            <span class="line">followed</span>
+            <span class="line">the <span class="key"><span class="paper"></span><span class="w">Rules.</span></span></span>
+          </div>
+          <span class="rule"></span>
+          <div class="meta red">Even 58 years later</div>
+          <div class="folio br">12 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S13a · for landowners ===== -->
+      <section id="s13a" class="clip screen" data-start="69.4" data-duration="3.2" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">For landowners</span></div>
+          <div class="hl s-sm">
+            <span class="line">The <span class="key"><span class="paper"></span><span class="w">Register,</span></span></span>
+            <span class="line">not the road,</span>
+            <span class="line">says what</span>
+            <span class="line">you <i>own.</i></span>
+          </div>
+          <span class="rule"></span>
+          <div class="folio br">13 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S13b · for the state ===== -->
+      <section id="s13b" class="clip screen" data-start="72.6" data-duration="3.2" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">For the state</span></div>
+          <div class="hl s-md">
+            <span class="line">The <span class="key ink"><span class="paper"></span><span class="w">Paperwork</span></span></span>
+            <span class="line"><i>is</i> the</span>
+            <span class="line">acquisition.</span>
+          </div>
+          <span class="rule"></span>
+          <div class="folio br">14 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S14 · source ===== -->
+      <section id="s14" class="clip screen" data-start="75.8" data-duration="4.2" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">Source</span></div>
+          <div class="cite">
+            <span class="line">Fazliah binti Abu Samah &amp; Anor <span class="v">v</span></span>
+            <span class="line">Pengarah Tanah dan Galian WPKL &amp; Ors</span>
+          </div>
+          <span class="rule thin"></span>
+          <div class="meta">High Court · Kuala Lumpur</div>
+          <div class="meta red">Full ruling in today's High Court Update</div>
+          <div class="meta small">#MalaysianLaw · #CourtUpdate · #LandLaw · #PropertyLaw</div>
+          <div class="folio tl">Lawgistics</div>
+          <div class="folio tr">High Court update</div>
+          <div class="folio br">15 / 15</div>
+        </div>
+      </section>
+
+      <!-- ===== S15 · closing ===== -->
+      <section id="s15" class="clip screen" data-start="80" data-duration="3" data-track-index="1">
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span class="kt">High Court update · № 02</span></div>
+          <div class="brand"><span class="key"><span class="paper"></span><span class="w">Lawgistics</span></span></div>
+          <div class="tagline">Law. Explained.</div>
+          <span class="rule"></span>
+          <div class="byline">With Mathew</div>
+          <div class="credits">
+            Photographs are illustrative. CC BY 2.0 via Flickr / Open Images: Jorge Figueroa, Ahmad Adlan, Joshua Eckert, Fort George G. Meade Public Affairs Office, Jason Thien.
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== grain ===== -->
+      <div id="grain">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" preserveAspectRatio="none">
+          <filter id="grain-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+            <feTurbulence id="grain-turb" type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed="1" stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="1.6" intercept="-0.3" />
+              <feFuncG type="linear" slope="1.6" intercept="-0.3" />
+              <feFuncB type="linear" slope="1.6" intercept="-0.3" />
+            </feComponentTransfer>
+          </filter>
+          <rect width="1080" height="1920" filter="url(#grain-filter)" />
+        </svg>
+      </div>
+
+      <!-- ===== audio ===== -->
+      <audio id="vo" src="audio/voiceover.mp3" data-start="0" data-duration="79.2" data-track-index="10" data-volume="1"></audio>
+      <audio id="sfx-1" src=".media/audio/sfx/sfx_001.mp3" data-start="1.12" data-duration="0.36" data-track-index="11" data-volume="0.3"></audio>
+      <audio id="sfx-2" src=".media/audio/sfx/sfx_001.mp3" data-start="20.52" data-duration="0.36" data-track-index="11" data-volume="0.3"></audio>
+      <audio id="sfx-3" src=".media/audio/sfx/sfx_001.mp3" data-start="36.12" data-duration="0.36" data-track-index="11" data-volume="0.3"></audio>
+      <audio id="sfx-4" src=".media/audio/sfx/sfx_001.mp3" data-start="52.32" data-duration="0.36" data-track-index="11" data-volume="0.3"></audio>
+      <audio id="sfx-5" src=".media/audio/sfx/sfx_001.mp3" data-start="75.82" data-duration="0.36" data-track-index="11" data-volume="0.3"></audio>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Deterministic "imperfect" offsets and tilts: fixed tables, never Math.random().
+      const JITTER = [0.0, 0.07, -0.04, 0.11, 0.03, -0.06, 0.09, 0.02, -0.03, 0.08, 0.05, -0.02, 0.06, 0.04, -0.05, 0.03, 0.07, -0.02];
+      const ROT = [1.6, -2.2, 1.1, -1.4, 2.6, -1.2, 1.9, -2.8, 1.3, -1.7, 2.1, -1.1, 1.5, -2.4, 1.2, -1.6, 2.0, -1.3];
+      const FIG_ROT = [-1.4, 1.1, -0.9, 1.6, -1.2, 0.8, -1.5, 1.3];
+
+      // Each cut-out gets a pale copy of its word and a fixed per-screen tilt.
+      document.querySelectorAll("section.screen").forEach((sec, i) => {
+        sec.querySelectorAll(".key").forEach((key) => {
+          const p = key.querySelector(".paper");
+          const w = key.querySelector(".w");
+          const pw = document.createElement("span");
+          pw.className = "pw";
+          pw.textContent = w.textContent;
+          pw.setAttribute("data-layout-allow-overlap", "");
+          p.setAttribute("data-layout-allow-overlap", "");
+          w.setAttribute("data-layout-allow-occlusion", "");
+          p.appendChild(pw);
+          gsap.set(p, { rotation: ROT[i % ROT.length], clipPath: "inset(0 100% 0 0)" });
+        });
+      });
+      // Photo prints get their own slight tilt; the slow push-in deliberately overscans the mat.
+      document.querySelectorAll(".fig").forEach((fig, i) => {
+        gsap.set(fig, { rotation: FIG_ROT[i % FIG_ROT.length] });
+        const ph = fig.querySelector(".ph");
+        if (ph) ph.setAttribute("data-layout-allow-overflow", "");
+      });
+
+      /**
+       * Enter + exit choreography for one screen.
+       * "slide": lines drift up into place, staggered unevenly.
+       * "wipe":  lines are revealed left-to-right.
+       */
+      function screen(id, start, end, variant, idx) {
+        const j = JITTER[idx % JITTER.length];
+        const sec = document.getElementById(id);
+        const inner = sec.querySelector(".inner");
+        const dash = sec.querySelector(".kicker .dash");
+        const kt = sec.querySelector(".kicker .kt");
+        const fig = sec.querySelector(".fig");
+        const img = sec.querySelector(".fig img");
+        const lines = sec.querySelectorAll(".hl .line, .cite .line, .brand, .tagline");
+        const papers = sec.querySelectorAll(".key .paper");
+        const rule = sec.querySelector(".rule");
+        const extras = sec.querySelectorAll(".folio, .meta, .byline, .credits, .share");
+
+        if (dash) tl.fromTo(dash, { scaleX: 0 }, { scaleX: 1, duration: 0.55, ease: "power2.out" }, start + 0.02);
+        if (kt) tl.fromTo(kt, { opacity: 0, x: -18 }, { opacity: 1, x: 0, duration: 0.6, ease: "power2.out" }, start + 0.1 + j * 0.5);
+
+        // the print settles onto the page, then drifts (slow push-in) for the whole screen
+        let lineBase = 0.14;
+        if (fig) {
+          tl.fromTo(fig, { y: 46, opacity: 0 }, { y: 0, opacity: 1, duration: 0.95, ease: "power2.out" }, start + 0.08);
+          if (img) {
+            const dir = idx % 2 ? 1 : -1;
+            tl.fromTo(
+              img,
+              { scale: 1.04, xPercent: -1.2 * dir, yPercent: 0.6 * dir },
+              { scale: 1.14, xPercent: 1.2 * dir, yPercent: -0.6 * dir, duration: end - start, ease: "none" },
+              start,
+            );
+          }
+          lineBase = 0.5;
+        }
+
+        const offsets = [0.14, 0.33, 0.47, 0.66, 0.78, 0.9];
+        lines.forEach((line, n) => {
+          const at = start + lineBase + offsets[n % offsets.length] - 0.14 + (n % 2 ? j : -j * 0.5);
+          if (variant === "wipe") {
+            tl.fromTo(line, { clipPath: "inset(0 100% 0 0)", opacity: 1 }, { clipPath: "inset(0 0% 0 0)", duration: 0.85, ease: "power2.inOut" }, at);
+          } else {
+            tl.fromTo(line, { y: 34, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" }, at);
+          }
+        });
+
+        papers.forEach((p, n) => {
+          const at = start + lineBase + 0.4 + n * 0.16 + j;
+          tl.to(p, { clipPath: "inset(0 0% 0 0)", duration: 0.7, ease: "power3.inOut" }, at);
+        });
+
+        if (rule) tl.fromTo(rule, { scaleX: 0 }, { scaleX: 1, duration: 1.0, ease: "power2.inOut" }, start + lineBase + 0.45 + j);
+        extras.forEach((el, n) => {
+          tl.fromTo(el, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, start + lineBase + 0.6 + n * 0.1);
+        });
+
+        const exitDur = Math.min(0.32, (end - start) * 0.25);
+        tl.to(inner, { y: -26, opacity: 0, duration: exitDur, ease: "power2.in" }, end - exitDur);
+      }
+
+      // id, start, end, variant, index   (ends == next screen's start)
+      screen("s0", 0.0, 1.3, "wipe", 0);
+      screen("s1", 1.1, 7.7, "slide", 1);
+      screen("s2", 7.7, 10.8, "wipe", 2);
+      screen("s3", 10.8, 15.9, "slide", 3);
+      screen("s4", 15.9, 20.5, "wipe", 4);
+      screen("s5", 20.5, 23.0, "slide", 5);
+      screen("s6", 23.0, 29.5, "wipe", 6);
+      screen("s7", 29.5, 36.1, "slide", 7);
+      screen("s8", 36.1, 40.5, "wipe", 8);
+      screen("s9", 40.5, 48.5, "slide", 9);
+      screen("s10", 48.5, 52.3, "wipe", 10);
+      screen("s11", 52.3, 61.6, "slide", 11);
+      screen("s12a", 61.6, 64.8, "wipe", 12);
+      screen("s12b", 64.8, 69.4, "slide", 13);
+      screen("s13a", 69.4, 72.6, "wipe", 14);
+      screen("s13b", 72.6, 75.8, "slide", 15);
+      screen("s14", 75.8, 80.0, "slide", 16);
+      screen("s15", 80.0, 83.0, "wipe", 17);
+
+      // S6: the three "No" stamps land on the narration's beats (23.07 + "no gazette" ≈ 1.9s, "no award" ≈ 3.9s, "no notice" ≈ 4.8s)
+      {
+        const stamps = document.querySelectorAll("#s6 .key .paper");
+        const beats = [24.9, 26.9, 27.9];
+        stamps.forEach((p, n) => {
+          tl.set(p, { clipPath: "inset(0 100% 0 0)" }, 23.0);
+          tl.to(p, { clipPath: "inset(0 0% 0 0)", duration: 0.5, ease: "power3.inOut" }, beats[n]);
+        });
+      }
+
+      // S9: the site plan draws itself — plot hatch sweeps in, road lines draw across, labels settle
+      {
+        const start = 40.5;
+        tl.fromTo("#plot-clip-rect", { attr: { width: 0 } }, { attr: { width: 792 }, duration: 1.4, ease: "power2.inOut" }, start + 0.5);
+        tl.fromTo("#plot-edge", { strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.4, ease: "power2.inOut" }, start + 0.5);
+        tl.fromTo("#road-a", { strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.3, ease: "power2.inOut" }, start + 1.5);
+        tl.fromTo("#road-b", { strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.3, ease: "power2.inOut" }, start + 1.65);
+        tl.fromTo("#road-c", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power1.out" }, start + 2.6);
+        tl.fromTo("#lbl-area", { opacity: 0 }, { opacity: 1, duration: 0.6 }, start + 2.0);
+        tl.fromTo("#lbl-road", { opacity: 0 }, { opacity: 1, duration: 0.6 }, start + 2.8);
+        tl.fromTo("#lbl-n", { opacity: 0 }, { opacity: 0.7, duration: 0.6 }, start + 3.0);
+        // the defences line lands on "so the limitation and acquiescence defences failed" (≈ 45.3s)
+        tl.fromTo("#s9-defences", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, 45.3);
+      }
+
+      // S11: the two-thirds share bar fills as the narration reaches "two-thirds share" (≈ 56.5s)
+      {
+        tl.fromTo("#s11-share .fill", { scaleX: 0 }, { scaleX: 1, duration: 1.4, ease: "power2.inOut" }, 56.4);
+        tl.fromTo("#s11-share .tick", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 57.7);
+      }
+
+      // Persistent page furniture fades in once, and out before the source screen.
+      tl.fromTo("#furniture .folio", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out", stagger: 0.12 }, 1.3);
+      tl.fromTo("#masthead-rule", { scaleX: 0 }, { scaleX: 1, duration: 1.1, ease: "power2.inOut" }, 1.35);
+      tl.to("#furniture .folio, #masthead-rule", { opacity: 0, duration: 0.3, ease: "power2.in" }, 75.5);
+
+      // Film grain: the turbulence seed steps forward with time (seek-safe, no clocks).
+      const turb = document.getElementById("grain-turb");
+      const grain = { seed: 1 };
+      tl.to(grain, { seed: 1 + 83 * 8, duration: 83, ease: "none", onUpdate: () => turb.setAttribute("seed", String(Math.floor(grain.seed))) }, 0);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
