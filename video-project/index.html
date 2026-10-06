@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="./node_modules/gsap/dist/gsap.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #9D6FD4 0%, #5B7FD9 100%);
+        font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      }
+      #root {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      .card {
+        width: 600px;
+        height: 400px;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+      .label {
+        color: #333333;
+        font-size: 14px;
+        font-weight: 500;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+      .number {
+        font-size: 128px;
+        font-weight: 700;
+        color: #1F2937;
+        line-height: 1;
+        min-width: 200px;
+        text-align: center;
+      }
+      .pill {
+        background: #10B981;
+        color: white;
+        padding: 12px 28px;
+        border-radius: 24px;
+        font-size: 16px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div id="card" class="clip card" data-start="0" data-duration="6" data-track-index="0">
+        <div class="label">MY FIRST RENDER</div>
+        <div id="counter" class="number">0</div>
+        <div id="pill" class="pill">Made with Claude Code</div>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Card rise animation: 0-0.5 seconds
+      tl.fromTo(
+        "#card",
+        { y: 150, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5 },
+        0
+      );
+
+      // Number count animation: 0-2 seconds
+      tl.to(
+        { value: 0 },
+        {
+          value: 100,
+          duration: 2,
+          onUpdate: function() {
+            document.getElementById("counter").textContent = Math.floor(this.targets()[0].value);
+          }
+        },
+        0
+      );
+
+      // Pill pop-in animation: starts at 4 seconds
+      tl.fromTo(
+        "#pill",
+        { scale: 0, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.3 },
+        4
+      );
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
