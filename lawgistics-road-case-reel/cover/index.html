@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Instrument Serif";
+        src: url("fonts/InstrumentSerif-400.woff2") format("woff2");
+        font-weight: 400;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: "Instrument Serif";
+        src: url("fonts/InstrumentSerif-400-italic.woff2") format("woff2");
+        font-weight: 400;
+        font-style: italic;
+      }
+      @font-face {
+        font-family: "Inter";
+        src: url("fonts/Inter-400.woff2") format("woff2");
+        font-weight: 400 500;
+        font-style: normal;
+      }
+      :root {
+        --paper: #efe8dc;
+        --paper-hi: #f7f2e8;
+        --ink: #1a1a1a;
+        --navy: #1e3559;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--paper);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: "Instrument Serif", Georgia, serif;
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+      }
+      /* everything that matters sits inside the centre 1080×1080 (the profile-grid crop) */
+      .inner {
+        position: absolute;
+        inset: 0;
+        padding: 420px 80px 420px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .folio {
+        position: absolute;
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 22px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+      }
+      .folio.tl {
+        top: 190px;
+        left: 80px;
+      }
+      .folio.tr {
+        top: 190px;
+        right: 80px;
+      }
+      .folio.bl {
+        bottom: 190px;
+        left: 80px;
+      }
+      .folio.br {
+        bottom: 190px;
+        right: 80px;
+        color: var(--navy);
+      }
+      .mast-rule {
+        position: absolute;
+        left: 80px;
+        right: 80px;
+        height: 1px;
+        background: var(--ink);
+        opacity: 0.55;
+      }
+      .mast-rule.top {
+        top: 234px;
+      }
+      .mast-rule.bottom {
+        bottom: 234px;
+      }
+      .kicker {
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 24px;
+        letter-spacing: 0.34em;
+        text-transform: uppercase;
+        margin-bottom: 40px;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+      .kicker .dash {
+        display: block;
+        width: 56px;
+        height: 2px;
+        background: var(--navy);
+      }
+      .fig {
+        position: relative;
+        width: 820px;
+        background: var(--paper-hi);
+        padding: 14px 14px 46px;
+        border: 1px solid rgba(26, 26, 26, 0.28);
+        box-shadow: 0 16px 36px rgba(26, 26, 26, 0.16);
+        margin-bottom: 52px;
+        transform: rotate(-1.2deg);
+      }
+      .fig .ph {
+        width: 100%;
+        height: 430px;
+        overflow: hidden;
+      }
+      .fig .ph img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.08);
+      }
+      .fig .cap,
+      .fig .num {
+        position: absolute;
+        bottom: 13px;
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 17px;
+        letter-spacing: 0.26em;
+        text-transform: uppercase;
+      }
+      .fig .cap {
+        left: 14px;
+        opacity: 0.75;
+      }
+      .fig .num {
+        right: 14px;
+        color: var(--navy);
+      }
+      .hl {
+        font-size: 124px;
+        line-height: 0.96;
+        text-transform: uppercase;
+        max-width: 920px;
+      }
+      .hl .line {
+        display: block;
+      }
+      .hl .line + .line {
+        margin-top: 0.04em;
+      }
+      .hl i {
+        font-style: italic;
+      }
+      .key {
+        position: relative;
+        display: inline-block;
+        padding: 0.03em 0.1em 0.01em;
+        margin-left: -0.1em;
+        background: var(--navy);
+        color: var(--paper-hi);
+        transform: rotate(-1.6deg);
+      }
+      .meta {
+        font-family: "Inter", sans-serif;
+        font-weight: 500;
+        font-size: 24px;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        margin-top: 40px;
+        color: var(--navy);
+      }
+      #grain {
+        position: absolute;
+        inset: 0;
+        z-index: 50;
+        opacity: 0.12;
+        mix-blend-mode: multiply;
+        pointer-events: none;
+      }
+      #grain svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="cover" data-start="0" data-duration="1" data-width="1080" data-height="1920">
+      <div id="page" class="clip" data-start="0" data-duration="1" data-track-index="1">
+        <div class="folio tl">Lawgistics</div>
+        <div class="folio tr">High Court update</div>
+        <div class="mast-rule top"></div>
+        <div class="inner">
+          <div class="kicker"><span class="dash"></span><span>Kuala Lumpur · 1968 — 2026</span></div>
+          <div class="fig">
+            <div class="ph"><img src="assets/duke-highway.jpg" alt="" /></div>
+            <div class="cap">Fig. 02 — Traffic, Kuala Lumpur</div>
+            <div class="num">58 years</div>
+          </div>
+          <div class="hl">
+            <span class="line">A road. <i>58 years.</i></span>
+            <span class="line">No <span class="key">Paperwork.</span></span>
+          </div>
+          <div class="meta">RM4.8 million in damages</div>
+        </div>
+        <div class="mast-rule bottom"></div>
+        <div class="folio bl">Law. Explained.</div>
+        <div class="folio br">№ 02 · Watch</div>
+      </div>
+
+      <div id="grain">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" preserveAspectRatio="none">
+          <filter id="grain-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed="7" stitchTiles="stitch" />
+            <feColorMatrix type="saturate" values="0" />
+            <feComponentTransfer>
+              <feFuncR type="linear" slope="1.6" intercept="-0.3" />
+              <feFuncG type="linear" slope="1.6" intercept="-0.3" />
+              <feFuncB type="linear" slope="1.6" intercept="-0.3" />
+            </feComponentTransfer>
+          </filter>
+          <rect width="1080" height="1920" filter="url(#grain-filter)" />
+        </svg>
+      </div>
+    </div>
+    <script>
+      // A still: nothing moves, but the runtime still expects one registered timeline.
+      window.__timelines["cover"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>
