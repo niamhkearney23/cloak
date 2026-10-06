@@ -8,7 +8,8 @@ upheld 58 years later, RM4.8m damages.
 ## Style
 **Editorial Grain** (same system as the Instagram reel), extended with real photographs:
 - Warm paper #efe8dc, animated SVG film grain at 12%
-- Instrument Serif headlines (upright + italic), Inter labels, ink #1a1a1a, red #c2412d
+- Instrument Serif headlines (upright + italic), Inter labels, ink #1a1a1a, navy accent #1e3559
+  (the CSS variable is still called `--red` for parity with the Instagram reel)
 - Photos pasted on as prints: paper mat, thin border, slight tilt, figure caption, slow push-in
 - Red / ink cut-out paper blocks behind key words; thin rules; page numbers
 - One hand-drawn site plan (SVG) for the 736.44 m² strip; a two-thirds share bar for damages
@@ -28,6 +29,8 @@ print look in `assets/photos/`. Credits appear on the closing screen.
 
 ## Voiceover
 Kokoro TTS, voice `bm_george`, speed 1.1, one line per screen (`audio/voiceover.mp3`, 79s).
+"Ringgit" and "Kuala Lumpur" are passed as phonemes so they get Malaysian pronunciations
+(hard g in ringgit, "LOOM-poor") instead of the engine's anglicised defaults.
 
 ## Output
 `renders/lawgistics-road-case.mp4` (1080×1350, 30 fps, H.264, 83s)
