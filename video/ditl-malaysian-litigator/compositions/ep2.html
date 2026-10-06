@@ -7,60 +7,64 @@
   <body>
     <template>
       <style>
-      #root { position: absolute; inset: 0; overflow: hidden; background: #ebe2cf; color: #1f1a14; font-family: "IBM Plex Mono", monospace; }
-      [data-composition-id="ep2"] .ghost { position: absolute; right: -30px; bottom: -150px; z-index: 0; font-family: Oswald, sans-serif; font-weight: 700; font-size: 560px; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; color: #1f1a14; opacity: 0.07; white-space: nowrap; pointer-events: none; }
-      [data-composition-id="ep2"] .grain { position: absolute; inset: 0; z-index: 6; opacity: 0.1; mix-blend-mode: multiply; pointer-events: none; }
-      [data-composition-id="ep2"] .hole { position: absolute; left: 56px; width: 44px; height: 44px; border-radius: 50%; background: #d9cfb7; border: 3px solid #8a8070; z-index: 4; }
+      @font-face { font-family: "Lora"; font-style: normal; font-weight: 600; src: url("vendor/fonts/lora-600.woff2") format("woff2"); }
+      @font-face { font-family: "Lora"; font-style: normal; font-weight: 700; src: url("vendor/fonts/lora-700.woff2") format("woff2"); }
+      @font-face { font-family: "Lora"; font-style: italic; font-weight: 600; src: url("vendor/fonts/lora-600-italic.woff2") format("woff2"); }
+      #root { position: absolute; inset: 0; overflow: hidden; background: #f4f1ea; color: #1a1f28; font-family: Inter, -apple-system, "Segoe UI", sans-serif; }
+      [data-composition-id="ep2"] .ghost { position: absolute; right: -30px; bottom: -130px; z-index: 0; font-family: Lora, Georgia, "Times New Roman", serif; font-weight: 700; font-size: 520px; line-height: 1; letter-spacing: -0.02em; color: #2d4a75; opacity: 0.09; white-space: nowrap; pointer-events: none; }
+      [data-composition-id="ep2"] .grain { position: absolute; inset: 0; z-index: 6; opacity: 0.06; mix-blend-mode: multiply; pointer-events: none; }
+      [data-composition-id="ep2"] .hole { position: absolute; left: 56px; width: 44px; height: 44px; border-radius: 50%; background: #ebe6dc; border: 2px solid #ddd8cd; z-index: 4; }
       [data-composition-id="ep2"] .hole-a { top: 318px; }
       [data-composition-id="ep2"] .hole-b { top: 718px; }
-      [data-composition-id="ep2"] .tab { position: absolute; left: 150px; top: 86px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; border: 3px solid #1f1a14; padding: 10px 22px; background: #ebe2cf; white-space: nowrap; }
-      [data-composition-id="ep2"] .epi { position: absolute; right: 150px; top: 90px; z-index: 4; font-family: Oswald, sans-serif; font-weight: 700; font-size: 34px; letter-spacing: 0.06em; text-transform: uppercase; color: #b5282e; white-space: nowrap; }
-      [data-composition-id="ep2"] .foot { position: absolute; left: 150px; right: 150px; top: 976px; height: 3px; background: #1f1a14; opacity: 0.3; z-index: 4; transform-origin: left center; }
-      [data-composition-id="ep2"] .page { position: absolute; left: 150px; top: 1000px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; height: 30px; width: 400px; }
+      [data-composition-id="ep2"] .tab { position: absolute; left: 150px; top: 86px; z-index: 4; font-weight: 600; font-size: 20px; letter-spacing: 0.14em; text-transform: uppercase; color: #2d4a75; border: 2px solid #2d4a75; border-radius: 4px; padding: 11px 20px; background: #f4f1ea; white-space: nowrap; }
+      [data-composition-id="ep2"] .brand { position: absolute; right: 150px; top: 84px; z-index: 4; font-family: Lora, Georgia, "Times New Roman", serif; font-weight: 700; font-size: 38px; letter-spacing: 0.01em; color: #1a1f28; white-space: nowrap; display: flex; align-items: baseline; }
+      [data-composition-id="ep2"] .brand .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: #2d4a75; margin-left: 7px; transform: translateY(-2px); }
+      [data-composition-id="ep2"] .foot { position: absolute; left: 150px; right: 150px; top: 976px; height: 2px; background: #ddd8cd; z-index: 4; transform-origin: left center; }
+      [data-composition-id="ep2"] .page { position: absolute; left: 150px; top: 1000px; z-index: 4; font-weight: 600; font-size: 20px; letter-spacing: 0.14em; text-transform: uppercase; color: #556c8a; height: 30px; width: 400px; }
       [data-composition-id="ep2"] .page span { position: absolute; left: 0; top: 0; opacity: 0; white-space: nowrap; }
-      [data-composition-id="ep2"] .cap { position: absolute; right: 150px; top: 1000px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; white-space: nowrap; }
+      [data-composition-id="ep2"] .cap { position: absolute; right: 150px; top: 1000px; z-index: 4; font-weight: 600; font-size: 20px; letter-spacing: 0.14em; text-transform: uppercase; color: #2d4a75; white-space: nowrap; }
       [data-composition-id="ep2"] .ph { position: absolute; inset: 0; opacity: 0; z-index: 2; }
-      [data-composition-id="ep2"] .ts { position: absolute; left: 144px; top: 292px; font-weight: 700; font-size: 220px; line-height: 1; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      [data-composition-id="ep2"] .ts { position: absolute; left: 146px; top: 292px; font-weight: 700; font-size: 200px; line-height: 1; letter-spacing: -0.045em; font-variant-numeric: tabular-nums; color: #1a1f28; white-space: nowrap; }
       [data-composition-id="ep2"] .ts .ch { display: inline-block; opacity: 0; }
-      [data-composition-id="ep2"] .lab { position: absolute; left: 150px; top: 548px; font-size: 26px; letter-spacing: 0.18em; text-transform: uppercase; color: #5e564a; white-space: nowrap; opacity: 0; }
-      [data-composition-id="ep2"] .stamp { position: absolute; left: 150px; top: 650px; font-family: Oswald, sans-serif; font-weight: 700; font-size: 42px; letter-spacing: 0.08em; text-transform: uppercase; color: #b5282e; border: 4px solid #b5282e; padding: 12px 26px; opacity: 0; white-space: nowrap; }
-      [data-composition-id="ep2"] .col { position: absolute; left: 900px; top: 256px; width: 870px; display: flex; flex-direction: column; align-items: flex-start; }
-      [data-composition-id="ep2"] .hl { font-family: Oswald, sans-serif; font-weight: 700; font-size: 100px; line-height: 0.98; letter-spacing: -0.01em; text-transform: uppercase; margin: 0; }
-      [data-composition-id="ep2"] .hl .w { display: inline-block; opacity: 0; margin-right: 0.26em; }
-      [data-composition-id="ep2"] .rule { width: 260px; height: 5px; background: #b5282e; margin: 26px 0 24px; transform-origin: left center; }
-      [data-composition-id="ep2"] .det { list-style: none; margin: 0; padding: 0; font-size: 29px; line-height: 1.5; color: #1f1a14; width: 100%; }
-      [data-composition-id="ep2"] .det li { opacity: 0; padding-left: 44px; position: relative; }
-      [data-composition-id="ep2"] .det li::before { content: "—"; position: absolute; left: 0; top: 0; color: #b5282e; }
+      [data-composition-id="ep2"] .lab { position: absolute; left: 150px; top: 540px; font-weight: 600; font-size: 22px; letter-spacing: 0.16em; text-transform: uppercase; color: #2d4a75; white-space: nowrap; opacity: 0; }
+      [data-composition-id="ep2"] .stamp { position: absolute; left: 150px; top: 640px; font-weight: 700; font-size: 34px; letter-spacing: 0.1em; text-transform: uppercase; color: #2d4a75; border: 3px solid #2d4a75; border-radius: 4px; padding: 12px 24px; opacity: 0; white-space: nowrap; }
+      [data-composition-id="ep2"] .col { position: absolute; left: 900px; top: 250px; width: 870px; display: flex; flex-direction: column; align-items: flex-start; }
+      [data-composition-id="ep2"] .hl { font-family: Lora, Georgia, "Times New Roman", serif; font-weight: 600; font-size: 82px; line-height: 1.1; letter-spacing: -0.015em; margin: 0; color: #1a1f28; }
+      [data-composition-id="ep2"] .hl .w { display: inline-block; opacity: 0; margin-right: 0.24em; }
+      [data-composition-id="ep2"] .rule { width: 200px; height: 3px; background: #2d4a75; margin: 28px 0 26px; transform-origin: left center; }
+      [data-composition-id="ep2"] .det { list-style: none; margin: 0; padding: 0; font-size: 28px; line-height: 1.55; color: #3a4250; width: 100%; }
+      [data-composition-id="ep2"] .det li { opacity: 0; padding-left: 40px; position: relative; }
+      [data-composition-id="ep2"] .det li::before { content: "—"; position: absolute; left: 0; top: 0; color: #2d4a75; }
       [data-composition-id="ep2"] .extra { margin-top: 26px; width: 100%; }
-      [data-composition-id="ep2"] .ticks { position: absolute; left: 150px; top: 800px; display: flex; gap: 14px; align-items: flex-end; height: 120px; }
-      [data-composition-id="ep2"] .tick { width: 30px; height: 70px; background: #1f1a14; opacity: 0.35; transform-origin: bottom center; }
-      [data-composition-id="ep2"] .tick.hot { height: 120px; background: #b5282e; opacity: 1; }
-      [data-composition-id="ep2"] .track { position: relative; width: 100%; height: 8px; background: rgba(31, 26, 20, 0.22); }
-      [data-composition-id="ep2"] .fill { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #b5282e; transform-origin: left center; }
-      [data-composition-id="ep2"] .track-lab { display: flex; justify-content: space-between; font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; margin-top: 14px; }
+      [data-composition-id="ep2"] .ticks { position: absolute; left: 150px; top: 790px; display: flex; gap: 14px; align-items: flex-end; height: 120px; }
+      [data-composition-id="ep2"] .tick { width: 30px; height: 70px; background: #8fa3bf; transform-origin: bottom center; }
+      [data-composition-id="ep2"] .tick.hot { height: 120px; background: #2d4a75; }
+      [data-composition-id="ep2"] .track { position: relative; width: 100%; height: 6px; background: #ddd8cd; }
+      [data-composition-id="ep2"] .fill { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #2d4a75; transform-origin: left center; }
+      [data-composition-id="ep2"] .track-lab { display: flex; justify-content: space-between; font-weight: 600; font-size: 20px; letter-spacing: 0.14em; text-transform: uppercase; color: #556c8a; margin-top: 14px; }
       [data-composition-id="ep2"] .big { display: flex; align-items: baseline; gap: 26px; }
-      [data-composition-id="ep2"] .num { font-family: Oswald, sans-serif; font-weight: 700; font-size: 170px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #b5282e; display: inline-block; min-width: 200px; transform-origin: left bottom; }
-      [data-composition-id="ep2"] .num-lab { font-size: 26px; letter-spacing: 0.18em; text-transform: uppercase; color: #5e564a; opacity: 0; }
-      [data-composition-id="ep2"] .cloak { width: 100%; display: grid; grid-template-columns: 1fr; row-gap: 14px; font-size: 29px; line-height: 1.4; }
-      [data-composition-id="ep2"] .pair { position: relative; height: 42px; opacity: 0; }
+      [data-composition-id="ep2"] .num { font-family: Lora, Georgia, "Times New Roman", serif; font-weight: 700; font-size: 160px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #2d4a75; display: inline-block; min-width: 200px; transform-origin: left bottom; }
+      [data-composition-id="ep2"] .num-lab { font-weight: 600; font-size: 22px; letter-spacing: 0.16em; text-transform: uppercase; color: #556c8a; opacity: 0; }
+      [data-composition-id="ep2"] .cloak { width: 100%; display: grid; grid-template-columns: 1fr; row-gap: 12px; font-size: 28px; line-height: 1.4; }
+      [data-composition-id="ep2"] .pair { position: relative; height: 40px; opacity: 0; }
       [data-composition-id="ep2"] .pair .real, [data-composition-id="ep2"] .pair .code { position: absolute; left: 0; top: 0; white-space: nowrap; }
-      [data-composition-id="ep2"] .pair .real { color: #1f1a14; }
-      [data-composition-id="ep2"] .pair .code { color: #b5282e; font-weight: 700; opacity: 0; }
-      [data-composition-id="ep2"] .steps { position: relative; height: 40px; font-size: 26px; letter-spacing: 0.14em; text-transform: uppercase; color: #5e564a; margin-bottom: 14px; }
+      [data-composition-id="ep2"] .pair .real { color: #3a4250; }
+      [data-composition-id="ep2"] .pair .code { color: #2d4a75; font-weight: 600; opacity: 0; }
+      [data-composition-id="ep2"] .steps { position: relative; height: 36px; font-weight: 600; font-size: 20px; letter-spacing: 0.14em; text-transform: uppercase; color: #556c8a; margin-bottom: 14px; }
       [data-composition-id="ep2"] .steps span { position: absolute; left: 0; top: 0; opacity: 0; white-space: nowrap; }
       [data-composition-id="ep2"] .rain { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
-      [data-composition-id="ep2"] .drop { position: absolute; top: -140px; width: 3px; height: 110px; background: #1f1a14; opacity: 0.22; }
+      [data-composition-id="ep2"] .drop { position: absolute; top: -140px; width: 2px; height: 110px; background: #8fa3bf; opacity: 0.6; }
       </style>
 
       <div id="root" data-composition-id="ep2" data-width="1920" data-height="1080" data-duration="26.45">
-      <div class="ghost" id="ep2-ghost" data-layout-allow-overflow style="font-size:400px">Mahkamah</div>
+      <div class="ghost" id="ep2-ghost" data-layout-allow-overflow data-layout-allow-overlap style="font-size:300px">Mahkamah</div>
       <div class="hole hole-a"></div>
       <div class="hole hole-b"></div>
       <div class="tab" id="ep2-tab" data-layout-allow-overlap>Fail No. WA-22NCvC-123-01/2024</div>
-      <div class="epi" id="ep2-epi" data-layout-allow-overlap>Episod 2 — Mahkamah</div>
+      <div class="brand" id="ep2-brand" data-layout-allow-overlap>Lawgistics<span class="dot"></span></div>
       <div class="foot" id="ep2-foot"></div>
       <div class="page" id="ep2-page"><span id="ep2-pg1">Muka 1 / 5</span><span id="ep2-pg2">Muka 2 / 5</span><span id="ep2-pg3">Muka 3 / 5</span><span id="ep2-pg4">Muka 4 / 5</span><span id="ep2-pg5">Muka 5 / 5</span></div>
-      <div class="cap" data-layout-allow-overlap>Sehari dalam hidup · peguam litigasi</div>
+      <div class="cap" data-layout-allow-overlap>Episod 2 — Mahkamah · Sehari dalam hidup</div>
       <svg class="grain" xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">
         <filter id="ep2-grain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" seed="7" /><feColorMatrix type="saturate" values="0" /></filter>
         <rect width="1920" height="1080" filter="url(#ep2-grain)" />
@@ -161,7 +165,7 @@
             const rule = q("#" + p + "-rule"); if (rule) tl.fromTo(rule, { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: "power3.out" }, t0 + 0.7);
             qa("#" + p + "-det li").forEach((li, i) => tl.fromTo(li, { opacity: 0, x: -28 }, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, t0 + 0.85 + i * 0.09));
             const st = q("#" + p + "-stamp");
-            if (st) { tl.set(st, { rotation: -7 }, 0); tl.set(st, { opacity: 1 }, t0 + 1.55); tl.fromTo(st, { scale: 1.8 }, { scale: 1, duration: 0.22, ease: "power4.in", immediateRender: false }, t0 + 1.55); }
+            if (st) { tl.set(st, { rotation: -4 }, 0); tl.set(st, { opacity: 1 }, t0 + 1.55); tl.fromTo(st, { scale: 1.8 }, { scale: 1, duration: 0.22, ease: "power4.in", immediateRender: false }, t0 + 1.55); }
           }
           // vertical push (editorial page turn): outgoing and incoming move at the same T
           function push(prev, next, T) {

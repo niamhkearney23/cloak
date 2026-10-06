@@ -2,7 +2,9 @@
 
 A four-episode motion-graphics series, built as a [HyperFrames](https://hyperframes.heygen.com) project. Every frame is plain HTML and CSS animated with GSAP, so an episode can be edited in a text editor or in the HyperFrames Studio and rendered again.
 
-The whole day is told as entries stamped into one court file: a timestamp, a headline, a few lines of detail, and a red stamp. Pages turn with a vertical push. Bahasa Malaysia is the voice of the file; English appears where a Malaysian litigator would use it.
+The whole day is told as entries stamped into one court file: a timestamp, a headline, a few lines of detail, and a stamp. Pages turn with a vertical push. Bahasa Malaysia is the voice of the file; English appears where a Malaysian litigator would use it.
+
+It is styled to the Lawgistics design system (cream, navy, ink; Lora headings, Inter everywhere else; the wordmark with its navy dot), since Cloak is a Lawgistics product. The title and end cards are navy sections, like the site's.
 
 | Episode | Title | Length | Pages |
 |---|---|---|---|
@@ -24,6 +26,7 @@ compositions/title.html    title card
 compositions/epN.html      one episode: five "pages" inside one sub-composition
 compositions/end.html      end card
 vendor/gsap.min.js         GSAP 3.14.2, vendored so renders need no network
+vendor/fonts/              Lora 600/700 (latin), the Lawgistics heading face
 assets/bed.mp3             music bed (generated)
 assets/sfx-full.mp3        foley (generated)
 assets/vo-full.mp3         narration (generated)
@@ -76,7 +79,7 @@ Open `compositions/ep1.html`. Each page is a `<section class="ph">` with:
 
 - `.ts` the big timestamp (split into characters and whipped in),
 - `.lab` the small caption under it,
-- `.stamp` the red stamp,
+- `.stamp` the navy stamp,
 - `.col` the right column: `.hl` headline, `.rule`, a `.det` list, and an optional extra (progress bar, counter, cloak table, e-filing steps).
 
 Timing is computed in the script at the bottom of the file from the root `data-duration`: pages are evenly spaced, each page's entrance starts half a second after its push lands. To add a page, add a section and a matching `entry("epN-pK", t0)` block, and lengthen the episode's `data-duration` both in the composition and in the host files that mount it.
@@ -85,10 +88,10 @@ Keep these rules or `npm run check` will fail:
 
 - one paused GSAP timeline per file, registered on `window.__timelines["<id>"]`;
 - no `Math.random()`, `Date.now()` or network fetches in a composition;
-- only the bundled fonts (Oswald, IBM Plex Mono) unless you add an `@font-face`;
+- fonts are Inter (bundled by the compiler) and Lora (declared with `@font-face` to `vendor/fonts/` in every file); anything else needs its own `@font-face`;
 - headline words are separated with `<wbr>` plus a margin rather than spaces, because the renderer drops the last inter-word space between inline-block spans;
 - every `<audio>` needs an `id`, or the mixer silently skips it.
 
 ## Where Cloak appears
 
-Episode 3, page 2: the paralegal types the facts with real names, and the file shows them replaced by Cloak's codes (`{{PLAINTIFF_1}}`, `{{DEFENDANT_1}}`, `{{MY_IC_1}}`) before the first draft of the Writ Saman and Pernyataan Tuntutan comes back. Episode 3, page 1, mentions the email assistant's morning count of drafts ready and drafts waiting for a check. The end card carries a one-line credit.
+Episode 3, page 2: the paralegal types the facts with real names, and the file shows them replaced by Cloak's codes (`{{PLAINTIFF_1}}`, `{{DEFENDANT_1}}`, `{{MY_IC_1}}`) before the first draft of the Writ Saman and Pernyataan Tuntutan comes back. Episode 3, page 1, mentions the email assistant's morning count of drafts ready and drafts waiting for a check. The end card carries the Cloak line from the Lawgistics site: "Take the client out before you use AI."

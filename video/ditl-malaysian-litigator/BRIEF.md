@@ -13,13 +13,16 @@ A day-in-the-life series about a Malaysian litigator, four episodes plus a title
 
 ## Concept
 
-The day is a court file. Every scene is an entry stamped into it: a timestamp, a headline in the litigator's own clipped voice, a few lines of detail, a red stamp. Pages turn with a vertical push. The chrome (file number tab, punch holes, page counter, episode label) stays fixed so the cut between episodes reads as the same file continuing.
+The day is a court file. Every scene is an entry stamped into it: a timestamp, a headline in the litigator's own clipped voice, a few lines of detail, a navy stamp. Pages turn with a vertical push. The chrome (file number tab, punch holes, page counter, episode label) stays fixed so the cut between episodes reads as the same file continuing.
 
 ## Design
 
-- Palette: manila paper `#ebe2cf`, ink `#1f1a14`, soft ink `#5e564a`, stamp red `#b5282e`. One accent hue.
-- Type: Oswald 700 for headlines and stamps (public notice), IBM Plex Mono for timestamps and detail (the typewritten record). Both are bundled by the HyperFrames compiler.
-- Decoration: ghost word per episode (Pagi, Mahkamah, Chambers, Malam) drifting behind the content, paper grain, a breathing foot rule.
+Follows the Lawgistics design system (`lawgistics/assets/css/site.css`): Cloak is a Lawgistics product, so the series carries the site's look.
+
+- Palette: cream `#f4f1ea`, navy `#2d4a75` (the one accent), ink `#1a1f28`, soft ink `#3a4250` for body, haze-text `#556c8a` for captions, line `#ddd8cd` for rules. Title and end cards are navy sections with white headlines and the site's `#cdd8e8` body tint.
+- Type: Lora 600 for headlines (the site's heading serif), Inter for timestamps, captions, stamps and detail. Lora is vendored under `vendor/fonts/`; Inter is bundled by the compiler.
+- Wordmark: "Lawgistics" in Lora 700 with the navy dot, top right of every page, as on the site header.
+- Restraint: elevation from fine rules, no glow; stamps tilt only four degrees; corners at most 4px. Ghost word per episode (Pagi, Mahkamah, Chambers, Malam) in navy at 9% behind the content, with a faint paper grain.
 
 ## Motion
 
