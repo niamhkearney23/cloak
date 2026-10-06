@@ -109,6 +109,8 @@ These are first drafts for a solicitor to review. Check every fact, date, amount
 ## Project layout
 
 ```
+video/ditl-malaysian-litigator/   "Sehari Dalam Hidup", a four-episode day-in-the-life video series
+                                  about a Malaysian litigator, built with HyperFrames (see its README)
 public/cloak.js     the cloak / uncloak engine (runs in the browser)
 public/app.js       the step-by-step form and drafts screen
 server/server.js    serves the app, sends cloaked text to the drafting model

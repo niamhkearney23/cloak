@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ms">
+  <head><meta charset="UTF-8" /><title>Sehari Dalam Hidup — tamat</title></head>
+  <body>
+    <template>
+      <style>
+      #root { position: absolute; inset: 0; overflow: hidden; background: #ebe2cf; color: #1f1a14; font-family: "IBM Plex Mono", monospace; }
+      [data-composition-id="end"] .ghost { position: absolute; right: -30px; bottom: -150px; z-index: 0; font-family: Oswald, sans-serif; font-weight: 700; font-size: 560px; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; color: #1f1a14; opacity: 0.07; white-space: nowrap; pointer-events: none; }
+      [data-composition-id="end"] .grain { position: absolute; inset: 0; z-index: 6; opacity: 0.1; mix-blend-mode: multiply; pointer-events: none; }
+      [data-composition-id="end"] .hole { position: absolute; left: 56px; width: 44px; height: 44px; border-radius: 50%; background: #d9cfb7; border: 3px solid #8a8070; z-index: 4; }
+      [data-composition-id="end"] .hole-a { top: 318px; }
+      [data-composition-id="end"] .hole-b { top: 718px; }
+      [data-composition-id="end"] .tab { position: absolute; left: 150px; top: 86px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; border: 3px solid #1f1a14; padding: 10px 22px; background: #ebe2cf; white-space: nowrap; }
+      [data-composition-id="end"] .epi { position: absolute; right: 150px; top: 90px; z-index: 4; font-family: Oswald, sans-serif; font-weight: 700; font-size: 34px; letter-spacing: 0.06em; text-transform: uppercase; color: #b5282e; white-space: nowrap; }
+      [data-composition-id="end"] .foot { position: absolute; left: 150px; right: 150px; top: 976px; height: 3px; background: #1f1a14; opacity: 0.3; z-index: 4; transform-origin: left center; }
+      [data-composition-id="end"] .page { position: absolute; left: 150px; top: 1000px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; height: 30px; width: 400px; }
+      [data-composition-id="end"] .page span { position: absolute; left: 0; top: 0; opacity: 0; white-space: nowrap; }
+      [data-composition-id="end"] .cap { position: absolute; right: 150px; top: 1000px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; white-space: nowrap; }
+      [data-composition-id="end"] .ph { position: absolute; inset: 0; opacity: 0; z-index: 2; }
+      [data-composition-id="end"] .ts { position: absolute; left: 144px; top: 292px; font-weight: 700; font-size: 220px; line-height: 1; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      [data-composition-id="end"] .ts .ch { display: inline-block; opacity: 0; }
+      [data-composition-id="end"] .lab { position: absolute; left: 150px; top: 548px; font-size: 26px; letter-spacing: 0.18em; text-transform: uppercase; color: #5e564a; white-space: nowrap; opacity: 0; }
+      [data-composition-id="end"] .stamp { position: absolute; left: 150px; top: 650px; font-family: Oswald, sans-serif; font-weight: 700; font-size: 42px; letter-spacing: 0.08em; text-transform: uppercase; color: #b5282e; border: 4px solid #b5282e; padding: 12px 26px; opacity: 0; white-space: nowrap; }
+      [data-composition-id="end"] .col { position: absolute; left: 900px; top: 256px; width: 870px; display: flex; flex-direction: column; align-items: flex-start; }
+      [data-composition-id="end"] .hl { font-family: Oswald, sans-serif; font-weight: 700; font-size: 100px; line-height: 0.98; letter-spacing: -0.01em; text-transform: uppercase; margin: 0; }
+      [data-composition-id="end"] .hl .w { display: inline-block; opacity: 0; margin-right: 0.26em; }
+      [data-composition-id="end"] .rule { width: 260px; height: 5px; background: #b5282e; margin: 26px 0 24px; transform-origin: left center; }
+      [data-composition-id="end"] .det { list-style: none; margin: 0; padding: 0; font-size: 29px; line-height: 1.5; color: #1f1a14; width: 100%; }
+      [data-composition-id="end"] .det li { opacity: 0; padding-left: 44px; position: relative; }
+      [data-composition-id="end"] .det li::before { content: "—"; position: absolute; left: 0; top: 0; color: #b5282e; }
+      [data-composition-id="end"] .extra { margin-top: 26px; width: 100%; }
+      [data-composition-id="end"] .ticks { position: absolute; left: 150px; top: 800px; display: flex; gap: 14px; align-items: flex-end; height: 120px; }
+      [data-composition-id="end"] .tick { width: 30px; height: 70px; background: #1f1a14; opacity: 0.35; transform-origin: bottom center; }
+      [data-composition-id="end"] .tick.hot { height: 120px; background: #b5282e; opacity: 1; }
+      [data-composition-id="end"] .track { position: relative; width: 100%; height: 8px; background: rgba(31, 26, 20, 0.22); }
+      [data-composition-id="end"] .fill { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #b5282e; transform-origin: left center; }
+      [data-composition-id="end"] .track-lab { display: flex; justify-content: space-between; font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; margin-top: 14px; }
+      [data-composition-id="end"] .big { display: flex; align-items: baseline; gap: 26px; }
+      [data-composition-id="end"] .num { font-family: Oswald, sans-serif; font-weight: 700; font-size: 170px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #b5282e; display: inline-block; min-width: 200px; transform-origin: left bottom; }
+      [data-composition-id="end"] .num-lab { font-size: 26px; letter-spacing: 0.18em; text-transform: uppercase; color: #5e564a; opacity: 0; }
+      [data-composition-id="end"] .cloak { width: 100%; display: grid; grid-template-columns: 1fr; row-gap: 14px; font-size: 29px; line-height: 1.4; }
+      [data-composition-id="end"] .pair { position: relative; height: 42px; opacity: 0; }
+      [data-composition-id="end"] .pair .real, [data-composition-id="end"] .pair .code { position: absolute; left: 0; top: 0; white-space: nowrap; }
+      [data-composition-id="end"] .pair .real { color: #1f1a14; }
+      [data-composition-id="end"] .pair .code { color: #b5282e; font-weight: 700; opacity: 0; }
+      [data-composition-id="end"] .steps { position: relative; height: 40px; font-size: 26px; letter-spacing: 0.14em; text-transform: uppercase; color: #5e564a; margin-bottom: 14px; }
+      [data-composition-id="end"] .steps span { position: absolute; left: 0; top: 0; opacity: 0; white-space: nowrap; }
+      [data-composition-id="end"] .rain { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+      [data-composition-id="end"] .drop { position: absolute; top: -140px; width: 3px; height: 110px; background: #1f1a14; opacity: 0.22; }
+
+      [data-composition-id="end"] .e-fade { position: absolute; inset: 0; }
+      [data-composition-id="end"] .e-wrap { position: absolute; left: 150px; top: 250px; width: 1620px; }
+      [data-composition-id="end"] .e-big { font-family: Oswald, sans-serif; font-weight: 700; font-size: 250px; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; margin: 0; color: #1f1a14; }
+      [data-composition-id="end"] .e-big .w { display: inline-block; opacity: 0; margin-right: 0.24em; }
+      [data-composition-id="end"] .e-rule { width: 320px; height: 6px; background: #b5282e; margin: 34px 0 30px; transform-origin: left center; }
+      [data-composition-id="end"] .e-sub { font-size: 32px; letter-spacing: 0.16em; text-transform: uppercase; color: #1f1a14; opacity: 0; }
+      [data-composition-id="end"] .e-meta { font-size: 26px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; margin-top: 18px; opacity: 0; }
+      [data-composition-id="end"] .e-stamp { position: absolute; right: 190px; top: 790px; left: auto; font-size: 56px; padding: 18px 36px; border-width: 5px; }
+      </style>
+      <div id="root" data-composition-id="end" data-width="1920" data-height="1080" data-duration="6.00">
+      <div class="ghost" id="end-ghost" data-layout-allow-overflow style="font-size:560px">Esok</div>
+      <div class="hole hole-a"></div>
+      <div class="hole hole-b"></div>
+      <div class="tab" id="end-tab" data-layout-allow-overlap>Fail No. WA-22NCvC-123-01/2024</div>
+      <div class="epi" id="end-epi" data-layout-allow-overlap>Tamat</div>
+      <div class="foot" id="end-foot"></div>
+      <div class="page" id="end-page"><span id="end-pg1">Muka akhir</span></div>
+      <div class="cap" data-layout-allow-overlap>Sehari dalam hidup · peguam litigasi</div>
+      <svg class="grain" xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">
+        <filter id="end-grain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" seed="7" /><feColorMatrix type="saturate" values="0" /></filter>
+        <rect width="1920" height="1080" filter="url(#end-grain)" />
+      </svg>
+        <section class="ph" id="end-p1" data-layout-allow-overflow>
+          <div class="e-fade" id="end-fade">
+            <div class="e-wrap">
+              <h1 class="e-big" id="end-big">Esok, sekali lagi.</h1>
+              <div class="e-rule" id="end-rule"></div>
+              <div class="e-sub" id="end-sub">Tomorrow, again · Episod 1–4</div>
+              <div class="e-meta" id="end-meta">Dibuat dengan Cloak Drafting — nama tidak pernah keluar dari firma</div>
+            </div>
+            <div class="stamp e-stamp" id="end-stamp">Difailkan 23:10</div>
+          </div>
+        </section>
+      </div>
+      <script>
+        (function () {
+          const R = document.querySelector('[data-composition-id="end"]');
+          const q = (s) => R.querySelector(s);
+          const F = 1 / 30;
+          const tl = gsap.timeline({ paused: true });
+          const big = q("#end-big");
+          const ws = big.textContent.trim().split(/\s+/); big.textContent = "";
+          const spans = ws.map((w, i) => { const s = document.createElement("span"); s.className = "w"; s.textContent = w; s.setAttribute("data-layout-allow-overlap", ""); big.appendChild(s); if (i < ws.length - 1) big.appendChild(document.createElement("wbr")); return s; });
+          tl.set("#end-p1", { opacity: 1 }, 0);
+          tl.set("#end-pg1", { opacity: 1 }, 0);
+          let t = 0.5;
+          const travel = [90, 70, 80];
+          const durs = [0.2, 0.16, 0.18];
+          spans.forEach((s, i) => { tl.set(s, { opacity: 1, y: travel[i] }, t); tl.to(s, { y: 0, duration: durs[i], ease: "power4.out" }, t); t += durs[i] - 1 * F; });
+          tl.fromTo("#end-rule", { scaleX: 0 }, { scaleX: 1, duration: 0.5, ease: "power3.out" }, 1.1);
+          tl.fromTo("#end-sub", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 1.35);
+          tl.fromTo("#end-meta", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 1.5);
+          tl.set("#end-stamp", { rotation: 6 }, 0);
+          tl.set("#end-stamp", { opacity: 1 }, 2.1);
+          tl.fromTo("#end-stamp", { scale: 1.8 }, { scale: 1, duration: 0.22, ease: "power4.in", immediateRender: false }, 2.1);
+          tl.fromTo("#end-ghost", { x: 40 }, { x: -40, duration: 3.00, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+          tl.fromTo("#end-foot", { opacity: 0.22 }, { opacity: 0.38, duration: 2.4, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+          // final-scene exception: the content wrapper fades to paper at the very end
+          tl.to("#end-fade", { opacity: 0, duration: 0.7, ease: "power1.inOut" }, 5.20);
+          window.__timelines["end"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>

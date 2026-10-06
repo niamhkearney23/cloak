@@ -1,3 +1,9 @@
 node_modules/
 .env
 *.log
+
+# HyperFrames video project output
+video/**/renders/
+video/**/snapshots/
+video/**/.hyperframes/
+video/**/.thumbnails/

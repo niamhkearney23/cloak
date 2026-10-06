@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ms" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Episod 2 — Mahkamah</title>
+    <script src="../vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #ebe2cf; }
+      #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #ebe2cf; }
+      /* Episode slots stretch to fill the root; the root timeline pushes them like pages. */
+      [data-composition-id="solo-ep2"] > div[data-composition-src] { position: absolute; inset: 0; will-change: transform; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="solo-ep2" data-start="0" data-width="1920" data-height="1080" data-duration="26.45">
+      <div
+        id="el-ep2"
+        data-composition-id="ep2"
+        data-composition-src="../compositions/ep2.html"
+        data-start="0.00"
+        data-duration="26.45"
+        data-track-index="1"
+        data-width="1920"
+        data-height="1080"
+      ></div>
+    </div>
+    <script>
+      // Thin orchestrator: scene animation lives in the sub-compositions. The root
+      // timeline only owns the vertical push between consecutive episodes.
+      const tl = gsap.timeline({ paused: true });
+      window.__timelines["solo-ep2"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ms">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Episod 3 — Chambers</title>
+  </head>
+  <body>
+    <template>
+      <style>
+      #root { position: absolute; inset: 0; overflow: hidden; background: #ebe2cf; color: #1f1a14; font-family: "IBM Plex Mono", monospace; }
+      [data-composition-id="ep3"] .ghost { position: absolute; right: -30px; bottom: -150px; z-index: 0; font-family: Oswald, sans-serif; font-weight: 700; font-size: 560px; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; color: #1f1a14; opacity: 0.07; white-space: nowrap; pointer-events: none; }
+      [data-composition-id="ep3"] .grain { position: absolute; inset: 0; z-index: 6; opacity: 0.1; mix-blend-mode: multiply; pointer-events: none; }
+      [data-composition-id="ep3"] .hole { position: absolute; left: 56px; width: 44px; height: 44px; border-radius: 50%; background: #d9cfb7; border: 3px solid #8a8070; z-index: 4; }
+      [data-composition-id="ep3"] .hole-a { top: 318px; }
+      [data-composition-id="ep3"] .hole-b { top: 718px; }
+      [data-composition-id="ep3"] .tab { position: absolute; left: 150px; top: 86px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; border: 3px solid #1f1a14; padding: 10px 22px; background: #ebe2cf; white-space: nowrap; }
+      [data-composition-id="ep3"] .epi { position: absolute; right: 150px; top: 90px; z-index: 4; font-family: Oswald, sans-serif; font-weight: 700; font-size: 34px; letter-spacing: 0.06em; text-transform: uppercase; color: #b5282e; white-space: nowrap; }
+      [data-composition-id="ep3"] .foot { position: absolute; left: 150px; right: 150px; top: 976px; height: 3px; background: #1f1a14; opacity: 0.3; z-index: 4; transform-origin: left center; }
+      [data-composition-id="ep3"] .page { position: absolute; left: 150px; top: 1000px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; height: 30px; width: 400px; }
+      [data-composition-id="ep3"] .page span { position: absolute; left: 0; top: 0; opacity: 0; white-space: nowrap; }
+      [data-composition-id="ep3"] .cap { position: absolute; right: 150px; top: 1000px; z-index: 4; font-size: 22px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; white-space: nowrap; }
+      [data-composition-id="ep3"] .ph { position: absolute; inset: 0; opacity: 0; z-index: 2; }
+      [data-composition-id="ep3"] .ts { position: absolute; left: 144px; top: 292px; font-weight: 700; font-size: 220px; line-height: 1; letter-spacing: -0.05em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      [data-composition-id="ep3"] .ts .ch { display: inline-block; opacity: 0; }
+      [data-composition-id="ep3"] .lab { position: absolute; left: 150px; top: 548px; font-size: 26px; letter-spacing: 0.18em; text-transform: uppercase; color: #5e564a; white-space: nowrap; opacity: 0; }
+      [data-composition-id="ep3"] .stamp { position: absolute; left: 150px; top: 650px; font-family: Oswald, sans-serif; font-weight: 700; font-size: 42px; letter-spacing: 0.08em; text-transform: uppercase; color: #b5282e; border: 4px solid #b5282e; padding: 12px 26px; opacity: 0; white-space: nowrap; }
+      [data-composition-id="ep3"] .col { position: absolute; left: 900px; top: 256px; width: 870px; display: flex; flex-direction: column; align-items: flex-start; }
+      [data-composition-id="ep3"] .hl { font-family: Oswald, sans-serif; font-weight: 700; font-size: 100px; line-height: 0.98; letter-spacing: -0.01em; text-transform: uppercase; margin: 0; }
+      [data-composition-id="ep3"] .hl .w { display: inline-block; opacity: 0; margin-right: 0.26em; }
+      [data-composition-id="ep3"] .rule { width: 260px; height: 5px; background: #b5282e; margin: 26px 0 24px; transform-origin: left center; }
+      [data-composition-id="ep3"] .det { list-style: none; margin: 0; padding: 0; font-size: 29px; line-height: 1.5; color: #1f1a14; width: 100%; }
+      [data-composition-id="ep3"] .det li { opacity: 0; padding-left: 44px; position: relative; }
+      [data-composition-id="ep3"] .det li::before { content: "—"; position: absolute; left: 0; top: 0; color: #b5282e; }
+      [data-composition-id="ep3"] .extra { margin-top: 26px; width: 100%; }
+      [data-composition-id="ep3"] .ticks { position: absolute; left: 150px; top: 800px; display: flex; gap: 14px; align-items: flex-end; height: 120px; }
+      [data-composition-id="ep3"] .tick { width: 30px; height: 70px; background: #1f1a14; opacity: 0.35; transform-origin: bottom center; }
+      [data-composition-id="ep3"] .tick.hot { height: 120px; background: #b5282e; opacity: 1; }
+      [data-composition-id="ep3"] .track { position: relative; width: 100%; height: 8px; background: rgba(31, 26, 20, 0.22); }
+      [data-composition-id="ep3"] .fill { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: #b5282e; transform-origin: left center; }
+      [data-composition-id="ep3"] .track-lab { display: flex; justify-content: space-between; font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; color: #5e564a; margin-top: 14px; }
+      [data-composition-id="ep3"] .big { display: flex; align-items: baseline; gap: 26px; }
+      [data-composition-id="ep3"] .num { font-family: Oswald, sans-serif; font-weight: 700; font-size: 170px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: #b5282e; display: inline-block; min-width: 200px; transform-origin: left bottom; }
+      [data-composition-id="ep3"] .num-lab { font-size: 26px; letter-spacing: 0.18em; text-transform: uppercase; color: #5e564a; opacity: 0; }
+      [data-composition-id="ep3"] .cloak { width: 100%; display: grid; grid-template-columns: 1fr; row-gap: 14px; font-size: 29px; line-height: 1.4; }
+      [data-composition-id="ep3"] .pair { position: relative; height: 42px; opacity: 0; }
+      [data-composition-id="ep3"] .pair .real, [data-composition-id="ep3"] .pair .code { position: absolute; left: 0; top: 0; white-space: nowrap; }
+      [data-composition-id="ep3"] .pair .real { color: #1f1a14; }
+      [data-composition-id="ep3"] .pair .code { color: #b5282e; font-weight: 700; opacity: 0; }
+      [data-composition-id="ep3"] .steps { position: relative; height: 40px; font-size: 26px; letter-spacing: 0.14em; text-transform: uppercase; color: #5e564a; margin-bottom: 14px; }
+      [data-composition-id="ep3"] .steps span { position: absolute; left: 0; top: 0; opacity: 0; white-space: nowrap; }
+      [data-composition-id="ep3"] .rain { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+      [data-composition-id="ep3"] .drop { position: absolute; top: -140px; width: 3px; height: 110px; background: #1f1a14; opacity: 0.22; }
+      </style>
+
+      <div id="root" data-composition-id="ep3" data-width="1920" data-height="1080" data-duration="24.45">
+      <div class="ghost" id="ep3-ghost" data-layout-allow-overflow style="font-size:420px">Chambers</div>
+      <div class="hole hole-a"></div>
+      <div class="hole hole-b"></div>
+      <div class="tab" id="ep3-tab" data-layout-allow-overlap>Fail No. WA-22NCvC-123-01/2024</div>
+      <div class="epi" id="ep3-epi" data-layout-allow-overlap>Episod 3 — Chambers</div>
+      <div class="foot" id="ep3-foot"></div>
+      <div class="page" id="ep3-page"><span id="ep3-pg1">Muka 1 / 5</span><span id="ep3-pg2">Muka 2 / 5</span><span id="ep3-pg3">Muka 3 / 5</span><span id="ep3-pg4">Muka 4 / 5</span><span id="ep3-pg5">Muka 5 / 5</span></div>
+      <div class="cap" data-layout-allow-overlap>Sehari dalam hidup · peguam litigasi</div>
+      <svg class="grain" xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">
+        <filter id="ep3-grain"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" seed="7" /><feColorMatrix type="saturate" values="0" /></filter>
+        <rect width="1920" height="1080" filter="url(#ep3-grain)" />
+      </svg>
+      <section class="ph" id="ep3-p1" data-layout-allow-overflow>
+        
+        <div class="ts" id="ep3-p1-ts">14:05</div>
+        <div class="lab" id="ep3-p1-lab">Chambers · tingkat 12</div>
+        <div class="stamp" id="ep3-p1-stamp">47</div>
+        
+        <div class="col">
+          <h2 class="hl" id="ep3-p1-hl">Empat puluh tujuh e-mel.</h2>
+          <div class="rule" id="ep3-p1-rule"></div>
+          <ul class="det" id="ep3-p1-det"><li>9 draf jawapan siap · 3 menunggu semakan</li><li>Nama tak pernah keluar dari firma.</li><li>Tiga tarikh baru dipensilkan ke kalendar.</li><li>Kopi pejabat. Kopi pejabat lagi.</li></ul>
+          
+        </div>
+      </section>
+      <section class="ph" id="ep3-p2" data-layout-allow-overflow>
+        
+        <div class="ts" id="ep3-p2-ts">14:30</div>
+        <div class="lab" id="ep3-p2-lab">Fail baru · fakta kes</div>
+        <div class="stamp" id="ep3-p2-stamp">Disembunyikan</div>
+        
+        <div class="col">
+          <h2 class="hl" id="ep3-p2-hl">Klien baru. Fakta dulu, nama kemudian.</h2>
+          <div class="rule" id="ep3-p2-rule"></div>
+          <ul class="det" id="ep3-p2-det"><li>Writ Saman + Pernyataan Tuntutan, Bahasa Malaysia.</li><li>Draf pertama sebelum kopi sejuk.</li></ul>
+          <div class="extra cloak" id="ep3-p2-cloak"><div class="pair" id="ep3-p2-pair0"><span class="real">Tan Sri Ahmad bin Ismail</span><span class="code">{{PLAINTIFF_1}}</span></div><div class="pair" id="ep3-p2-pair1"><span class="real">Maju Jaya Sdn. Bhd.</span><span class="code">{{DEFENDANT_1}}</span></div><div class="pair" id="ep3-p2-pair2"><span class="real">900101-14-5678</span><span class="code">{{MY_IC_1}}</span></div><div class="pair" id="ep3-p2-pair3"><span class="real">No. 12, Jalan Bangsar</span><span class="code">{{PLAINTIFF_1.ADDRESS_LINE1}}</span></div></div>
+        </div>
+      </section>
+      <section class="ph" id="ep3-p3" data-layout-allow-overflow>
+        <div class="rain" id="ep3-p3-rain" data-layout-allow-overflow><div class="drop" data-layout-allow-overflow style="left:61px;height:80px"></div><div class="drop" data-layout-allow-overflow style="left:312px;height:98px"></div><div class="drop" data-layout-allow-overflow style="left:563px;height:116px"></div><div class="drop" data-layout-allow-overflow style="left:814px;height:134px"></div><div class="drop" data-layout-allow-overflow style="left:1065px;height:152px"></div><div class="drop" data-layout-allow-overflow style="left:1316px;height:80px"></div><div class="drop" data-layout-allow-overflow style="left:1567px;height:98px"></div><div class="drop" data-layout-allow-overflow style="left:1818px;height:116px"></div><div class="drop" data-layout-allow-overflow style="left:169px;height:134px"></div><div class="drop" data-layout-allow-overflow style="left:420px;height:152px"></div><div class="drop" data-layout-allow-overflow style="left:671px;height:80px"></div><div class="drop" data-layout-allow-overflow style="left:922px;height:98px"></div><div class="drop" data-layout-allow-overflow style="left:1173px;height:116px"></div><div class="drop" data-layout-allow-overflow style="left:1424px;height:134px"></div><div class="drop" data-layout-allow-overflow style="left:1675px;height:152px"></div><div class="drop" data-layout-allow-overflow style="left:26px;height:80px"></div><div class="drop" data-layout-allow-overflow style="left:277px;height:98px"></div><div class="drop" data-layout-allow-overflow style="left:528px;height:116px"></div><div class="drop" data-layout-allow-overflow style="left:779px;height:134px"></div><div class="drop" data-layout-allow-overflow style="left:1030px;height:152px"></div><div class="drop" data-layout-allow-overflow style="left:1281px;height:80px"></div><div class="drop" data-layout-allow-overflow style="left:1532px;height:98px"></div><div class="drop" data-layout-allow-overflow style="left:1783px;height:116px"></div><div class="drop" data-layout-allow-overflow style="left:134px;height:134px"></div><div class="drop" data-layout-allow-overflow style="left:385px;height:152px"></div><div class="drop" data-layout-allow-overflow style="left:636px;height:80px"></div><div class="drop" data-layout-allow-overflow style="left:887px;height:98px"></div><div class="drop" data-layout-allow-overflow style="left:1138px;height:116px"></div><div class="drop" data-layout-allow-overflow style="left:1389px;height:134px"></div><div class="drop" data-layout-allow-overflow style="left:1640px;height:152px"></div><div class="drop" data-layout-allow-overflow style="left:1891px;height:80px"></div><div class="drop" data-layout-allow-overflow style="left:242px;height:98px"></div><div class="drop" data-layout-allow-overflow style="left:493px;height:116px"></div><div class="drop" data-layout-allow-overflow style="left:744px;height:134px"></div><div class="drop" data-layout-allow-overflow style="left:995px;height:152px"></div><div class="drop" data-layout-allow-overflow style="left:1246px;height:80px"></div></div>
+        <div class="ts" id="ep3-p3-ts">15:40</div>
+        <div class="lab" id="ep3-p3-lab">Hujan · seperti biasa</div>
+        <div class="stamp" id="ep3-p3-stamp">38 muka</div>
+        
+        <div class="col">
+          <h2 class="hl" id="ep3-p3-hl">Hujan petang. Hujahan bertulis.</h2>
+          <div class="rule" id="ep3-p3-rule"></div>
+          <ul class="det" id="ep3-p3-det"><li>Perbicaraan Khamis: 3 saksi, 2 hari.</li><li>Hujahan bertulis: 38 muka, 22 autoriti.</li><li>Pemeriksaan balas: soalan 1–40, draf.</li><li>Hujan 40 minit. Jalan Ampang: banjir kilat, 10 minit.</li></ul>
+          
+        </div>
+      </section>
+      <section class="ph" id="ep3-p4" data-layout-allow-overflow>
+        
+        <div class="ts" id="ep3-p4-ts">17:15</div>
+        <div class="lab" id="ep3-p4-lab">Pesuruhjaya Sumpah · tingkat bawah</div>
+        <div class="stamp" id="ep3-p4-stamp">Diikrarkan</div>
+        
+        <div class="col">
+          <h2 class="hl" id="ep3-p4-hl">Afidavit diikrarkan.</h2>
+          <div class="rule" id="ep3-p4-rule"></div>
+          <ul class="det" id="ep3-p4-det"><li>Klien tiba 17.05. Baca setiap perenggan.</li><li>Tarikh di perenggan 9 dibetulkan. Parap.</li><li>Ikrar di hadapan Pesuruhjaya Sumpah. Cop merah.</li><li>Eksibit 'A' hingga 'F'. Enam muka.</li></ul>
+          
+        </div>
+      </section>
+      <section class="ph" id="ep3-p5" data-layout-allow-overflow>
+        
+        <div class="ts" id="ep3-p5-ts">18:20</div>
+        <div class="lab" id="ep3-p5-lab">e-Filing · e-Kehakiman</div>
+        <div class="stamp" id="ep3-p5-stamp">Diterima</div>
+        
+        <div class="col">
+          <h2 class="hl" id="ep3-p5-hl">Difailkan.</h2>
+          <div class="rule" id="ep3-p5-rule"></div>
+          <ul class="det" id="ep3-p5-det"><li>Afidavit Jawapan — Lampiran 15.</li><li>Serahan kepada peguam lawan: e-mel + salinan keras.</li><li>Resit disimpan dalam fail. Dua salinan.</li></ul>
+          <div class="extra"><div class="steps" id="ep3-p5-steps"><span id="ep3-p5-step0">Memuat naik…</span><span id="ep3-p5-step1">Disemak…</span><span id="ep3-p5-step2">Diterima</span></div><div class="track"><div class="fill" id="ep3-p5-fill"></div></div></div>
+        </div>
+      </section>
+      </div>
+
+      <script>
+        (function () {
+          const R = document.querySelector('[data-composition-id="ep3"]');
+          const q = (s) => R.querySelector(s);
+          const qa = (s) => Array.from(R.querySelectorAll(s));
+          const F = 1 / 30;
+          const tl = gsap.timeline({ paused: true });
+
+          function chars(el) {
+            const text = el.textContent; el.textContent = "";
+            return Array.from(text).map((c) => { const s = document.createElement("span"); s.className = "ch"; s.textContent = c === " " ? "\u00a0" : c; el.appendChild(s); return s; });
+          }
+          function words(el) {
+            const ws = el.textContent.trim().split(/\s+/); el.textContent = "";
+            return ws.map((w, i) => { const s = document.createElement("span"); s.className = "w"; s.textContent = w; el.appendChild(s); if (i < ws.length - 1) el.appendChild(document.createElement("wbr")); return s; });
+          }
+          // waterfall-entry: binary reveal + whip from below, overlapping by a frame or two
+          function waterfall(spans, t0, dur, y, overlapFrames) {
+            let t = t0;
+            spans.forEach((s) => { tl.set(s, { opacity: 1, y: y }, t); tl.to(s, { y: 0, duration: dur, ease: "power4.out" }, t); t += dur - overlapFrames * F; });
+            return t;
+          }
+          function entry(p, t0) {
+            const ts = q("#" + p + "-ts"); if (ts) waterfall(chars(ts), t0, 0.16, 90, 2);
+            const lab = q("#" + p + "-lab"); if (lab) tl.fromTo(lab, { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, t0 + 0.55);
+            const hl = q("#" + p + "-hl"); if (hl) waterfall(words(hl), t0 + 0.22, 0.15, 60, 1);
+            const rule = q("#" + p + "-rule"); if (rule) tl.fromTo(rule, { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: "power3.out" }, t0 + 0.7);
+            qa("#" + p + "-det li").forEach((li, i) => tl.fromTo(li, { opacity: 0, x: -28 }, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, t0 + 0.85 + i * 0.09));
+            const st = q("#" + p + "-stamp");
+            if (st) { tl.set(st, { rotation: -7 }, 0); tl.set(st, { opacity: 1 }, t0 + 1.55); tl.fromTo(st, { scale: 1.8 }, { scale: 1, duration: 0.22, ease: "power4.in", immediateRender: false }, t0 + 1.55); }
+          }
+          // vertical push (editorial page turn): outgoing and incoming move at the same T
+          function push(prev, next, T) {
+            tl.to(prev, { yPercent: -100, duration: 0.45, ease: "power3.in" }, T);
+            tl.set(next, { opacity: 1 }, T);
+            tl.fromTo(next, { yPercent: 100 }, { yPercent: 0, duration: 0.45, ease: "power3.out", immediateRender: false }, T);
+            tl.set(prev, { opacity: 0 }, T + 0.45);
+          }
+
+          // ambient layer: ghost word drifts, foot rule breathes (finite repeats under a finite root duration)
+          tl.fromTo("#ep3-ghost", { x: 40 }, { x: -40, duration: 12.22, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+          tl.fromTo("#ep3-foot", { opacity: 0.22 }, { opacity: 0.38, duration: 2.4, ease: "sine.inOut", yoyo: true, repeat: 9 }, 0);
+          
+      {
+        const P = 0.000; const t0 = P + 0.5; const ph = q("#ep3-p1");
+        tl.set(ph, { opacity: 1 }, 0);
+        tl.set("#ep3-pg1", { opacity: 1 }, 0);
+        entry("ep3-p1", t0);
+      }
+      {
+        const P = 4.800; const t0 = P + 0.5; const ph = q("#ep3-p2");
+        push(q("#ep3-p1"), ph, P);
+        tl.set("#ep3-pg2", { opacity: 1 }, P + 0.2);
+        tl.set("#ep3-pg1", { opacity: 0 }, P + 0.2);
+        entry("ep3-p2", t0);
+        qa("#ep3-p2-cloak .pair").forEach((pair, i) => {
+          const t = t0 + 1.2 + i * 0.12;
+          tl.fromTo(pair, { opacity: 0, x: -28 }, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, t);
+          const m = t0 + 2.4 + i * 0.3;
+          tl.to(pair.querySelector(".real"), { opacity: 0, y: -16, duration: 0.28, ease: "power2.in" }, m);
+          tl.fromTo(pair.querySelector(".code"), { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out", immediateRender: false }, m + 0.1);
+        });
+      }
+      {
+        const P = 9.600; const t0 = P + 0.5; const ph = q("#ep3-p3");
+        push(q("#ep3-p2"), ph, P);
+        tl.set("#ep3-pg3", { opacity: 1 }, P + 0.2);
+        tl.set("#ep3-pg2", { opacity: 0 }, P + 0.2);
+        entry("ep3-p3", t0);
+        qa("#ep3-p3-rain .drop").forEach((d, i) => {
+          const cycle = 0.75 + (i % 4) * 0.12;
+          const win = 4.20;
+          const reps = Math.max(0, Math.floor(win / cycle) - 1);
+          tl.set(d, { rotation: 14, x: 0 }, 0);
+          tl.fromTo(d, { y: 0 }, { y: 1400, duration: cycle, ease: "none", repeat: reps, immediateRender: false }, t0 + ((i * 0.173) % cycle));
+        });
+      }
+      {
+        const P = 14.400; const t0 = P + 0.5; const ph = q("#ep3-p4");
+        push(q("#ep3-p3"), ph, P);
+        tl.set("#ep3-pg4", { opacity: 1 }, P + 0.2);
+        tl.set("#ep3-pg3", { opacity: 0 }, P + 0.2);
+        entry("ep3-p4", t0);
+      }
+      {
+        const P = 19.200; const t0 = P + 0.5; const ph = q("#ep3-p5");
+        push(q("#ep3-p4"), ph, P);
+        tl.set("#ep3-pg5", { opacity: 1 }, P + 0.2);
+        tl.set("#ep3-pg4", { opacity: 0 }, P + 0.2);
+        entry("ep3-p5", t0);
+        (function () {
+          const steps = qa("#ep3-p5-steps span");
+          tl.set(steps[0], { opacity: 1 }, t0 + 1.0);
+          tl.set(steps[0], { opacity: 0 }, t0 + 2.0);
+          tl.set(steps[1], { opacity: 1 }, t0 + 2.0);
+          tl.set(steps[1], { opacity: 0 }, t0 + 2.9);
+          tl.set(steps[2], { opacity: 1 }, t0 + 2.9);
+          tl.fromTo("#ep3-p5-fill", { scaleX: 0 }, { scaleX: 1, duration: 1.9, ease: "power1.inOut" }, t0 + 1.0);
+        })();
+      }
+
+          window.__timelines["ep3"] = tl;
+        })();
+      </script>
+    </template>
+  </body>
+</html>
