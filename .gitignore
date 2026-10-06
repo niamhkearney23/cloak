@@ -7,3 +7,4 @@ video/**/renders/
 video/**/snapshots/
 video/**/.hyperframes/
 video/**/.thumbnails/
+video/**/audio/vo/

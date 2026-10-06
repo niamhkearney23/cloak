@@ -4,7 +4,7 @@ flow: automation
 storyboard: no
 format: landscape 1920x1080, 30 fps
 duration: 109 s full cut; 24–26 s per episode
-audio: none (silent by design; add a bed or narration later)
+audio: English narration (Kokoro, bm_george), synthesized ambient bed ducked under the voice, foley cut to the animation
 ---
 
 # Brief
@@ -27,6 +27,12 @@ The day is a court file. Every scene is an entry stamped into it: a timestamp, a
 - Detail lines slide in from the left with a short stagger. Stamps slam in at scale 1.8 → 1 with `power4.in`.
 - Page turns are a vertical push, outgoing and incoming at the same instant.
 - Scene-specific extras: a drive progress bar, a cause-list tick row, a count-up of matters called, a count-up of chargeable hours, a cloak table where names morph into codes, an e-Filing status stepper, deterministic rain.
+
+## Sound
+
+- Narration: one short English line per page in a measured British male voice (Kokoro `bm_george`, speed 1.05), starting 0.55 s into each page. The file on screen speaks Bahasa Malaysia; the voice translates and comments.
+- Bed: A-minor pad (Am add9, Fmaj7, C add9, G), sub bass, a heartbeat pulse every two seconds and a faint clock tick every second. Ducked 7 dB under the voice.
+- Foley: key presses on the timestamp characters, soft clicks on headline words, a bass thud when each stamp lands, a whoosh on every page turn and episode seam, rain under the 15:40 page, pops as names are cloaked, a ping when e-Filing is accepted, counter ticks under the two count-ups.
 
 ## Content notes
 

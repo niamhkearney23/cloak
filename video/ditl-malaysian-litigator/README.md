@@ -13,7 +13,7 @@ The whole day is told as entries stamped into one court file: a timestamp, a hea
 | 4 | Malam | 24 s | 19:30 home with files · 21:00 authorities · 22:30 timesheet · 22:45 tomorrow's list · 23:10 lights out |
 | — | End card | 6 s | Esok, sekali lagi |
 
-The full cut runs 109 seconds at 1920×1080. There is no audio track yet: the renders are silent by design, so a music bed or narration can be added later without re-timing anything.
+The full cut runs 109 seconds at 1920×1080, with sound: an English narration line per page (the on-screen file stays in Bahasa Malaysia), a synthesized ambient bed that ducks under the voice, and foley cut to the animation (a key press per timestamp character, a soft click per headline word, a bass thud when a stamp lands, a whoosh on every page turn, rain on the 15:40 page, pops as names are cloaked, a ping when e-Filing is accepted).
 
 ## Files
 
@@ -24,6 +24,12 @@ compositions/title.html    title card
 compositions/epN.html      one episode: five "pages" inside one sub-composition
 compositions/end.html      end card
 vendor/gsap.min.js         GSAP 3.14.2, vendored so renders need no network
+assets/bed.mp3             music bed (generated)
+assets/sfx-full.mp3        foley (generated)
+assets/vo-full.mp3         narration (generated)
+audio/make-audio.py        builds the three tracks above from audio/vo/*.wav and audio/sfx/*.mp3
+audio/voiceover.json       the narration script, voice and speed
+audio/sfx/                 foley clips from the HyperFrames media-use bundled library
 renders/                   MP4 output (not committed)
 ```
 
@@ -49,6 +55,21 @@ npx hyperframes@0.8.137 render --resolution portrait
 
 On a machine without a GPU add `--no-browser-gpu` to `render`, `check` and `snapshot`.
 
+## Sound
+
+The three audio tracks are committed, so rendering needs nothing extra. To change the narration, edit `audio/voiceover.json`, regenerate the lines with the local Kokoro model, then rebuild the tracks:
+
+```bash
+pip install kokoro-onnx soundfile          # once; the model downloads on first use
+rm -f audio/vo/*.wav
+python3 audio/make-voiceover.py            # one wav per line via `hyperframes tts`
+python3 audio/make-audio.py                # writes assets/bed.mp3, sfx-full.mp3, vo-full.mp3
+```
+
+Each line must fit its page: pages are 4.8 s (5.2 s in episode 2) and a line starts 0.55 s in, so keep lines under about four seconds. The script warns about any line that overruns. Cue times in `make-audio.py` mirror the GSAP schedule in the compositions, so if you retime a page, retime its cues too.
+
+The episode hosts play the same three tracks offset with `data-media-start`, so one set of files serves every render.
+
 ## Editing an episode
 
 Open `compositions/ep1.html`. Each page is a `<section class="ph">` with:
@@ -65,7 +86,8 @@ Keep these rules or `npm run check` will fail:
 - one paused GSAP timeline per file, registered on `window.__timelines["<id>"]`;
 - no `Math.random()`, `Date.now()` or network fetches in a composition;
 - only the bundled fonts (Oswald, IBM Plex Mono) unless you add an `@font-face`;
-- headline words are separated with `<wbr>` plus a margin rather than spaces, because the renderer drops the last inter-word space between inline-block spans.
+- headline words are separated with `<wbr>` plus a margin rather than spaces, because the renderer drops the last inter-word space between inline-block spans;
+- every `<audio>` needs an `id`, or the mixer silently skips it.
 
 ## Where Cloak appears
 
