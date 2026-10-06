@@ -24,10 +24,10 @@
         font-style: normal;
       }
       :root {
-        --paper: #efe8dc;
-        --paper-hi: #f7f2e8;
-        --ink: #1a1a1a;
-        --navy: #1e3559;
+        --cream: #f4f2ec;
+        --ink: #1c1c1c;
+        --muted: #6b6b66;
+        --navy: #2b4a8c;
       }
       * {
         box-sizing: border-box;
@@ -35,14 +35,14 @@
       html,
       body {
         margin: 0;
-        background: var(--paper);
+        background: var(--cream);
       }
       #root {
         position: relative;
         width: 100%;
         height: 100%;
         overflow: hidden;
-        background: var(--paper);
+        background: var(--cream);
         color: var(--ink);
         font-family: "Instrument Serif", Georgia, serif;
       }
@@ -50,196 +50,125 @@
         position: absolute;
         inset: 0;
       }
-      /* everything that matters sits inside the centre 1080×1080 (the profile-grid crop) */
+      /* The grid shows this cover cropped to 3:4 (y 240–1680) and, in some places, 1:1 (y 420–1500).
+         Wordmark and handle sit inside the 3:4 band; headline and photo inside the square. */
+      .wordmark {
+        position: absolute;
+        top: 320px;
+        left: 80px;
+        font-size: 30px;
+        letter-spacing: 0.01em;
+      }
+      .handle {
+        position: absolute;
+        bottom: 300px;
+        right: 80px;
+        font-family: "Inter", sans-serif;
+        font-size: 22px;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+      }
+      .issue {
+        position: absolute;
+        bottom: 300px;
+        left: 80px;
+        font-family: "Inter", sans-serif;
+        font-size: 22px;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+      }
       .inner {
         position: absolute;
         inset: 0;
-        padding: 420px 80px 420px;
+        padding: 430px 80px 430px;
         display: flex;
         flex-direction: column;
         justify-content: center;
       }
-      .folio {
-        position: absolute;
-        font-family: "Inter", sans-serif;
-        font-weight: 500;
-        font-size: 22px;
-        letter-spacing: 0.3em;
-        text-transform: uppercase;
-      }
-      .folio.tl {
-        top: 190px;
-        left: 80px;
-      }
-      .folio.tr {
-        top: 190px;
-        right: 80px;
-      }
-      .folio.bl {
-        bottom: 190px;
-        left: 80px;
-      }
-      .folio.br {
-        bottom: 190px;
-        right: 80px;
-        color: var(--navy);
-      }
-      .mast-rule {
-        position: absolute;
-        left: 80px;
-        right: 80px;
-        height: 1px;
-        background: var(--ink);
-        opacity: 0.55;
-      }
-      .mast-rule.top {
-        top: 234px;
-      }
-      .mast-rule.bottom {
-        bottom: 234px;
-      }
-      .kicker {
-        font-family: "Inter", sans-serif;
-        font-weight: 500;
-        font-size: 24px;
-        letter-spacing: 0.34em;
-        text-transform: uppercase;
-        margin-bottom: 40px;
-        display: flex;
-        align-items: center;
-        gap: 22px;
-      }
-      .kicker .dash {
-        display: block;
-        width: 56px;
-        height: 2px;
-        background: var(--navy);
-      }
-      .fig {
-        position: relative;
-        width: 820px;
-        background: var(--paper-hi);
-        padding: 14px 14px 46px;
-        border: 1px solid rgba(26, 26, 26, 0.28);
-        box-shadow: 0 16px 36px rgba(26, 26, 26, 0.16);
-        margin-bottom: 52px;
-        transform: rotate(-1.2deg);
-      }
-      .fig .ph {
-        width: 100%;
-        height: 430px;
-        overflow: hidden;
-      }
-      .fig .ph img {
-        display: block;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transform: scale(1.08);
-      }
-      .fig .cap,
-      .fig .num {
-        position: absolute;
-        bottom: 13px;
-        font-family: "Inter", sans-serif;
-        font-weight: 500;
-        font-size: 17px;
-        letter-spacing: 0.26em;
-        text-transform: uppercase;
-      }
-      .fig .cap {
-        left: 14px;
-        opacity: 0.75;
-      }
-      .fig .num {
-        right: 14px;
-        color: var(--navy);
-      }
       .hl {
-        font-size: 124px;
-        line-height: 0.96;
-        text-transform: uppercase;
+        font-size: 104px;
+        line-height: 1.04;
+        letter-spacing: -0.01em;
         max-width: 920px;
       }
       .hl .line {
         display: block;
       }
-      .hl .line + .line {
-        margin-top: 0.04em;
-      }
       .hl i {
         font-style: italic;
       }
-      .key {
+      /* loose hand-drawn underline under the key phrase */
+      .ul {
         position: relative;
         display: inline-block;
-        padding: 0.03em 0.1em 0.01em;
-        margin-left: -0.1em;
-        background: var(--navy);
-        color: var(--paper-hi);
-        transform: rotate(-1.6deg);
       }
-      .meta {
-        font-family: "Inter", sans-serif;
-        font-weight: 500;
-        font-size: 24px;
-        letter-spacing: 0.3em;
-        text-transform: uppercase;
-        margin-top: 40px;
-        color: var(--navy);
-      }
-      #grain {
+      .ul svg {
         position: absolute;
-        inset: 0;
-        z-index: 50;
-        opacity: 0.12;
-        mix-blend-mode: multiply;
-        pointer-events: none;
+        left: -0.02em;
+        right: -0.02em;
+        bottom: -0.16em;
+        width: 104%;
+        height: 0.22em;
+        overflow: visible;
       }
-      #grain svg {
+      .ul svg path {
+        fill: none;
+        stroke: var(--navy);
+        stroke-width: 9;
+        stroke-linecap: round;
+      }
+      .photo {
+        margin-top: 64px;
+        width: 920px;
+        height: 500px;
+        overflow: hidden;
+        border: 1px solid rgba(28, 28, 28, 0.35);
+        background: #e3e0d8;
+      }
+      .photo img {
         display: block;
         width: 100%;
         height: 100%;
+        object-fit: cover;
+        transform: scale(1.06);
+      }
+      .sub {
+        margin-top: 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        max-width: 920px;
+        font-size: 30px;
+        color: var(--muted);
+      }
+      .sub .val {
+        color: var(--navy);
       }
     </style>
   </head>
   <body>
     <div id="root" data-composition-id="cover" data-start="0" data-duration="1" data-width="1080" data-height="1920">
       <div id="page" class="clip" data-start="0" data-duration="1" data-track-index="1">
-        <div class="folio tl">Lawgistics</div>
-        <div class="folio tr">High Court update</div>
-        <div class="mast-rule top"></div>
+        <div class="wordmark">Lawgistics.</div>
         <div class="inner">
-          <div class="kicker"><span class="dash"></span><span>Kuala Lumpur · 1968 — 2026</span></div>
-          <div class="fig">
-            <div class="ph"><img src="assets/duke-highway.jpg" alt="" /></div>
-            <div class="cap">Fig. 02 — Traffic, Kuala Lumpur</div>
-            <div class="num">58 years</div>
-          </div>
           <div class="hl">
-            <span class="line">A road. <i>58 years.</i></span>
-            <span class="line">No <span class="key">Paperwork.</span></span>
+            <span class="line">A road. 58 years.</span>
+            <span class="line">
+              <span class="ul">No paperwork.
+                <svg viewBox="0 0 400 20" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M4 12 C 90 6, 200 16, 396 9" />
+                </svg>
+              </span>
+            </span>
           </div>
-          <div class="meta">RM4.8 million in damages</div>
+          <div class="photo"><img src="assets/duke-highway.jpg" alt="" /></div>
+          <div class="sub">
+            <span>Registered title upheld, High Court</span>
+            <span class="val">RM4.8m damages</span>
+          </div>
         </div>
-        <div class="mast-rule bottom"></div>
-        <div class="folio bl">Law. Explained.</div>
-        <div class="folio br">№ 02 · Watch</div>
-      </div>
-
-      <div id="grain">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" preserveAspectRatio="none">
-          <filter id="grain-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-            <feTurbulence type="fractalNoise" baseFrequency="0.95" numOctaves="2" seed="7" stitchTiles="stitch" />
-            <feColorMatrix type="saturate" values="0" />
-            <feComponentTransfer>
-              <feFuncR type="linear" slope="1.6" intercept="-0.3" />
-              <feFuncG type="linear" slope="1.6" intercept="-0.3" />
-              <feFuncB type="linear" slope="1.6" intercept="-0.3" />
-            </feComponentTransfer>
-          </filter>
-          <rect width="1080" height="1920" filter="url(#grain-filter)" />
-        </svg>
+        <div class="issue">High Court Update · 02</div>
+        <div class="handle">lawgistics.my</div>
       </div>
     </div>
     <script>
