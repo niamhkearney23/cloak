@@ -4,7 +4,7 @@ A four-episode motion-graphics series, built as a [HyperFrames](https://hyperfra
 
 The whole day is told as entries stamped into one court file: a timestamp, a headline, a few lines of detail, and a stamp. Pages turn with a vertical push. Bahasa Malaysia is the voice of the file; English appears where a Malaysian litigator would use it.
 
-It is styled to the Lawgistics design system (cream, navy, ink; Lora headings, Inter everywhere else; the wordmark with its navy dot), since Cloak is a Lawgistics product. The title and end cards are navy sections, like the site's.
+It is styled to match the Lawgistics Instagram posts (@lawgistics.my) and the site's design system: cream card, "Lawgistics." small at the top left, a regular-weight Lora headline with a navy underline under the key phrase, Inter for everything else, "@lawgistics.my" and "lawgistics.my" in the footer. The title and end cards are navy sections, like the site's. It comes in two formats: landscape 1920×1080 for the site and YouTube, and portrait 1080×1920 for Reels, TikTok and Shorts.
 
 | Episode | Title | Length | Pages |
 |---|---|---|---|
@@ -20,11 +20,14 @@ The full cut runs 109 seconds at 1920×1080, with sound: an English narration li
 ## Files
 
 ```
-index.html                 full series: title → ep1 → ep2 → ep3 → ep4 → end
-episodes/episode-N.html    one episode on its own (same sub-composition, no cards)
+index.html                 full series, landscape: title → ep1 → ep2 → ep3 → ep4 → end
+episodes/episode-N.html    one episode on its own, landscape (same sub-composition, no cards)
+portrait/series.html       full series, portrait 1080×1920
+portrait/episode-N.html    one episode on its own, portrait
 compositions/title.html    title card
 compositions/epN.html      one episode: five "pages" inside one sub-composition
 compositions/end.html      end card
+compositions/portrait/     the same six compositions laid out for portrait
 vendor/gsap.min.js         GSAP 3.14.2, vendored so renders need no network
 vendor/fonts/              Lora 600/700 (latin), the Lawgistics heading face
 assets/bed.mp3             music bed (generated)
@@ -51,10 +54,12 @@ npm run render                   # renders/index.mp4, the full series
 # one episode on its own
 npx hyperframes@0.8.137 render -c episodes/episode-2.html -o renders/episode-2.mp4
 
-# a portrait cut for Reels / TikTok needs a layout pass first; the preset flag alone
-# only changes the output size
-npx hyperframes@0.8.137 render --resolution portrait
+# portrait, for Reels / TikTok / Shorts
+npx hyperframes@0.8.137 render -c portrait/series.html -o renders/portrait/series.mp4
+npx hyperframes@0.8.137 render -c portrait/episode-2.html -o renders/portrait/episode-2.mp4
 ```
+
+`npm run check` validates `index.html` only. To run the same gate on the portrait cut, copy the project to a scratch folder, save `portrait/series.html` there as `index.html` with its `../vendor/` paths changed to `vendor/`, and run `check` in that folder.
 
 On a machine without a GPU add `--no-browser-gpu` to `render`, `check` and `snapshot`.
 
@@ -80,7 +85,7 @@ Open `compositions/ep1.html`. Each page is a `<section class="ph">` with:
 - `.ts` the big timestamp (split into characters and whipped in),
 - `.lab` the small caption under it,
 - `.stamp` the navy stamp,
-- `.col` the right column: `.hl` headline, `.rule`, a `.det` list, and an optional extra (progress bar, counter, cloak table, e-filing steps).
+- `.col` the right column (below the timestamp in portrait): `.hl` headline, a `.det` list, and an optional extra (progress bar, counter, cloak table, e-filing steps). Inside the headline, `<span class="key">` marks the phrase that gets the navy underline.
 
 Timing is computed in the script at the bottom of the file from the root `data-duration`: pages are evenly spaced, each page's entrance starts half a second after its push lands. To add a page, add a section and a matching `entry("epN-pK", t0)` block, and lengthen the episode's `data-duration` both in the composition and in the host files that mount it.
 

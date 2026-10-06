@@ -2,7 +2,7 @@
 workflow: general-video
 flow: automation
 storyboard: no
-format: landscape 1920x1080, 30 fps
+format: landscape 1920x1080 and portrait 1080x1920, 30 fps
 duration: 109 s full cut; 24–26 s per episode
 audio: English narration (Kokoro, bm_george), synthesized ambient bed ducked under the voice, foley cut to the animation
 ---
@@ -17,11 +17,11 @@ The day is a court file. Every scene is an entry stamped into it: a timestamp, a
 
 ## Design
 
-Follows the Lawgistics design system (`lawgistics/assets/css/site.css`): Cloak is a Lawgistics product, so the series carries the site's look.
+Follows the Lawgistics Instagram posts (@lawgistics.my) and the site's design system (`lawgistics/assets/css/site.css`): Cloak is a Lawgistics product, so the series carries the brand's look.
 
 - Palette: cream `#f4f1ea`, navy `#2d4a75` (the one accent), ink `#1a1f28`, soft ink `#3a4250` for body, haze-text `#556c8a` for captions, line `#ddd8cd` for rules. Title and end cards are navy sections with white headlines and the site's `#cdd8e8` body tint.
-- Type: Lora 600 for headlines (the site's heading serif), Inter for timestamps, captions, stamps and detail. Lora is vendored under `vendor/fonts/`; Inter is bundled by the compiler.
-- Wordmark: "Lawgistics" in Lora 700 with the navy dot, top right of every page, as on the site header.
+- Type: Lora 400 for headlines (the regular-weight serif of the posts), Inter for timestamps, captions, stamps and detail. Lora is vendored under `vendor/fonts/`; Inter is bundled by the compiler.
+- The post treatment: every headline carries a navy underline under its key phrase, drawn in after the words land. Portrait pages carry "Lawgistics." top left, the episode and page top right, "@lawgistics.my" and "lawgistics.my" in the footer, exactly as the posts do.
 - Restraint: elevation from fine rules, no glow; stamps tilt only four degrees; corners at most 4px. Ghost word per episode (Pagi, Mahkamah, Chambers, Malam) in navy at 9% behind the content, with a faint paper grain.
 
 ## Motion

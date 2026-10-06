@@ -1,90 +1,90 @@
 <!doctype html>
-<html lang="ms" data-resolution="landscape">
+<html lang="ms" data-resolution="portrait">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1920, height=1080" />
-    <title>Sehari Dalam Hidup — siri penuh</title>
-    <script src="vendor/gsap.min.js"></script>
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Sehari Dalam Hidup — siri penuh (portrait)</title>
+    <script src="../vendor/gsap.min.js"></script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #f4f1ea; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #f4f1ea; }
       #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #f4f1ea; font-family: Inter, -apple-system, "Segoe UI", sans-serif; }
-      @font-face { font-family: "Lora"; font-style: normal; font-weight: 400; src: url("vendor/fonts/lora-400.woff2") format("woff2"); }
-      @font-face { font-family: "Lora"; font-style: italic; font-weight: 400; src: url("vendor/fonts/lora-400-italic.woff2") format("woff2"); }
-      @font-face { font-family: "Lora"; font-style: normal; font-weight: 600; src: url("vendor/fonts/lora-600.woff2") format("woff2"); }
-      @font-face { font-family: "Lora"; font-style: normal; font-weight: 700; src: url("vendor/fonts/lora-700.woff2") format("woff2"); }
-      @font-face { font-family: "Lora"; font-style: italic; font-weight: 600; src: url("vendor/fonts/lora-600-italic.woff2") format("woff2"); }
+      @font-face { font-family: "Lora"; font-style: normal; font-weight: 400; src: url("../vendor/fonts/lora-400.woff2") format("woff2"); }
+      @font-face { font-family: "Lora"; font-style: italic; font-weight: 400; src: url("../vendor/fonts/lora-400-italic.woff2") format("woff2"); }
+      @font-face { font-family: "Lora"; font-style: normal; font-weight: 600; src: url("../vendor/fonts/lora-600.woff2") format("woff2"); }
+      @font-face { font-family: "Lora"; font-style: normal; font-weight: 700; src: url("../vendor/fonts/lora-700.woff2") format("woff2"); }
+      @font-face { font-family: "Lora"; font-style: italic; font-weight: 600; src: url("../vendor/fonts/lora-600-italic.woff2") format("woff2"); }
       /* Episode slots stretch to fill the root; the root timeline pushes them like pages. */
-      [data-composition-id="root"] > div[data-composition-src] { position: absolute; inset: 0; will-change: transform; }
+      [data-composition-id="root-portrait"] > div[data-composition-src] { position: absolute; inset: 0; will-change: transform; }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="root" data-start="0" data-width="1920" data-height="1080" data-duration="109.00">
+    <div id="root" data-composition-id="root-portrait" data-start="0" data-width="1080" data-height="1920" data-duration="109.00">
       <div
         id="el-title"
         data-composition-id="title"
-        data-composition-src="compositions/title.html"
+        data-composition-src="compositions/portrait/title.html"
         data-start="0.00"
         data-duration="5.45"
         data-track-index="1"
-        data-width="1920"
-        data-height="1080"
+        data-width="1080"
+        data-height="1920"
       ></div>
       <div
         id="el-ep1"
         data-composition-id="ep1"
-        data-composition-src="compositions/ep1.html"
+        data-composition-src="compositions/portrait/ep1.html"
         data-start="5.00"
         data-duration="24.45"
         data-track-index="1"
-        data-width="1920"
-        data-height="1080"
+        data-width="1080"
+        data-height="1920"
       ></div>
       <div
         id="el-ep2"
         data-composition-id="ep2"
-        data-composition-src="compositions/ep2.html"
+        data-composition-src="compositions/portrait/ep2.html"
         data-start="29.00"
         data-duration="26.45"
         data-track-index="1"
-        data-width="1920"
-        data-height="1080"
+        data-width="1080"
+        data-height="1920"
       ></div>
       <div
         id="el-ep3"
         data-composition-id="ep3"
-        data-composition-src="compositions/ep3.html"
+        data-composition-src="compositions/portrait/ep3.html"
         data-start="55.00"
         data-duration="24.45"
         data-track-index="1"
-        data-width="1920"
-        data-height="1080"
+        data-width="1080"
+        data-height="1920"
       ></div>
       <div
         id="el-ep4"
         data-composition-id="ep4"
-        data-composition-src="compositions/ep4.html"
+        data-composition-src="compositions/portrait/ep4.html"
         data-start="79.00"
         data-duration="24.45"
         data-track-index="1"
-        data-width="1920"
-        data-height="1080"
+        data-width="1080"
+        data-height="1920"
       ></div>
       <div
         id="el-end"
         data-composition-id="end"
-        data-composition-src="compositions/end.html"
+        data-composition-src="compositions/portrait/end.html"
         data-start="103.00"
         data-duration="6.00"
         data-track-index="1"
-        data-width="1920"
-        data-height="1080"
+        data-width="1080"
+        data-height="1920"
       ></div>
 
       <!-- Sound: music bed, foley, narration. Built by audio/make-audio.py. -->
-      <audio id="root-bed" src="assets/bed.mp3" data-start="0" data-duration="109.00" data-media-start="0.00" data-track-index="10" data-volume="1"></audio>
-      <audio id="root-sfx" src="assets/sfx-full.mp3" data-start="0" data-duration="109.00" data-media-start="0.00" data-track-index="11" data-volume="0.9"></audio>
-      <audio id="root-vo" src="assets/vo-full.mp3" data-start="0" data-duration="109.00" data-media-start="0.00" data-track-index="12" data-volume="1"></audio>
+      <audio id="root-portrait-bed" src="assets/bed.mp3" data-start="0" data-duration="109.00" data-media-start="0.00" data-track-index="10" data-volume="1"></audio>
+      <audio id="root-portrait-sfx" src="assets/sfx-full.mp3" data-start="0" data-duration="109.00" data-media-start="0.00" data-track-index="11" data-volume="0.9"></audio>
+      <audio id="root-portrait-vo" src="assets/vo-full.mp3" data-start="0" data-duration="109.00" data-media-start="0.00" data-track-index="12" data-volume="1"></audio>
     </div>
     <script>
       // Thin orchestrator: scene animation lives in the sub-compositions. The root
@@ -100,7 +100,7 @@
       tl.fromTo("#el-ep4", { yPercent: 100 }, { yPercent: 0, duration: 0.45, ease: "power3.out", immediateRender: false }, 79.00);
       tl.to("#el-ep4", { yPercent: -100, duration: 0.45, ease: "power3.in" }, 103.00);
       tl.fromTo("#el-end", { yPercent: 100 }, { yPercent: 0, duration: 0.45, ease: "power3.out", immediateRender: false }, 103.00);
-      window.__timelines["root"] = tl;
+      window.__timelines["root-portrait"] = tl;
     </script>
   </body>
 </html>
