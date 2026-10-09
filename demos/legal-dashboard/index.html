@@ -5,160 +5,210 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Matterboard — concept demo</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect width=%2224%22 height=%2224%22 rx=%226%22 fill=%22%231f3a5f%22/%3E%3Cpath d=%22M6 7h12M6 12h12M6 17h7%22 stroke=%22%23fff%22 stroke-width=%222.2%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <style>
     :root {
-      --bg: #f3f5f9; --surface: #fff; --text: #16213a; --muted: #5f6b84; --border: #e1e6ef;
-      --navy: #1f3a5f; --navy-deep: #15294a; --accent: #2f6fed; --accent-soft: #e8f0ff;
-      --ok: #1e9e5a; --ok-soft: #e4f7ec; --warn: #d98400; --warn-soft: #fff3df; --danger: #d6382c; --danger-soft: #fde8e6;
-      --radius: 12px; --shadow: 0 1px 2px rgba(22,33,58,.06), 0 8px 24px -12px rgba(22,33,58,.18);
+      --bg: #f2f4f8; --surface: #fff; --text: #141b2d; --muted: #6a7389; --faint: #9aa3b8; --border: #e4e8f0; --border-strong: #d3d9e5;
+      --navy: #1b2d4f; --navy-deep: #13223d; --navy-ink: #0d1a30; --accent: #2f6fed; --accent-deep: #1d4fc7; --accent-soft: #e9f0ff;
+      --ok: #1b9c5a; --ok-soft: #e3f6ea; --warn: #d47d00; --warn-soft: #fff2db; --danger: #d6382c; --danger-soft: #fde7e5; --violet: #7c4ddb; --violet-soft: #efe8ff;
+      --radius: 14px; --shadow: 0 1px 2px rgba(20,27,45,.04), 0 10px 30px -18px rgba(20,27,45,.25);
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; }
-    body { font: 15px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); display: grid; grid-template-columns: 236px 1fr; min-height: 100vh; }
+    html, body { margin: 0; }
+    body { font: 14.5px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); display: grid; grid-template-columns: 248px 1fr; min-height: 100vh; -webkit-font-smoothing: antialiased; font-feature-settings: "cv11", "ss01"; }
     button, input, select { font: inherit; color: inherit; }
     button { cursor: pointer; }
     [hidden] { display: none !important; }
 
     /* Sidebar */
-    .side { background: var(--navy-deep); color: #c9d4e6; padding: 22px 16px; display: flex; flex-direction: column; gap: 6px; }
-    .logo { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; font-size: 17px; padding: 4px 8px 22px; letter-spacing: .2px; }
-    .logo i { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #3b7bff, #7fb0ff); display: grid; place-items: center; }
-    .side a { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 9px; color: inherit; text-decoration: none; font-weight: 500; }
-    .side a:hover { background: rgba(255,255,255,.07); }
-    .side a.active { background: rgba(255,255,255,.14); color: #fff; }
-    .side svg { width: 18px; height: 18px; opacity: .9; }
-    .side .count { margin-left: auto; font-size: 12px; background: rgba(255,255,255,.14); padding: 1px 8px; border-radius: 99px; }
+    .side { background: linear-gradient(180deg, var(--navy-deep), var(--navy-ink)); color: #aebbd3; padding: 20px 14px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; overflow: hidden; }
+    .side::after { content: ""; position: absolute; inset: 0; background: radial-gradient(600px 300px at -10% -10%, rgba(63,123,255,.25), transparent 60%); pointer-events: none; }
+    .side > * { position: relative; }
+    .logo { display: flex; align-items: center; gap: 11px; color: #fff; font-weight: 700; font-size: 17px; padding: 6px 10px 20px; letter-spacing: -.2px; }
+    .logo i { width: 32px; height: 32px; border-radius: 10px; background: linear-gradient(135deg, #3b7bff, #8fb8ff); display: grid; place-items: center; box-shadow: 0 6px 16px -6px rgba(59,123,255,.8); }
+    .ws { display: flex; align-items: center; gap: 10px; margin: 0 2px 16px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); font-size: 13px; }
+    .ws b { display: block; color: #fff; font-weight: 600; }
+    .ws .mono { width: 30px; height: 30px; border-radius: 9px; background: #fff; color: var(--navy); display: grid; place-items: center; font-weight: 800; font-size: 12px; }
+    .side .lbl { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: #6f7f9d; padding: 10px 12px 6px; }
+    .side a { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 10px; color: inherit; text-decoration: none; font-weight: 500; transition: background .15s; }
+    .side a:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .side a.active { background: rgba(255,255,255,.12); color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+    .side svg { width: 18px; height: 18px; opacity: .85; }
+    .side .count { margin-left: auto; font-size: 11.5px; font-weight: 600; background: rgba(255,255,255,.12); padding: 1px 8px; border-radius: 99px; }
+    .side a.active .count { background: var(--accent); color: #fff; }
     .side .spacer { flex: 1; }
-    .side .user { display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-top: 1px solid rgba(255,255,255,.1); font-size: 13.5px; }
-    .side .user b { display: block; color: #fff; }
-    .av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; color: #fff; flex: none; }
+    .side .user { display: flex; align-items: center; gap: 10px; padding: 12px 8px 4px; border-top: 1px solid rgba(255,255,255,.08); font-size: 13px; }
+    .side .user b { display: block; color: #fff; font-weight: 600; }
+    .av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; flex: none; box-shadow: 0 0 0 2px #fff; }
+    .side .av { box-shadow: 0 0 0 2px rgba(255,255,255,.15); }
 
     /* Main */
     .main { display: flex; flex-direction: column; min-width: 0; }
-    .topbar { display: flex; align-items: center; gap: 16px; padding: 14px 32px; background: var(--surface); border-bottom: 1px solid var(--border); }
-    .search { flex: 1; max-width: 420px; display: flex; align-items: center; gap: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; color: var(--muted); }
+    .topbar { display: flex; align-items: center; gap: 14px; padding: 12px 32px; background: rgba(255,255,255,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; }
+    .search { flex: 1; max-width: 440px; display: flex; align-items: center; gap: 10px; background: var(--bg); border: 1px solid transparent; border-radius: 10px; padding: 8px 12px; color: var(--muted); transition: .15s; }
+    .search:focus-within { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
     .search input { border: 0; background: transparent; outline: 0; width: 100%; }
-    .badge-demo { margin-left: auto; font-size: 12.5px; font-weight: 600; color: #7a4b00; background: #ffe7b8; border: 1px solid #f3cf7f; padding: 4px 11px; border-radius: 99px; }
+    .search kbd { font: 11px/1 "Inter", sans-serif; border: 1px solid var(--border-strong); border-radius: 5px; padding: 3px 5px; color: var(--faint); }
+    .icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: #fff; display: grid; place-items: center; color: var(--muted); position: relative; }
+    .icon-btn .pip { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px #fff; }
+    .badge-demo { margin-left: auto; font-size: 12px; font-weight: 600; color: #7a4b00; background: #ffe7b8; border: 1px solid #f3cf7f; padding: 4px 11px; border-radius: 99px; }
     .content { padding: 28px 32px 48px; display: grid; gap: 22px; }
-    h1 { margin: 0; font-size: 24px; letter-spacing: -.2px; }
-    h2 { margin: 0; font-size: 15px; letter-spacing: .3px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-    .sub { color: var(--muted); margin: 2px 0 0; }
+    h1 { margin: 0; font-size: 25px; letter-spacing: -.4px; font-weight: 700; }
+    h2 { margin: 0; font-size: 14px; letter-spacing: -.1px; font-weight: 700; }
+    .sub { color: var(--muted); margin: 3px 0 0; }
     .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
-    .btn { border: 1px solid var(--border); background: var(--surface); border-radius: 9px; padding: 9px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
-    .btn:hover { background: #f7f9fc; }
-    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .btn.primary:hover { background: #2460d6; }
-    .btn.ghost { border-color: transparent; color: var(--accent); background: transparent; }
+    .btn { border: 1px solid var(--border-strong); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: .15s; box-shadow: 0 1px 1px rgba(20,27,45,.04); }
+    .btn:hover { background: #f7f9fc; border-color: #c3cbdb; }
+    .btn.primary { background: linear-gradient(180deg, #3b7bff, var(--accent)); border-color: var(--accent-deep); color: #fff; box-shadow: 0 6px 14px -6px rgba(47,111,237,.7), inset 0 1px 0 rgba(255,255,255,.2); }
+    .btn.primary:hover { filter: brightness(1.05); }
+    .btn.ghost { border-color: transparent; color: var(--accent); background: transparent; box-shadow: none; }
 
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
-    .stat .k { font-size: 13px; color: var(--muted); font-weight: 500; }
-    .stat .v { font-size: 30px; font-weight: 700; letter-spacing: -.5px; margin-top: 4px; }
-    .stat .d { font-size: 12.5px; margin-top: 2px; color: var(--ok); font-weight: 600; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px 14px; box-shadow: var(--shadow); display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: start; position: relative; overflow: hidden; }
+    .stat .k { font-size: 13px; color: var(--muted); font-weight: 500; grid-column: 1; grid-row: 1; }
+    .stat .v { font-size: 30px; font-weight: 700; letter-spacing: -.8px; line-height: 1.15; grid-column: 1; grid-row: 2; }
+    .stat .d { font-size: 12.5px; color: var(--ok); font-weight: 600; grid-column: 1; grid-row: 3; display: flex; align-items: center; gap: 5px; }
     .stat .d.warn { color: var(--warn); }
+    .stat .d.muted { color: var(--muted); font-weight: 500; }
+    .stat .ic { grid-column: 2; grid-row: 1 / span 3; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+    .stat .ic.ok { background: var(--ok-soft); color: var(--ok); } .stat .ic.warn { background: var(--warn-soft); color: var(--warn); } .stat .ic.violet { background: var(--violet-soft); color: var(--violet); }
+    .stat svg.spark { grid-column: 1 / -1; grid-row: 4; width: 100%; height: 34px; margin-top: 6px; }
 
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
-    .card-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .card-head { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; border-bottom: 1px solid var(--border); }
+    .card-head .tabs { display: flex; gap: 4px; background: var(--bg); padding: 3px; border-radius: 9px; }
+    .card-head .tabs span { padding: 4px 11px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+    .card-head .tabs span.on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(20,27,45,.1); }
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; font-size: 12.5px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); font-weight: 600; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--faint); font-weight: 600; padding: 11px 20px; border-bottom: 1px solid var(--border); background: #fafbfd; }
     td { padding: 14px 20px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:last-child td { border-bottom: 0; }
     tbody tr { cursor: pointer; transition: background .15s; }
-    tbody tr:hover { background: #f7f9fd; }
-    .ref { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13px; color: var(--muted); }
-    .matter-name { font-weight: 600; }
-    .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: var(--accent-soft); color: #1d4fb8; }
+    tbody tr:hover { background: #f6f9ff; }
+    tbody tr:hover .matter-name { color: var(--accent); }
+    .ref { font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12.5px; color: var(--faint); }
+    .matter-name { font-weight: 600; transition: color .15s; }
+    .matter-name small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+    .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 99px; background: var(--accent-soft); color: #1d4fb8; white-space: nowrap; }
     .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
     .pill.ok { background: var(--ok-soft); color: #167a45; }
     .pill.warn { background: var(--warn-soft); color: #9a5d00; }
     .pill.danger { background: var(--danger-soft); color: #a6271d; }
     .pill.grey { background: #eef1f6; color: var(--muted); }
+    .pill.violet { background: var(--violet-soft); color: #5b34b5; }
     .due { font-weight: 600; }
     .due small { display: block; font-weight: 500; color: var(--muted); font-size: 12.5px; }
     .due.soon { color: var(--warn); }
     .due.urgent { color: var(--danger); }
+    .progress { height: 5px; border-radius: 99px; background: #e9edf4; width: 110px; overflow: hidden; margin-top: 6px; }
+    .progress i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #3b7bff, #7fb0ff); }
 
     /* Matter view */
-    .crumbs { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13.5px; }
+    .crumbs { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
     .crumbs button { border: 0; background: none; color: var(--accent); padding: 0; font-weight: 600; }
-    .matter-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-    .meta { display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+    .matter-head { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px 0; }
+    .matter-head .row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .matter-head .btn { white-space: nowrap; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px 22px; color: var(--muted); font-size: 13px; margin-top: 8px; }
     .meta b { color: var(--text); font-weight: 600; }
+    .stepper { display: flex; margin-top: 20px; border-top: 1px solid var(--border); }
+    .stepper div { flex: 1; padding: 12px 0 14px; font-size: 12.5px; font-weight: 600; color: var(--faint); display: flex; align-items: center; gap: 8px; border-bottom: 2px solid transparent; }
+    .stepper i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-strong); display: grid; place-items: center; font-style: normal; font-size: 10px; }
+    .stepper .done { color: var(--muted); } .stepper .done i { background: var(--ok); border-color: var(--ok); color: #fff; }
+    .stepper .now { color: var(--accent); border-bottom-color: var(--accent); } .stepper .now i { border-color: var(--accent); background: var(--accent); color: #fff; }
     .cols { display: grid; grid-template-columns: 1.2fr .9fr; gap: 22px; align-items: start; }
     .list { list-style: none; margin: 0; padding: 0; }
     .list li { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid var(--border); }
     .list li:last-child { border-bottom: 0; }
-    .dl-date { width: 54px; text-align: center; border-radius: 10px; background: var(--bg); padding: 6px 0; flex: none; }
-    .dl-date b { display: block; font-size: 18px; line-height: 1.1; }
-    .dl-date span { font-size: 11.5px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-    .dl-date.urgent { background: var(--danger-soft); color: var(--danger); }
+    .dl-date { width: 56px; text-align: center; border-radius: 12px; background: var(--bg); padding: 7px 0; flex: none; border: 1px solid var(--border); }
+    .dl-date b { display: block; font-size: 19px; line-height: 1.1; letter-spacing: -.3px; }
+    .dl-date span { font-size: 11px; text-transform: uppercase; color: var(--muted); font-weight: 700; letter-spacing: .4px; }
+    .dl-date.urgent { background: var(--danger-soft); color: var(--danger); border-color: #f6c6c1; }
     .dl-date.urgent span { color: var(--danger); }
-    .dl-date.soon { background: var(--warn-soft); color: #9a5d00; }
+    .dl-date.soon { background: var(--warn-soft); color: #9a5d00; border-color: #f4d9a6; }
     .dl-date.soon span { color: #9a5d00; }
     .grow { flex: 1; min-width: 0; }
     .grow b { display: block; font-weight: 600; }
-    .grow small { color: var(--muted); font-size: 13px; }
+    .grow small { color: var(--muted); font-size: 12.5px; }
     .task { gap: 12px; }
-    .task .chk { width: 20px; height: 20px; border-radius: 6px; border: 2px solid #c3cbdb; flex: none; display: grid; place-items: center; }
+    .task .chk { width: 20px; height: 20px; border-radius: 6px; border: 2px solid #c3cbdb; flex: none; display: grid; place-items: center; transition: .15s; }
     .task.done .chk { background: var(--ok); border-color: var(--ok); }
     .task.done .grow b { text-decoration: line-through; color: var(--muted); }
-    .task.new { animation: slide .45s ease-out; background: #f3f8ff; }
+    .task.new { animation: slide .45s ease-out; background: linear-gradient(90deg, #eef4ff, #fff); }
     @keyframes slide { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
-    .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-    .activity li { align-items: flex-start; }
-    .activity .dot { width: 9px; height: 9px; border-radius: 50%; background: #c3cbdb; margin-top: 7px; flex: none; }
-    .activity .dot.blue { background: var(--accent); }
-    .activity time { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+    .who { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+    .who .av { width: 26px; height: 26px; font-size: 10.5px; }
+    .activity li { align-items: flex-start; position: relative; }
+    .activity li::before { content: ""; position: absolute; left: 24px; top: 28px; bottom: -14px; width: 2px; background: var(--border); }
+    .activity li:last-child::before { display: none; }
+    .activity .dot { width: 10px; height: 10px; border-radius: 50%; background: #c3cbdb; margin-top: 6px; flex: none; box-shadow: 0 0 0 3px #fff; position: relative; }
+    .activity .dot.blue { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .activity time { font-size: 12px; color: var(--faint); white-space: nowrap; }
+    .team .av { width: 34px; height: 34px; font-size: 12.5px; }
+    .team .util { width: 90px; height: 5px; border-radius: 99px; background: #e9edf4; overflow: hidden; }
+    .team .util i { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
 
     /* Assign form */
-    .assign { padding: 18px 20px; border-top: 1px solid var(--border); background: #fafbfe; display: grid; grid-template-columns: 1.4fr 1fr .8fr auto; gap: 12px; align-items: end; animation: slide .3s ease-out; }
+    .assign { padding: 18px 20px; border-top: 1px solid var(--border); background: linear-gradient(180deg, #f8faff, #fff); display: grid; grid-template-columns: 1.4fr 1fr .8fr auto; gap: 12px; align-items: end; animation: slide .3s ease-out; border-radius: 0 0 var(--radius) var(--radius); }
     .field { display: grid; gap: 5px; }
-    .field label { font-size: 12.5px; font-weight: 600; color: var(--muted); }
-    .field input, .field select { padding: 9px 11px; border: 1px solid var(--border); border-radius: 9px; background: #fff; width: 100%; }
-    .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+    .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .field input, .field select { padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: 9px; background: #fff; width: 100%; transition: .15s; }
+    .field input:focus, .field select:focus { outline: 0; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
-    .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #16213a; color: #fff; padding: 12px 18px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-weight: 500; box-shadow: 0 12px 30px -10px rgba(0,0,0,.4); opacity: 0; transition: .3s; pointer-events: none; }
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #141b2d; color: #fff; padding: 12px 18px 12px 14px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-weight: 500; box-shadow: 0 16px 40px -12px rgba(0,0,0,.5); opacity: 0; transition: .3s; pointer-events: none; }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
     .toast i { width: 22px; height: 22px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; }
 
     .fade { animation: fade .35s ease-out; }
     @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-    @media (max-width: 900px) { body { grid-template-columns: 1fr; } .side { display: none; } .stats, .cols { grid-template-columns: 1fr; } .assign { grid-template-columns: 1fr; } .content { padding: 18px; } }
+    @media (max-width: 900px) { body { grid-template-columns: 1fr; } .side { display: none; } .stats, .cols { grid-template-columns: 1fr; } .assign { grid-template-columns: 1fr; } .content { padding: 18px; } .stepper { display: none; } }
   </style>
 </head>
 <body>
   <aside class="side">
     <div class="logo"><i><svg viewBox="0 0 24 24" width="16" height="16"><path d="M5 7h14M5 12h14M5 17h8" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg></i>Matterboard</div>
+    <div class="ws"><span class="mono">HV</span><div><b>Harrow &amp; Vale</b>Kuala Lumpur office</div></div>
+    <div class="lbl">Workspace</div>
     <a href="#" class="active" data-nav="matters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16v13H4zM8 6V4h8v2"/></svg>Matters<span class="count">14</span></a>
     <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Deadlines<span class="count">6</span></a>
     <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l2 2 4-4M5 4h14v16H5z"/></svg>Tasks</a>
     <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l5 5v13H7zM14 3v5h5"/></svg>Documents</a>
+    <div class="lbl">Firm</div>
     <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M7 8h8a2 2 0 010 4H9a2 2 0 000 4h8"/></svg>Billing</a>
     <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg>Clients</a>
+    <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 15l5-4 4 3 7-7"/></svg>Reports</a>
     <div class="spacer"></div>
-    <div class="user"><span class="av" style="background:#3b7bff">AR</span><div><b>Amira Rahman</b>Partner · Harrow &amp; Vale</div></div>
+    <div class="user"><span class="av" style="background:#3b7bff">AR</span><div><b>Amira Rahman</b>Partner</div></div>
   </aside>
 
   <div class="main">
     <header class="topbar">
-      <div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input placeholder="Search matters, clients, documents…"></div>
+      <div class="search"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input placeholder="Search matters, clients, documents…"><kbd>⌘K</kbd></div>
       <span class="badge-demo">Concept demo · fictional data</span>
+      <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4zM10 20a2 2 0 004 0"/></svg><span class="pip"></span></button>
+      <span class="av" style="background:#3b7bff">AR</span>
     </header>
 
     <!-- Matters list -->
     <main class="content" id="view-list">
       <div class="head">
-        <div><h1>Good morning, Amira</h1><p class="sub">Thursday 9 October · 6 deadlines in the next 14 days</p></div>
-        <button class="btn primary"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>New matter</button>
+        <div><h1>Good morning, Amira</h1><p class="sub">Thursday 9 October · 6 deadlines in the next 14 days, 1 due tomorrow</p></div>
+        <div style="display:flex;gap:8px"><button class="btn">Export</button><button class="btn primary"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>New matter</button></div>
       </div>
       <div class="stats">
-        <div class="stat"><div class="k">Open matters</div><div class="v">14</div><div class="d">+2 this month</div></div>
-        <div class="stat"><div class="k">Deadlines this week</div><div class="v">3</div><div class="d warn">1 due tomorrow</div></div>
-        <div class="stat"><div class="k">Tasks overdue</div><div class="v">0</div><div class="d">All on track</div></div>
-        <div class="stat"><div class="k">Unbilled time</div><div class="v">RM 48,200</div><div class="d">Across 9 matters</div></div>
+        <div class="stat"><div class="k">Open matters</div><span class="ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16v13H4zM8 6V4h8v2"/></svg></span><div class="v">14</div><div class="d">↑ 2 this month</div>
+          <svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none"><path d="M0 26 L14 24 L28 25 L42 18 L56 20 L70 12 L84 10 L100 6" fill="none" stroke="#2f6fed" stroke-width="2" stroke-linejoin="round"/><path d="M0 26 L14 24 L28 25 L42 18 L56 20 L70 12 L84 10 L100 6 V34 H0z" fill="url(#g1)"/><defs><linearGradient id="g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2f6fed" stop-opacity=".25"/><stop offset="1" stop-color="#2f6fed" stop-opacity="0"/></linearGradient></defs></svg></div>
+        <div class="stat"><div class="k">Deadlines this week</div><span class="ic warn"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div class="v">3</div><div class="d warn">1 due tomorrow</div>
+          <svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none"><g fill="#f4d9a6"><rect x="2" y="20" width="10" height="14" rx="2"/><rect x="16" y="14" width="10" height="20" rx="2"/><rect x="30" y="24" width="10" height="10" rx="2"/><rect x="44" y="8" width="10" height="26" rx="2"/><rect x="58" y="18" width="10" height="16" rx="2"/></g><g fill="#d47d00"><rect x="72" y="4" width="10" height="30" rx="2"/><rect x="86" y="14" width="10" height="20" rx="2"/></g></svg></div>
+        <div class="stat"><div class="k">Tasks overdue</div><span class="ic ok"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l2 2 4-4M5 4h14v16H5z"/></svg></span><div class="v">0</div><div class="d">All on track</div>
+          <svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none"><path d="M0 8 L14 12 L28 10 L42 18 L56 22 L70 26 L84 30 L100 31" fill="none" stroke="#1b9c5a" stroke-width="2" stroke-linejoin="round"/><path d="M0 8 L14 12 L28 10 L42 18 L56 22 L70 26 L84 30 L100 31 V34 H0z" fill="url(#g2)"/><defs><linearGradient id="g2" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1b9c5a" stop-opacity=".25"/><stop offset="1" stop-color="#1b9c5a" stop-opacity="0"/></linearGradient></defs></svg></div>
+        <div class="stat"><div class="k">Unbilled time</div><span class="ic violet"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="v">RM 48,200</div><div class="d muted">Across 9 matters · 212 hours</div>
+          <svg class="spark" viewBox="0 0 100 34" preserveAspectRatio="none"><path d="M0 28 L14 22 L28 24 L42 16 L56 18 L70 10 L84 14 L100 4" fill="none" stroke="#7c4ddb" stroke-width="2" stroke-linejoin="round"/><path d="M0 28 L14 22 L28 24 L42 16 L56 18 L70 10 L84 14 L100 4 V34 H0z" fill="url(#g3)"/><defs><linearGradient id="g3" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#7c4ddb" stop-opacity=".25"/><stop offset="1" stop-color="#7c4ddb" stop-opacity="0"/></linearGradient></defs></svg></div>
       </div>
       <div class="card">
-        <div class="card-head"><h2>Active matters</h2><button class="btn ghost">View all</button></div>
+        <div class="card-head"><h2>Active matters</h2><div class="tabs"><span class="on">Mine</span><span>Team</span><span>All</span></div></div>
         <table>
           <thead><tr><th>Ref</th><th>Matter</th><th>Client</th><th>Stage</th><th>Next deadline</th><th>Fee earner</th></tr></thead>
           <tbody id="matters"></tbody>
@@ -170,11 +220,14 @@
     <main class="content fade" id="view-matter" hidden>
       <div class="crumbs"><button id="back">Matters</button><span>›</span><span id="m-ref"></span></div>
       <div class="matter-head">
-        <div>
-          <h1 id="m-title"></h1>
-          <div class="meta" id="m-meta"></div>
+        <div class="row">
+          <div>
+            <h1 id="m-title"></h1>
+            <div class="meta" id="m-meta"></div>
+          </div>
+          <div style="display:flex;gap:8px"><button class="btn">Documents</button><button class="btn">Time entry</button><button class="btn primary" id="btn-assign"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Assign task</button></div>
         </div>
-        <div style="display:flex;gap:8px"><button class="btn">Documents</button><button class="btn">Time entry</button><button class="btn primary" id="btn-assign"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Assign task</button></div>
+        <div class="stepper" id="stepper"></div>
       </div>
       <div class="cols">
         <div style="display:grid;gap:22px">
@@ -195,12 +248,12 @@
         </div>
         <div style="display:grid;gap:22px">
           <div class="card">
-            <div class="card-head"><h2>Recent activity</h2></div>
+            <div class="card-head"><h2>Recent activity</h2><button class="btn ghost" style="padding:0">See all</button></div>
             <ul class="list activity" id="activity"></ul>
           </div>
           <div class="card">
-            <div class="card-head"><h2>Team</h2></div>
-            <ul class="list" id="team"></ul>
+            <div class="card-head"><h2>Team on this matter</h2></div>
+            <ul class="list team" id="team"></ul>
           </div>
         </div>
       </div>
@@ -212,14 +265,15 @@
   <script>
     // All names, matters and figures below are fictional. This is a concept demo.
     const PEOPLE = {
-      PN: { name: 'Priya Nair', role: 'Associate', color: '#8a4fd3' },
-      DK: { name: 'Daniel Koh', role: 'Paralegal', color: '#1e9e5a' },
-      SL: { name: 'Sofia Lim', role: 'Trainee', color: '#d98400' },
-      AR: { name: 'Amira Rahman', role: 'Partner', color: '#3b7bff' },
+      PN: { name: 'Priya Nair', role: 'Associate', color: '#8a4fd3', load: 72 },
+      DK: { name: 'Daniel Koh', role: 'Paralegal', color: '#1b9c5a', load: 48 },
+      SL: { name: 'Sofia Lim', role: 'Trainee', color: '#d47d00', load: 60 },
+      AR: { name: 'Amira Rahman', role: 'Partner', color: '#3b7bff', load: 85 },
     };
+    const STAGES = ['Instructed', 'Pleadings', 'Discovery', 'Trial', 'Closed'];
     const MATTERS = [
-      { ref: 'HV-2026-0412', name: 'Meridian Holdings v Brightline Logistics', client: 'Meridian Holdings Sdn Bhd', stage: 'Pleadings', stageKind: '', due: '2026-10-14', dueLabel: 'Defence due', who: 'PN',
-        court: 'High Court, Kuala Lumpur', type: 'Commercial dispute · Breach of contract', opened: '12 Aug 2026',
+      { ref: 'HV-2026-0412', name: 'Meridian Holdings v Brightline Logistics', kind: 'Commercial dispute', client: 'Meridian Holdings Sdn Bhd', stage: 'Pleadings', stageKind: '', pct: 35, due: '2026-10-14', dueLabel: 'Defence due', who: 'PN',
+        court: 'High Court, Kuala Lumpur', type: 'Commercial dispute · Breach of contract', opened: '12 Aug 2026', value: 'RM 1.2m claimed',
         deadlines: [
           { date: '2026-10-14', title: 'Defence due', sub: 'Serve on Brightline’s solicitors by 4pm' },
           { date: '2026-10-21', title: 'Reply to defence', sub: 'If a counterclaim is filed' },
@@ -237,15 +291,15 @@
           { t: 'Mon', text: 'Letter received from Brightline’s solicitors' },
           { t: '2 Oct', text: 'Statement of claim served' },
         ] },
-      { ref: 'HV-2026-0398', name: 'Estate of Lee Boon Huat', client: 'Lee Mei Fong', stage: 'Probate', stageKind: 'ok', due: '2026-10-17', dueLabel: 'Grant application', who: 'SL' },
-      { ref: 'HV-2026-0387', name: 'Tan v Harbourside Developments', client: 'Tan Wei Ling', stage: 'Discovery', stageKind: '', due: '2026-10-10', dueLabel: 'List of documents', who: 'DK' },
-      { ref: 'HV-2026-0371', name: 'Kestrel Foods — share purchase', client: 'Kestrel Foods Pte Ltd', stage: 'Drafting', stageKind: 'ok', due: '2026-10-24', dueLabel: 'SPA to client', who: 'AR' },
-      { ref: 'HV-2026-0366', name: 'Ng v Ng (ancillary relief)', client: 'Ng Siew Lan', stage: 'Mediation', stageKind: 'warn', due: '2026-10-20', dueLabel: 'Mediation session', who: 'PN' },
-      { ref: 'HV-2026-0352', name: 'Orchard Lane lease renewal', client: 'Bloom & Co.', stage: 'Negotiation', stageKind: 'ok', due: '2026-11-02', dueLabel: 'Heads of terms', who: 'SL' },
+      { ref: 'HV-2026-0398', name: 'Estate of Lee Boon Huat', kind: 'Probate', client: 'Lee Mei Fong', stage: 'Probate', stageKind: 'ok', pct: 60, due: '2026-10-17', dueLabel: 'Grant application', who: 'SL' },
+      { ref: 'HV-2026-0387', name: 'Tan v Harbourside Developments', kind: 'Property dispute', client: 'Tan Wei Ling', stage: 'Discovery', stageKind: 'violet', pct: 55, due: '2026-10-10', dueLabel: 'List of documents', who: 'DK' },
+      { ref: 'HV-2026-0371', name: 'Kestrel Foods — share purchase', kind: 'Corporate', client: 'Kestrel Foods Pte Ltd', stage: 'Drafting', stageKind: 'ok', pct: 40, due: '2026-10-24', dueLabel: 'SPA to client', who: 'AR' },
+      { ref: 'HV-2026-0366', name: 'Ng v Ng (ancillary relief)', kind: 'Family', client: 'Ng Siew Lan', stage: 'Mediation', stageKind: 'warn', pct: 70, due: '2026-10-20', dueLabel: 'Mediation session', who: 'PN' },
+      { ref: 'HV-2026-0352', name: 'Orchard Lane lease renewal', kind: 'Commercial property', client: 'Bloom & Co.', stage: 'Negotiation', stageKind: 'ok', pct: 25, due: '2026-11-02', dueLabel: 'Heads of terms', who: 'SL' },
     ];
     const TODAY = new Date('2026-10-09');
     const $ = (s) => document.querySelector(s);
-    const avatar = (k, size = 26) => { const p = PEOPLE[k]; return `<span class="av" title="${p.name}" style="background:${p.color};width:${size}px;height:${size}px;font-size:${size * .4}px">${k}</span>`; };
+    const avatar = (k) => { const p = PEOPLE[k]; return `<span class="av" title="${p.name}" style="background:${p.color}">${k}</span>`; };
     const daysTo = (d) => Math.round((new Date(d) - TODAY) / 864e5);
     const fmt = (d) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     const dueClass = (d) => { const n = daysTo(d); return n <= 2 ? 'urgent' : n <= 7 ? 'soon' : ''; };
@@ -254,9 +308,9 @@
     $('#matters').innerHTML = MATTERS.map((m, i) => `
       <tr data-i="${i}">
         <td class="ref">${m.ref}</td>
-        <td class="matter-name">${m.name}</td>
+        <td class="matter-name">${m.name}<small>${m.kind}</small></td>
         <td>${m.client}</td>
-        <td><span class="pill ${m.stageKind}">${m.stage}</span></td>
+        <td><span class="pill ${m.stageKind}">${m.stage}</span><div class="progress"><i style="width:${m.pct}%"></i></div></td>
         <td><div class="due ${dueClass(m.due)}">${m.dueLabel}<small>${fmt(m.due)} · ${inWords(m.due)}</small></div></td>
         <td><div class="who">${avatar(m.who)}${PEOPLE[m.who].name}</div></td>
       </tr>`).join('');
@@ -266,14 +320,16 @@
       if (!m.deadlines) return;
       $('#m-ref').textContent = m.ref;
       $('#m-title').textContent = m.name;
-      $('#m-meta').innerHTML = `<span>Client <b>${m.client}</b></span><span>${m.type}</span><span>${m.court}</span><span>Opened <b>${m.opened}</b></span>`;
+      $('#m-meta').innerHTML = `<span>Client <b>${m.client}</b></span><span>${m.type}</span><span>${m.court}</span><span><b>${m.value}</b></span><span>Opened <b>${m.opened}</b></span>`;
+      const si = STAGES.indexOf(m.stage);
+      $('#stepper').innerHTML = STAGES.map((s, k) => `<div class="${k < si ? 'done' : k === si ? 'now' : ''}"><i>${k < si ? '✓' : k + 1}</i>${s}</div>`).join('');
       $('#next-dl').textContent = `${m.deadlines[0].title} · ${inWords(m.deadlines[0].date)}`;
       $('#deadlines').innerHTML = m.deadlines.map((d) => { const dt = new Date(d.date); return `
         <li><div class="dl-date ${dueClass(d.date)}"><b>${dt.getDate()}</b><span>${dt.toLocaleDateString('en-GB', { month: 'short' })}</span></div>
         <div class="grow"><b>${d.title}</b><small>${d.sub}</small></div><span class="pill ${dueClass(d.date) === 'urgent' ? 'danger' : dueClass(d.date) === 'soon' ? 'warn' : 'grey'}">${inWords(d.date)}</span></li>`; }).join('');
       renderTasks(m);
-      $('#activity').innerHTML = m.activity.map((a) => `<li><span class="dot ${a.blue ? 'blue' : ''}"></span><div class="grow">${a.text}</div><time>${a.t}</time></li>`).join('');
-      $('#team').innerHTML = ['AR', 'PN', 'DK'].map((k) => `<li>${avatar(k, 32)}<div class="grow"><b>${PEOPLE[k].name}</b><small>${PEOPLE[k].role}</small></div></li>`).join('');
+      renderActivity(m);
+      $('#team').innerHTML = ['AR', 'PN', 'DK'].map((k) => `<li>${avatar(k)}<div class="grow"><b>${PEOPLE[k].name}</b><small>${PEOPLE[k].role} · ${PEOPLE[k].load}% capacity</small></div><div class="util"><i style="width:${PEOPLE[k].load}%"></i></div></li>`).join('');
       $('#view-list').hidden = true;
       $('#view-matter').hidden = false;
       window.scrollTo(0, 0);
@@ -285,6 +341,9 @@
         <li class="task ${t.done ? 'done' : ''} ${i === newIndex ? 'new' : ''}"><span class="chk">${t.done ? '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#fff" stroke-width="3.5"><path d="M5 12l5 5 9-10"/></svg>' : ''}</span>
         <div class="grow"><b>${t.title}</b><small>Due ${t.due}</small></div><div class="who">${avatar(t.who)}${PEOPLE[t.who].name}</div></li>`).join('');
     }
+    function renderActivity(m) {
+      $('#activity').innerHTML = m.activity.map((a) => `<li><span class="dot ${a.blue ? 'blue' : ''}"></span><div class="grow">${a.text}</div><time>${a.t}</time></li>`).join('');
+    }
     let current = 0;
     $('#matters').addEventListener('click', (e) => { const tr = e.target.closest('tr'); if (tr) { current = +tr.dataset.i; openMatter(current); } });
     $('#back').addEventListener('click', () => { $('#view-matter').hidden = true; $('#view-list').hidden = false; });
@@ -292,13 +351,12 @@
     $('#assign').addEventListener('submit', (e) => {
       e.preventDefault();
       const m = MATTERS[current];
-      const who = $('#t-who').value.slice(0, 1) + $('#t-who').value.split(' ')[1][0];
-      const key = Object.keys(PEOPLE).find((k) => PEOPLE[k].name === $('#t-who').value.split(' · ')[0]) || who;
+      const key = Object.keys(PEOPLE).find((k) => PEOPLE[k].name === $('#t-who').value.split(' · ')[0]) || 'PN';
       const title = $('#t-title').value.trim() || 'New task';
       m.tasks.push({ title, who: key, due: fmt($('#t-due').value), done: false });
       m.activity.unshift({ t: 'Just now', text: `Amira Rahman assigned “${title}” to ${PEOPLE[key].name}`, blue: true });
       renderTasks(m, m.tasks.length - 1);
-      $('#activity').innerHTML = m.activity.map((a) => `<li><span class="dot ${a.blue ? 'blue' : ''}"></span><div class="grow">${a.text}</div><time>${a.t}</time></li>`).join('');
+      renderActivity(m);
       $('#assign').hidden = true; $('#t-title').value = '';
       toast(`Task assigned to ${PEOPLE[key].name}`);
     });

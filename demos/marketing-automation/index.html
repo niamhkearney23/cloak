@@ -5,21 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Flowline — concept demo</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect width=%2224%22 height=%2224%22 rx=%226%22 fill=%22%236d28d9%22/%3E%3Cpath d=%22M6 12h5l2-4 3 8 2-4h1%22 stroke=%22%23fff%22 stroke-width=%222.2%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <style>
     :root {
-      --bg: #f7f7fb; --surface: #fff; --text: #1a1a2e; --muted: #6b6f85; --border: #e6e7ef;
+      --bg: #f6f6fb; --surface: #fff; --text: #17172b; --muted: #6b6f85; --border: #e6e7ef;
       --violet: #6d28d9; --violet-soft: #efe9fd; --violet-deep: #4c1d95; --pink: #db2777;
       --ok: #16a34a; --ok-soft: #e7f8ec; --warn: #d97706; --warn-soft: #fff4e0; --info-soft: #e8f1ff;
       --radius: 14px; --shadow: 0 1px 2px rgba(26,26,46,.05), 0 10px 30px -14px rgba(26,26,46,.2);
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; }
-    body { font: 15px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { font: 14.5px/1.5 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: radial-gradient(900px 400px at 20% -10%, #efe9fd 0%, transparent 60%), radial-gradient(700px 300px at 95% 0%, #fdeaf3 0%, transparent 55%), var(--bg); background-attachment: fixed; color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
     button, input, select { font: inherit; color: inherit; }
     button { cursor: pointer; }
     [hidden] { display: none !important; }
 
-    .nav { display: flex; align-items: center; gap: 28px; padding: 0 32px; height: 60px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; }
+    .nav { display: flex; align-items: center; gap: 28px; padding: 0 32px; height: 60px; background: rgba(255,255,255,.8); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 5; }
     .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; letter-spacing: -.3px; }
     .logo i { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, var(--violet), var(--pink)); display: grid; place-items: center; }
     .nav a { color: var(--muted); text-decoration: none; font-weight: 500; padding: 19px 2px; border-bottom: 2px solid transparent; }
@@ -35,15 +38,16 @@
     .live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); animation: blink 1.4s infinite; }
     @keyframes blink { 50% { opacity: .3; } }
     .btn { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
-    .btn.primary { background: var(--violet); border-color: var(--violet); color: #fff; }
-    .btn.primary:hover { background: #5b21b6; }
+    .btn.primary { background: linear-gradient(180deg, #7c3aed, var(--violet)); border-color: #5b21b6; color: #fff; box-shadow: 0 8px 18px -8px rgba(109,40,217,.8), inset 0 1px 0 rgba(255,255,255,.2); }
+    .btn.primary:hover { filter: brightness(1.06); }
 
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow); }
-    .stat .k { font-size: 13px; color: var(--muted); font-weight: 500; }
-    .stat .v { font-size: 30px; font-weight: 800; letter-spacing: -.6px; margin-top: 2px; transition: color .3s; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px 12px; box-shadow: var(--shadow); display: grid; grid-template-columns: 1fr 96px; gap: 0 12px; align-items: end; }
+    .stat .k { font-size: 13px; color: var(--muted); font-weight: 500; grid-column: 1 / -1; }
+    .stat .v { font-size: 30px; font-weight: 800; letter-spacing: -.8px; margin-top: 2px; transition: color .3s; line-height: 1.15; }
     .stat .v.bump { color: var(--violet); }
-    .stat .d { font-size: 12.5px; color: var(--ok); font-weight: 600; }
+    .stat .d { font-size: 12.5px; color: var(--ok); font-weight: 600; grid-column: 1; }
+    .stat .spark { grid-column: 2; grid-row: 2 / span 2; width: 96px; height: 40px; }
 
     .grid { display: grid; grid-template-columns: 300px 1fr 340px; gap: 20px; align-items: start; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
@@ -76,9 +80,9 @@
     .tag.followup { background: var(--warn-soft); color: #a05a00; }
 
     /* Workflow canvas */
-    .canvas { padding: 26px 24px 30px; background: radial-gradient(#dcdde8 1px, transparent 1px) 0 0/22px 22px, #fbfbfe; min-height: 560px; display: flex; flex-direction: column; align-items: center; }
-    .node { width: 360px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; padding: 13px 16px; display: flex; gap: 14px; align-items: center; position: relative; box-shadow: 0 1px 2px rgba(26,26,46,.05); transition: border-color .25s, box-shadow .25s, transform .25s; }
-    .node .ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none; background: var(--violet-soft); color: var(--violet); }
+    .canvas { padding: 26px 24px 30px; background: radial-gradient(#d9dbe8 1px, transparent 1px) 0 0/22px 22px, linear-gradient(180deg, #fbfbfe, #f7f7fc); min-height: 560px; display: flex; flex-direction: column; align-items: center; }
+    .node { width: 360px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 14px; padding: 13px 16px; display: flex; gap: 14px; align-items: center; position: relative; box-shadow: 0 1px 2px rgba(26,26,46,.05), 0 8px 20px -14px rgba(26,26,46,.25); transition: border-color .25s, box-shadow .25s, transform .25s; }
+    .node .ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none; background: var(--violet-soft); color: var(--violet); box-shadow: inset 0 0 0 1px rgba(109,40,217,.08); }
     .node.trigger .ic { background: #fdf2f8; color: var(--pink); }
     .node.wait .ic { background: var(--warn-soft); color: var(--warn); }
     .node.branch .ic { background: var(--info-soft); color: #2563eb; }
@@ -90,7 +94,7 @@
     .node.running .st { border-color: var(--violet); border-top-color: transparent; animation: spin .8s linear infinite; }
     .node.done .st { background: var(--ok); border-color: var(--ok); }
     .node.done .st svg { opacity: 1; }
-    .node.done { border-color: #bfe8cc; }
+    .node.done { border-color: #bfe8cc; background: linear-gradient(90deg, #f3fcf6, #fff 40%); }
     .node .n { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; border-radius: 50%; background: var(--text); color: #fff; font-size: 11.5px; font-weight: 700; display: grid; place-items: center; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .link { width: 2px; height: 26px; background: #cfd2e0; position: relative; }
@@ -113,10 +117,11 @@
     .log time { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
     .log .who { color: var(--muted); font-size: 12.5px; }
 
-    .email { margin: 0 18px 16px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 13px; animation: slide .4s ease-out; }
-    .email .eh { background: #f6f6fb; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--muted); }
+    .email { margin: 0 18px 16px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 13px; animation: slide .4s ease-out; box-shadow: var(--shadow); }
+    .email .eh { background: linear-gradient(180deg, #faf8ff, #f4f1fc); padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--muted); display: grid; gap: 2px; }
     .email .eh b { color: var(--text); }
-    .email .eb { padding: 10px 12px; line-height: 1.55; }
+    .email .eh::before { content: "Welcome email · sent"; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--violet); }
+    .email .eb { padding: 12px 12px 14px; line-height: 1.6; }
 
     .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #1a1a2e; color: #fff; padding: 12px 18px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-weight: 500; box-shadow: 0 12px 30px -10px rgba(0,0,0,.4); opacity: 0; transition: .3s; pointer-events: none; }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
@@ -139,10 +144,14 @@
     </div>
 
     <div class="stats">
-      <div class="stat"><div class="k">Enquiries this week</div><div class="v" id="s-enq">23</div><div class="d">+18% vs last week</div></div>
-      <div class="stat"><div class="k">Replied within 1 hour</div><div class="v" id="s-fast">100%</div><div class="d">Was 41% before automation</div></div>
-      <div class="stat"><div class="k">Follow-ups sent</div><div class="v" id="s-fu">17</div><div class="d">Automatically</div></div>
-      <div class="stat"><div class="k">Booked consultations</div><div class="v">9</div><div class="d">39% of enquiries</div></div>
+      <div class="stat"><div class="k">Enquiries this week</div><div class="v" id="s-enq">23</div><div class="d">↑ 18% vs last week</div>
+        <svg class="spark" viewBox="0 0 96 40" preserveAspectRatio="none"><defs><linearGradient id="sg1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#6d28d9" stop-opacity=".3"/><stop offset="1" stop-color="#6d28d9" stop-opacity="0"/></linearGradient></defs><path d="M0 30 L16 26 L32 28 L48 18 L64 20 L80 10 L96 6 V40 H0z" fill="url(#sg1)"/><path d="M0 30 L16 26 L32 28 L48 18 L64 20 L80 10 L96 6" fill="none" stroke="#6d28d9" stroke-width="2" stroke-linejoin="round"/></svg></div>
+      <div class="stat"><div class="k">Replied within 1 hour</div><div class="v" id="s-fast">100%</div><div class="d">Was 41% before automation</div>
+        <svg class="spark" viewBox="0 0 96 40" preserveAspectRatio="none"><g fill="#e2d9fb"><rect x="0" y="24" width="9" height="16" rx="2"/><rect x="12" y="20" width="9" height="20" rx="2"/><rect x="24" y="26" width="9" height="14" rx="2"/><rect x="36" y="16" width="9" height="24" rx="2"/></g><g fill="#6d28d9"><rect x="48" y="4" width="9" height="36" rx="2"/><rect x="60" y="4" width="9" height="36" rx="2"/><rect x="72" y="4" width="9" height="36" rx="2"/><rect x="84" y="4" width="9" height="36" rx="2"/></g></svg></div>
+      <div class="stat"><div class="k">Follow-ups sent</div><div class="v" id="s-fu">17</div><div class="d">Automatically</div>
+        <svg class="spark" viewBox="0 0 96 40" preserveAspectRatio="none"><defs><linearGradient id="sg2" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#db2777" stop-opacity=".3"/><stop offset="1" stop-color="#db2777" stop-opacity="0"/></linearGradient></defs><path d="M0 34 L16 30 L32 24 L48 26 L64 16 L80 12 L96 8 V40 H0z" fill="url(#sg2)"/><path d="M0 34 L16 30 L32 24 L48 26 L64 16 L80 12 L96 8" fill="none" stroke="#db2777" stroke-width="2" stroke-linejoin="round"/></svg></div>
+      <div class="stat"><div class="k">Booked consultations</div><div class="v">9</div><div class="d">39% of enquiries</div>
+        <svg class="spark" viewBox="0 0 40 40" style="width:40px;justify-self:end"><circle cx="20" cy="20" r="15" fill="none" stroke="#e7f8ec" stroke-width="7"/><circle cx="20" cy="20" r="15" fill="none" stroke="#16a34a" stroke-width="7" stroke-dasharray="36.8 94.2" stroke-linecap="round" transform="rotate(-90 20 20)"/></svg></div>
     </div>
 
     <div class="grid">
@@ -272,7 +281,7 @@
 
       await step(2, 1300);
       addLog('ok', `Welcome email sent to ${email}`, 'Workflow');
-      $('#email-preview').innerHTML = `<div class="email"><div class="eh">To <b>${email}</b> · Subject <b>Thanks for getting in touch, ${firstName(name)}</b></div>
+      $('#email-preview').innerHTML = `<div class="email"><div class="eh"><span>To <b>${email}</b></span><span>Subject <b>Thanks for getting in touch, ${firstName(name)}</b></span></div>
         <div class="eb">Hi ${firstName(name)},<br><br>Thanks for your enquiry about a <b>${interest.toLowerCase()}</b>. I’ll take a proper look and come back to you within one working day. In the meantime, you can pick a time for a free 20‑minute call here.<br><br>Jordan · Northgate Interiors</div></div>`;
 
       await step(3, 1000);

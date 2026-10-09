@@ -154,6 +154,10 @@ async function record(name, flow) {
   await context.addInitScript(CURSOR);
   const page = await context.newPage();
   mouse = { x: 800, y: 450 };
+  // Wait for the web fonts so the first frames don't show a fallback font.
+  page.on('load', () => page.evaluate(() => document.fonts.ready).catch(() => {}));
+  const goto = page.goto.bind(page);
+  page.goto = async (...args) => { const r = await goto(...args); await page.evaluate(() => document.fonts.ready).catch(() => {}); return r; };
   await flow(page);
   await page.screenshot({ path: path.join(OUT, name + '.png') });
   await context.close();
