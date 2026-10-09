@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fern &amp; Stone Studio — concept demo</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2212%22 fill=%22%232f4f3e%22/%3E%3Cpath d=%22M12 5c-4 3-5 8 0 14 5-6 4-11 0-14z%22 fill=%22%23dbe7d2%22/%3E%3C/svg%3E">
+  <style>
+    :root {
+      --cream: #f7f3ec; --paper: #fffdf9; --ink: #1f2a24; --muted: #66716a; --line: #e6e0d6;
+      --green: #2f4f3e; --green-deep: #22392d; --sage: #dbe7d2; --sage-soft: #eef3ea; --clay: #c9704f; --clay-soft: #f8e9e2;
+      --radius: 18px; --shadow: 0 2px 4px rgba(31,42,36,.04), 0 18px 40px -22px rgba(31,42,36,.28);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    html, body { margin: 0; }
+    body { font: 16px/1.6 "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--cream); color: var(--ink); }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+    h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 500; letter-spacing: -.3px; margin: 0; }
+
+    .nav { display: flex; align-items: center; gap: 28px; padding: 18px 48px; max-width: 1240px; margin: 0 auto; }
+    .brand { display: flex; align-items: center; gap: 10px; font-family: Georgia, serif; font-size: 20px; font-weight: 500; }
+    .brand i { width: 30px; height: 30px; border-radius: 50%; background: var(--green); display: grid; place-items: center; }
+    .nav a { color: var(--muted); text-decoration: none; font-weight: 500; }
+    .nav .right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+    .badge-demo { font-size: 12.5px; font-weight: 600; color: #7a4b00; background: #ffe7b8; border: 1px solid #f3cf7f; padding: 4px 11px; border-radius: 99px; }
+    .btn, .nav a.btn { border: 1.5px solid var(--green); background: var(--green); color: #fff; border-radius: 99px; padding: 11px 22px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: .15s; text-decoration: none; }
+    .btn:hover { background: var(--green-deep); }
+    .btn.light, .nav a.btn.light { background: transparent; color: var(--green); }
+    .btn.light:hover { background: var(--sage-soft); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .hero { max-width: 1240px; margin: 0 auto; padding: 56px 48px 40px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
+    .hero h1 { font-size: 58px; line-height: 1.06; }
+    .hero h1 em { font-style: italic; color: var(--green); }
+    .hero p { font-size: 18px; color: var(--muted); max-width: 500px; margin: 20px 0 28px; }
+    .hero .cta { display: flex; gap: 12px; align-items: center; }
+    .hero .note { font-size: 13.5px; color: var(--muted); margin-top: 16px; display: flex; gap: 14px; }
+    .art { aspect-ratio: 1 / 1; border-radius: 48% 52% 50% 50% / 52% 48% 52% 48%; background: radial-gradient(circle at 30% 30%, #f0f5ea, var(--sage) 55%, #b9cfae); position: relative; overflow: hidden; box-shadow: var(--shadow); }
+    .art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    .section { max-width: 1240px; margin: 0 auto; padding: 48px 48px; }
+    .section h2 { font-size: 34px; margin-bottom: 8px; }
+    .section .lead { color: var(--muted); margin: 0 0 28px; }
+    .services { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .svc { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; transition: .2s; cursor: pointer; }
+    .svc:hover { transform: translateY(-3px); border-color: #c7d6bd; }
+    .svc.selected { border-color: var(--green); box-shadow: 0 0 0 3px var(--sage); }
+    .svc .ic { width: 44px; height: 44px; border-radius: 12px; background: var(--sage-soft); color: var(--green); display: grid; place-items: center; }
+    .svc h3 { font-size: 21px; }
+    .svc p { margin: 0; color: var(--muted); font-size: 14.5px; flex: 1; }
+    .svc .meta { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+    .svc .meta small { color: var(--muted); font-weight: 500; }
+
+    /* Booking */
+    .book { max-width: 1240px; margin: 0 auto 72px; padding: 0 48px; }
+    .panel { background: var(--paper); border: 1px solid var(--line); border-radius: 24px; box-shadow: var(--shadow); display: grid; grid-template-columns: 300px 1fr; min-height: 520px; overflow: hidden; }
+    .steps { background: var(--green); color: #d9e4d2; padding: 32px 28px; display: flex; flex-direction: column; gap: 4px; }
+    .steps h2 { color: #fff; font-size: 26px; margin-bottom: 20px; }
+    .step { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; font-weight: 500; }
+    .step .n { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.4); display: grid; place-items: center; font-size: 12.5px; flex: none; }
+    .step.active { background: rgba(255,255,255,.12); color: #fff; }
+    .step.active .n { background: #fff; color: var(--green); border-color: #fff; }
+    .step.done .n { background: var(--sage); border-color: var(--sage); color: var(--green); }
+    .steps .summary { margin-top: auto; border-top: 1px solid rgba(255,255,255,.18); padding-top: 18px; font-size: 14px; display: grid; gap: 4px; }
+    .steps .summary b { color: #fff; font-weight: 600; }
+    .stage { padding: 36px 40px; animation: fade .35s ease-out; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .stage h3 { font-size: 28px; margin-bottom: 4px; }
+    .stage .lead { color: var(--muted); margin: 0 0 22px; }
+    .choices { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .choice { border: 1.5px solid var(--line); border-radius: 14px; padding: 16px 18px; background: #fff; text-align: left; display: flex; justify-content: space-between; gap: 12px; align-items: center; transition: .15s; }
+    .choice:hover { border-color: #b9cfae; }
+    .choice.on { border-color: var(--green); background: var(--sage-soft); }
+    .choice b { display: block; font-weight: 600; }
+    .choice small { color: var(--muted); }
+    .choice .price { font-weight: 700; }
+
+    .days { display: flex; gap: 8px; margin-bottom: 22px; }
+    .day { flex: 1; border: 1.5px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 4px; text-align: center; transition: .15s; }
+    .day span { display: block; font-size: 12px; text-transform: uppercase; color: var(--muted); font-weight: 600; letter-spacing: .3px; }
+    .day b { display: block; font-size: 22px; font-family: Georgia, serif; font-weight: 500; }
+    .day.on { border-color: var(--green); background: var(--green); color: #fff; }
+    .day.on span { color: #d9e4d2; }
+    .day:disabled { opacity: .4; cursor: not-allowed; }
+    .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .slot { border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 11px; font-weight: 600; transition: .15s; }
+    .slot:hover:not(:disabled) { border-color: #b9cfae; }
+    .slot.on { border-color: var(--green); background: var(--green); color: #fff; }
+    .slot:disabled { opacity: .35; text-decoration: line-through; cursor: not-allowed; }
+    .slots-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--muted); font-size: 14px; }
+
+    .form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field { display: grid; gap: 5px; }
+    .field.wide { grid-column: 1 / -1; }
+    .field label { font-size: 13px; font-weight: 600; color: var(--muted); }
+    .field input { padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff; width: 100%; }
+    .field input:focus { outline: 0; border-color: var(--green); box-shadow: 0 0 0 3px var(--sage); }
+    .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; }
+
+    .confirm { text-align: center; padding: 20px 0; }
+    .tick { width: 76px; height: 76px; border-radius: 50%; background: var(--sage); color: var(--green); display: grid; place-items: center; margin: 0 auto 18px; animation: pop .5s cubic-bezier(.2,1.4,.4,1); }
+    @keyframes pop { from { transform: scale(.4); opacity: 0; } }
+    .confirm h3 { font-size: 34px; }
+    .ticket { margin: 26px auto 0; max-width: 460px; text-align: left; border: 1.5px dashed #c7d6bd; border-radius: 18px; padding: 20px 24px; background: #fff; display: grid; gap: 10px; }
+    .ticket .r { display: flex; justify-content: space-between; gap: 12px; }
+    .ticket .r span { color: var(--muted); }
+    .ticket .r b { font-weight: 600; text-align: right; }
+    .ticket .ref { font-family: ui-monospace, "SF Mono", Consolas, monospace; background: var(--sage-soft); border-radius: 8px; padding: 2px 8px; color: var(--green); }
+    .confirm .cta { display: flex; justify-content: center; gap: 10px; margin-top: 24px; }
+
+    footer { text-align: center; color: var(--muted); font-size: 13.5px; padding: 24px; border-top: 1px solid var(--line); }
+    @media (max-width: 900px) { .nav, .hero, .section, .book { padding-left: 18px; padding-right: 18px; } .hero { grid-template-columns: 1fr; padding-top: 24px; } .hero h1 { font-size: 40px; } .art { max-width: 320px; } .services { grid-template-columns: 1fr; } .panel { grid-template-columns: 1fr; } .steps .summary { display: none; } .choices, .form { grid-template-columns: 1fr; } .slots { grid-template-columns: repeat(3, 1fr); } .stage { padding: 22px 18px; } }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="brand"><i><svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 4c-4.5 3.5-5.5 9 0 16 5.5-7 4.5-12.5 0-16z" fill="#dbe7d2"/></svg></i>Fern &amp; Stone</div>
+    <a href="#services">Treatments</a><a href="#">Our studio</a><a href="#">Gift cards</a>
+    <div class="right"><span class="badge-demo">Concept demo · fictional business</span><a class="btn" href="#book" style="padding:9px 18px;color:#fff">Book now</a></div>
+  </nav>
+
+  <section class="hero">
+    <div>
+      <h1>Slow down.<br>Feel <em>restored.</em></h1>
+      <p>A calm massage and wellness studio in the heart of Bangsar. Book online in under a minute, no phone call needed.</p>
+      <div class="cta"><a class="btn" href="#book">Book a treatment</a><a class="btn light" href="#services">See treatments</a></div>
+      <div class="note"><span>✦ Open 7 days</span><span>✦ Free cancellation up to 24h before</span></div>
+    </div>
+    <div class="art" aria-hidden="true">
+      <svg viewBox="0 0 400 400"><g fill="none" stroke="#2f4f3e" stroke-width="2.5" stroke-linecap="round" opacity=".9"><path d="M200 330 C200 260 170 210 120 180"/><path d="M200 330 C200 250 240 200 300 170"/><path d="M200 330 C200 280 200 240 200 150"/><path d="M200 150 c-20-30-10-70 0-90 10 20 20 60 0 90z" fill="#2f4f3e" opacity=".9"/><path d="M120 180 c-30-20-30-60-15-80 20 15 35 50 15 80z" fill="#2f4f3e" opacity=".75"/><path d="M300 170 c30-25 25-65 10-85 -20 20-30 55-10 85z" fill="#2f4f3e" opacity=".75"/></g><ellipse cx="200" cy="335" rx="110" ry="12" fill="#2f4f3e" opacity=".12"/></svg>
+    </div>
+  </section>
+
+  <section class="section" id="services">
+    <h2>Treatments</h2>
+    <p class="lead">Pick one here or in the booking panel below. Prices include GST.</p>
+    <div class="services" id="services-grid"></div>
+  </section>
+
+  <section class="book" id="book">
+    <div class="panel">
+      <aside class="steps">
+        <h2>Book online</h2>
+        <div class="step active" data-s="1"><span class="n">1</span>Choose a treatment</div>
+        <div class="step" data-s="2"><span class="n">2</span>Pick a date &amp; time</div>
+        <div class="step" data-s="3"><span class="n">3</span>Your details</div>
+        <div class="step" data-s="4"><span class="n">4</span>Confirmation</div>
+        <div class="summary" id="summary"><span>Nothing selected yet.</span></div>
+      </aside>
+
+      <div class="stage" id="stage-1">
+        <h3>What would you like?</h3>
+        <p class="lead">All treatments include a short consultation.</p>
+        <div class="choices" id="choices"></div>
+        <div class="actions"><span></span><button class="btn" id="to-2" disabled>Continue</button></div>
+      </div>
+
+      <div class="stage" id="stage-2" hidden>
+        <h3>When suits you?</h3>
+        <p class="lead">Showing availability for the next 7 days. Times are local.</p>
+        <div class="days" id="days"></div>
+        <div class="slots-head"><span id="slots-label"></span><span>45–75 min · with Mei or Arjun</span></div>
+        <div class="slots" id="slots"></div>
+        <div class="actions"><button class="btn light" data-back="1">Back</button><button class="btn" id="to-3" disabled>Continue</button></div>
+      </div>
+
+      <div class="stage" id="stage-3" hidden>
+        <h3>Almost there</h3>
+        <p class="lead">We’ll send your confirmation and a reminder the day before.</p>
+        <form class="form" id="details">
+          <div class="field"><label for="d-name">Full name</label><input id="d-name" placeholder="Your name" required autocomplete="off"></div>
+          <div class="field"><label for="d-phone">Mobile</label><input id="d-phone" placeholder="012-345 6789" required autocomplete="off"></div>
+          <div class="field wide"><label for="d-email">Email</label><input id="d-email" type="email" placeholder="you@example.com" required autocomplete="off"></div>
+          <div class="field wide"><label for="d-note">Anything we should know? <span style="font-weight:400">(optional)</span></label><input id="d-note" placeholder="Injuries, pressure preference, allergies…" autocomplete="off"></div>
+        </form>
+        <div class="actions"><button class="btn light" data-back="2">Back</button><button class="btn" id="to-4" form="details" type="submit">Confirm booking</button></div>
+      </div>
+
+      <div class="stage" id="stage-4" hidden>
+        <div class="confirm">
+          <div class="tick"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12l5 5 9-10"/></svg></div>
+          <h3>You’re booked in</h3>
+          <p class="lead" id="confirm-lead"></p>
+          <div class="ticket" id="ticket"></div>
+          <div class="cta"><button class="btn">Add to calendar</button><button class="btn light" id="again">Book another</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Fern &amp; Stone Studio is a fictional business created for this concept demo.</footer>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+    const SERVICES = [
+      { id: 'deep', name: 'Deep tissue massage', mins: 60, price: 180, blurb: 'Firm, focused work on tight muscles and knots. Ideal after training or long desk days.', icon: 'M4 12h16M4 7h10M4 17h10' },
+      { id: 'aroma', name: 'Aromatherapy massage', mins: 75, price: 210, blurb: 'Slow, flowing strokes with a blend of oils chosen for how you want to feel.', icon: 'M12 3c3 4 6 7 6 11a6 6 0 01-12 0c0-4 3-7 6-11z' },
+      { id: 'prenatal', name: 'Prenatal massage', mins: 60, price: 190, blurb: 'Gentle, side-lying support for the second and third trimesters.', icon: 'M12 21s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 11c0 5.5-7 10-7 10z' },
+      { id: 'foot', name: 'Foot reflexology', mins: 45, price: 120, blurb: 'Pressure-point work on the feet to ease tension across the whole body.', icon: 'M8 4v8a4 4 0 008 0V4M6 20h12' },
+      { id: 'hot', name: 'Hot stone therapy', mins: 75, price: 230, blurb: 'Warm basalt stones melt away tension and leave you deeply relaxed.', icon: 'M5 15a7 4 0 0014 0 7 4 0 00-14 0zM8 9a4 2.5 0 008 0 4 2.5 0 00-8 0z' },
+      { id: 'facial', name: 'Signature facial', mins: 60, price: 200, blurb: 'Cleanse, exfoliate and hydrate with botanical skincare. Suits all skin types.', icon: 'M12 3a9 9 0 100 18 9 9 0 000-18zM9 10h.01M15 10h.01M9 15c1 1 5 1 6 0' },
+    ];
+    const state = { service: null, day: null, slot: null };
+    const money = (n) => `RM ${n}`;
+    const icon = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+
+    $('#services-grid').innerHTML = SERVICES.map((s) => `
+      <div class="svc" data-id="${s.id}"><span class="ic">${icon(s.icon)}</span><h3>${s.name}</h3><p>${s.blurb}</p>
+      <div class="meta"><span>${money(s.price)}</span><small>${s.mins} min</small></div></div>`).join('');
+    $('#choices').innerHTML = SERVICES.map((s) => `
+      <button class="choice" type="button" data-id="${s.id}"><span><b>${s.name}</b><small>${s.mins} minutes</small></span><span class="price">${money(s.price)}</span></button>`).join('');
+
+    // Days: next 7 from a fixed demo date so recordings look the same every time.
+    const base = new Date('2026-10-09');
+    const days = Array.from({ length: 7 }, (_, i) => new Date(base.getTime() + (i + 1) * 864e5));
+    $('#days').innerHTML = days.map((d, i) => `<button class="day" type="button" data-i="${i}" ${i === 2 ? 'disabled' : ''}><span>${d.toLocaleDateString('en-GB', { weekday: 'short' })}</span><b>${d.getDate()}</b></button>`).join('');
+    const TIMES = ['09:00', '10:00', '11:00', '12:00', '13:30', '14:30', '15:30', '16:30', '17:30', '18:30', '19:30'];
+    const taken = { 0: ['10:00', '14:30'], 1: ['09:00', '11:00', '17:30'], 3: ['13:30'], 4: ['12:00', '15:30', '16:30'], 5: ['09:00'], 6: ['10:00', '18:30'] };
+
+    function go(n) {
+      $$('.stage').forEach((s) => (s.hidden = true));
+      $(`#stage-${n}`).hidden = false;
+      $$('.step').forEach((s) => { const k = +s.dataset.s; s.classList.toggle('active', k === n); s.classList.toggle('done', k < n); });
+      $('#book').scrollIntoView({ block: 'start' });
+    }
+    function longDate(d) { return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }); }
+    function summary() {
+      const s = state.service, out = [];
+      if (s) out.push(`<span>Treatment</span><b>${s.name} · ${s.mins} min</b>`);
+      if (state.day !== null) out.push(`<span>Date</span><b>${longDate(days[state.day])}${state.slot ? ` at ${state.slot}` : ''}</b>`);
+      if (s) out.push(`<span>Total</span><b>${money(s.price)}</b>`);
+      $('#summary').innerHTML = out.length ? out.join('') : '<span>Nothing selected yet.</span>';
+    }
+    function pickService(id) {
+      state.service = SERVICES.find((s) => s.id === id);
+      $$('.choice').forEach((c) => c.classList.toggle('on', c.dataset.id === id));
+      $$('.svc').forEach((c) => c.classList.toggle('selected', c.dataset.id === id));
+      $('#to-2').disabled = false;
+      summary();
+    }
+    $('#choices').addEventListener('click', (e) => { const c = e.target.closest('.choice'); if (c) pickService(c.dataset.id); });
+    $('#services-grid').addEventListener('click', (e) => { const c = e.target.closest('.svc'); if (c) { pickService(c.dataset.id); go(1); } });
+    $('#to-2').addEventListener('click', () => go(2));
+    $('#days').addEventListener('click', (e) => {
+      const d = e.target.closest('.day'); if (!d || d.disabled) return;
+      state.day = +d.dataset.i; state.slot = null; $('#to-3').disabled = true;
+      $$('.day').forEach((x) => x.classList.toggle('on', x === d));
+      $('#slots-label').textContent = longDate(days[state.day]);
+      const busy = taken[state.day] || [];
+      $('#slots').innerHTML = TIMES.map((t) => `<button class="slot" type="button" data-t="${t}" ${busy.includes(t) ? 'disabled' : ''}>${t}</button>`).join('');
+      summary();
+    });
+    $('#slots').addEventListener('click', (e) => {
+      const s = e.target.closest('.slot'); if (!s || s.disabled) return;
+      state.slot = s.dataset.t; $$('.slot').forEach((x) => x.classList.toggle('on', x === s)); $('#to-3').disabled = false; summary();
+    });
+    $('#to-3').addEventListener('click', () => { go(3); $('#d-name').focus(); });
+    $$('[data-back]').forEach((b) => b.addEventListener('click', () => go(+b.dataset.back)));
+    $('#details').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = $('#d-name').value.trim(), email = $('#d-email').value.trim();
+      const ref = 'FS-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + String(Math.floor(Math.random() * 900) + 100);
+      $('#confirm-lead').textContent = `Thanks ${name.split(' ')[0]}. We’ve emailed the details to ${email}.`;
+      $('#ticket').innerHTML = `<div class="r"><span>Booking ref</span><b class="ref">${ref}</b></div><div class="r"><span>Treatment</span><b>${state.service.name} · ${state.service.mins} min</b></div>
+        <div class="r"><span>When</span><b>${longDate(days[state.day])}, ${state.slot}</b></div><div class="r"><span>Where</span><b>Fern &amp; Stone Studio, Jalan Telawi 3, Bangsar</b></div><div class="r"><span>To pay at the studio</span><b>${money(state.service.price)}</b></div>`;
+      go(4);
+    });
+    $('#again').addEventListener('click', () => { state.service = state.day = state.slot = null; $$('.on, .selected').forEach((x) => x.classList.remove('on', 'selected')); $('#to-2').disabled = $('#to-3').disabled = true; $('#slots').innerHTML = ''; $('#details').reset(); summary(); go(1); });
+    // Select the 10:00 default-free day pattern: pre-select nothing; the recording script clicks through.
+  </script>
+</body>
+</html>

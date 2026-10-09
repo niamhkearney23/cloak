@@ -115,4 +115,9 @@ server/server.js    serves the app, sends cloaked text to the drafting model
 server/prompts.js   drafting instructions for each document type
 server/mock.js      demo-mode drafter
 test/               npm test
+demos/              three stand-alone concept demos for the portfolio video (see demos/README.md)
 ```
+
+## Concept demos
+
+`demos/` holds three small, self-contained examples that are separate from Cloak: a legal dashboard, a marketing automation tool and a booking website. They exist to show the range of work on offer, use only fictional data, and come with a script that records each one as a video clip. See [demos/README.md](demos/README.md).
