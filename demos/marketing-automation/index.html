@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Flowline — concept demo</title>
+  <title>Flowline (concept demo)</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22%3E%3Crect width=%2224%22 height=%2224%22 rx=%226%22 fill=%22%236d28d9%22/%3E%3Cpath d=%22M6 12h5l2-4 3 8 2-4h1%22 stroke=%22%23fff%22 stroke-width=%222.2%22 fill=%22none%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -232,7 +232,7 @@
 
     const log = [
       { k: 'ok', text: 'Follow-up sent to Marcus Lee', who: 'Workflow', t: '14:02' },
-      { k: 'v', text: 'Hannah Osei replied — marked as engaged', who: 'Inbox sync', t: '11:40' },
+      { k: 'v', text: 'Hannah Osei replied. Marked as engaged', who: 'Inbox sync', t: '11:40' },
       { k: 'ok', text: 'Welcome email sent to Hannah Osei', who: 'Workflow', t: '09:31' },
       { k: 'ok', text: 'Team notified in #new-leads', who: 'Workflow', t: '09:31' },
       { k: 'v', text: 'New enquiry from Hannah Osei', who: 'Website form', t: '09:31' },
@@ -285,7 +285,7 @@
         <div class="eb">Hi ${firstName(name)},<br><br>Thanks for your enquiry about a <b>${interest.toLowerCase()}</b>. I’ll take a proper look and come back to you within one working day. In the meantime, you can pick a time for a free 20‑minute call here.<br><br>Jordan · Northgate Interiors</div></div>`;
 
       await step(3, 1000);
-      addLog('ok', `Team notified in #new-leads · “${name} — ${interest}”`, 'Workflow');
+      addLog('ok', `Team told in #new-leads: ${name}, ${interest.toLowerCase()}`, 'Workflow');
 
       await step(4, 1100);
       addLog('w', `Follow-up scheduled for ${new Date(Date.now() + 2 * 864e5).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} at 10:00`, 'Scheduler');

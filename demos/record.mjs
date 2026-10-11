@@ -6,8 +6,11 @@
 //   demos/recordings/1-legal-dashboard.webm   (open a matter, view deadlines, assign a task)
 //   demos/recordings/2-marketing-automation.webm (a new enquiry triggers the follow-up workflow)
 //   demos/recordings/3-booking-site.webm      (choose a service, pick a time, confirmation)
+//   demos/recordings/4-end-card.webm          ("What do you want to build?", your name and Fiverr link)
 //
-// plus a still of each demo (demos/recordings/*.png) for thumbnails.
+// plus a still of each (demos/recordings/*.png) for thumbnails. The end card
+// reads your name and link from demos/profile.js and uses the other stills,
+// so it is always recorded last.
 // If a full ffmpeg is on your PATH (or FFMPEG points at one), an .mp4 copy of
 // each clip is written as well, which most video editors prefer over WebM.
 //
@@ -144,6 +147,12 @@ const FLOWS = {
     await sleep(300);
     await click(page, '#to-4');                           // confirmation screen
     await sleep(2800);
+  },
+
+  '4-end-card': async (page) => {
+    await page.goto('file://' + path.join(ROOT, 'end-card', 'index.html'));
+    await page.evaluate(() => document.getElementById('__cursor')?.remove()); // no cursor on the end card
+    await sleep(7500);                                    // animations finish at about 3 s; hold the rest
   },
 };
 

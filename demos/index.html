@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Concept demos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Young+Serif&display=swap">
+  <style>
+    :root { --paper: #f3ede3; --card: #fbf8f2; --ink: #2b2521; --muted: #6e645a; --line: #d8ccba; --rust: #a8502c; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 18px/1.6 "Karla", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    main { max-width: 860px; margin: 0 auto; padding: 64px 20px 80px; }
+    h1, h2 { font-family: "Young Serif", Georgia, serif; font-weight: 400; margin: 0; letter-spacing: -.01em; }
+    h1 { font-size: 44px; line-height: 1.12; margin: 0 0 18px; }
+    .kicker { color: var(--rust); font-weight: 700; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; margin: 0 0 14px; }
+    .intro { color: #4d453e; max-width: 640px; margin: 0 0 40px; }
+    ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+    li a { display: grid; grid-template-columns: 260px 1fr; gap: 24px; align-items: center; padding: 14px; background: var(--card); border: 1.5px solid var(--line); border-radius: 10px; text-decoration: none; color: inherit; transition: border-color .15s; }
+    li a:hover { border-color: #b8a990; }
+    li img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top left; border-radius: 4px; background: #e7dccb; display: block; }
+    li h2 { font-size: 24px; }
+    li p { margin: 4px 0 0; color: var(--muted); font-size: 16.5px; }
+    .hire { margin-top: 44px; padding-top: 24px; border-top: 1px solid var(--line); }
+    .hire a { color: var(--rust); font-weight: 700; text-underline-offset: 4px; }
+    @media (max-width: 640px) { li a { grid-template-columns: 1fr; } h1 { font-size: 34px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="kicker">Concept demos</p>
+    <h1>Three small things I built to show what I make</h1>
+    <p class="intro"><span id="hello">Hi.</span> I build websites, dashboards, client portals and automations for small businesses. These aren’t client projects. I made them to show the kind of work I do, so the businesses, people and numbers in them are invented.</p>
+    <ol>
+      <li><a href="legal-dashboard/index.html"><img src="recordings/1-legal-dashboard.png" alt="" onerror="this.style.visibility='hidden'"><div><h2>A dashboard for a law firm</h2><p>Open a matter, see what’s due and when, and hand a task to someone on the team.</p></div></a></li>
+      <li><a href="marketing-automation/index.html"><img src="recordings/2-marketing-automation.png" alt="" onerror="this.style.visibility='hidden'"><div><h2>An automation for new enquiries</h2><p>Someone fills in the contact form, and the welcome email, team alert and follow-up happen on their own.</p></div></a></li>
+      <li><a href="booking-site/index.html"><img src="recordings/3-booking-site.png" alt="" onerror="this.style.visibility='hidden'"><div><h2>A website with online booking</h2><p>For a small massage studio. Pick a treatment, pick a time, get a confirmation.</p></div></a></li>
+    </ol>
+    <p class="hire" id="hire"></p>
+  </main>
+  <script src="profile.js"></script>
+  <script>
+    const P = window.PROFILE || {};
+    if (P.name) document.getElementById('hello').textContent = `Hi, I’m ${P.name.split(' ')[0]}.`;
+    document.getElementById('hire').innerHTML = P.fiverr
+      ? `Want something like this for your business? <a href="${P.fiverr}" target="_blank" rel="noopener">Find me on Fiverr</a>.`
+      : 'Want something like this for your business? Get in touch.';
+  </script>
+</body>
+</html>
