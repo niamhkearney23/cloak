@@ -3,7 +3,7 @@
 window.PROFILE = {
   name: 'Niamh Kearney',
   // Full link to your Fiverr profile, e.g. 'https://www.fiverr.com/yourusername'
-  fiverr: '',
+  fiverr: 'https://www.fiverr.com/lawgistics_my',
 };
 
 // Shared helper: "https://www.fiverr.com/abc/" -> "fiverr.com/abc"

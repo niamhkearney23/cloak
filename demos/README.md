@@ -67,7 +67,7 @@ Give this to your editor or AI video tool together with the four clips.
 >
 > **20–28 seconds:** Show the booking website: choose a service, select a time and reach the confirmation screen. Caption: "Websites that work."
 >
-> **28–35 seconds:** End with a clean montage and "What do you want to build?" followed by my name and Fiverr profile (use the supplied end card): **Niamh Kearney** · **[FIVERR PROFILE URL]**.
+> **28–35 seconds:** End with a clean montage and "What do you want to build?" followed by my name and Fiverr profile (use the supplied end card): **Niamh Kearney** · **fiverr.com/lawgistics_my**.
 >
 > **Voiceover:** "A website for your business. A dashboard for your team. An automation that handles the repetitive work. I build custom digital tools around what you need. Have an idea? Let's make it work."
 >
