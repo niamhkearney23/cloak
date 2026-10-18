@@ -341,7 +341,7 @@
       <button class="choice" type="button" data-id="${s.id}"><span><b>${s.name}</b><small>${s.mins} minutes</small></span><span class="p">${money(s.price)}</span></button>`).join('');
 
     // The next 7 days from a fixed demo date, so recordings look the same every time.
-    const base = new Date('2026-10-09');
+    const base = new Date('2026-10-09T00:00'); // local midnight, not UTC
     const days = Array.from({ length: 7 }, (_, i) => new Date(base.getTime() + (i + 1) * 864e5));
     const closed = (d) => d.getDay() === 1; // Mondays
     $('#days').innerHTML = days.map((d, i) => `<button class="day" type="button" data-i="${i}" ${closed(d) ? 'disabled' : ''}><span>${d.toLocaleDateString('en-GB', { weekday: 'short' })}</span><b>${d.getDate()}</b></button>`).join('');

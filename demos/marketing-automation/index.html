@@ -128,7 +128,10 @@
     .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px); background: #1a1a2e; color: #fff; padding: 12px 18px; border-radius: 12px; display: flex; align-items: center; gap: 10px; font-weight: 500; box-shadow: 0 12px 30px -10px rgba(0,0,0,.4); opacity: 0; transition: .3s; pointer-events: none; }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
     .toast i { width: 22px; height: 22px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; }
+    @media (max-width: 1100px) { .page { grid-template-columns: minmax(0, 1fr); } .head { flex-wrap: wrap; } .nav { overflow-x: auto; } .nav > * { flex-shrink: 0; white-space: nowrap; } }
+    /* Phones: the nav links are placeholders, so drop them and keep the concept-demo badge in view. */
     @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } .page { padding: 18px; } .node { width: 100%; } }
+    @media (max-width: 700px) { .nav { gap: 12px; padding: 0 16px; } .nav > a { display: none; } .stats { grid-template-columns: minmax(0, 1fr); } }
   </style>
 </head>
 <body>
