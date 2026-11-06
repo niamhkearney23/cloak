@@ -356,23 +356,81 @@ function isLoopback(host) {
   return ['127.0.0.1', 'localhost', '::1'].includes(host);
 }
 
+// What stops Cloak from running safely, in words the person setting it up can
+// act on. Null when it can start.
+export function startupProblem(env = process.env, host = '127.0.0.1') {
+  let config;
+  try {
+    config = configFromEnv(env);
+  } catch (err) {
+    // The error can quote part of the bad value, and the setup page is
+    // public, so the page only names the setting. The log gets the detail.
+    const setting = (err.message.match(/\b(?:CLOAK|MS|ANTHROPIC)_[A-Z_]+\b/) || [])[0];
+    return {
+      config: null,
+      detail: err.message,
+      message: setting
+        ? `The ${setting} setting is not in the right format. Check it against the setup guide and paste it in again.`
+        : 'One of the settings is not in the right format. The server log says which.',
+    };
+  }
+  if (!isLoopback(host) && config.users.size === 0 && env.CLOAK_ALLOW_NO_LOGIN !== '1') {
+    return {
+      config,
+      message: 'No staff logins are set up. Make logins with the Cloak Login Maker (or "npm run add-user") ' +
+        'and paste the result into the CLOAK_USERS setting.',
+    };
+  }
+  return null;
+}
+
+// Stands in for the app when a setting is missing or wrong, so the hosting
+// dashboard shows a page saying what to fix instead of a crash. It serves no
+// part of the app and keeps the health check green so the page stays up.
+export function createSetupServer(message) {
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const page = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Cloak needs setting up</title>
+<style>body{font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f5f7;color:#1d1d1f;margin:0;padding:48px 20px}
+main{max-width:560px;margin:0 auto;background:#fff;border-radius:16px;padding:28px}h1{font-size:22px;margin:0 0 12px}
+.fix{background:#fff3dc;color:#7a4a00;border-radius:10px;padding:12px 14px}p{color:#555}</style></head>
+<body><main><h1>Cloak needs one more setting</h1><p class="fix">${esc(message)}</p>
+<p>Open the hosting dashboard (Render: cloak-drafting, then Environment), fix the setting and save. Cloak restarts by itself in about a minute.</p>
+<p>Nothing in Cloak can be used until this is fixed.</p></main></body></html>`;
+  return http.createServer((req, res) => {
+    const headers = {
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store',
+    };
+    if (new URL(req.url, 'http://x').pathname === '/healthz') {
+      res.writeHead(200, { ...headers, 'Content-Type': 'application/json; charset=utf-8' });
+      return res.end(JSON.stringify({ ok: false, setup: message }));
+    }
+    res.writeHead(503, { ...headers, 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(req.method === 'HEAD' ? undefined : page);
+  });
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const PORT = Number(process.env.PORT || 3000);
   const HOST = process.env.HOST || '127.0.0.1';
-  let config;
-  try {
-    config = configFromEnv();
-  } catch (err) {
-    console.error(`Cloak cannot start: ${err.message}`);
-    process.exit(1);
+  // Never run open to the network without logins, and never crash-loop on a
+  // bad setting: show a page saying what to fix instead.
+  const problem = startupProblem(process.env, HOST);
+  if (problem) {
+    console.error(`Cloak cannot start: ${problem.detail || problem.message}`);
+    if (isLoopback(HOST)) process.exit(1);
+    createSetupServer(problem.message).listen(PORT, HOST, () => {
+      console.error(`Showing the setup page at http://${HOST}:${PORT} until this is fixed.`);
+    });
+  } else {
+    startApp(PORT, HOST);
   }
+}
 
-  // Never run open to the network without logins.
-  if (!isLoopback(HOST) && config.users.size === 0 && process.env.CLOAK_ALLOW_NO_LOGIN !== '1') {
-    console.error('Cloak cannot start: it is listening on a network address but no staff logins are set up.\n' +
-      'Create logins with "npm run add-user" and put the result in the CLOAK_USERS setting.');
-    process.exit(1);
-  }
+function startApp(PORT, HOST) {
+  const config = configFromEnv();
   if (config.users.size > 0 && config.secret.length < 32) {
     console.warn('Warning: CLOAK_SECRET is missing or short, so everyone will be signed out whenever the server restarts. Set it to a long random value.');
   }

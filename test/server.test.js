@@ -91,3 +91,31 @@ test('prompt wraps staff text as data and includes document guidance', () => {
   assert.match(p, /<document_instructions>\nI\n<\/document_instructions>/);
   assert.match(p, /REPLY/);
 });
+
+test('a missing login setting shows a setup page instead of crashing', async () => {
+  const { startupProblem, createSetupServer } = await import('../server/server.js');
+  assert.equal(startupProblem({ CLOAK_MOCK: '1' }, '127.0.0.1'), null);
+  const problem = startupProblem({ CLOAK_MOCK: '1', CLOAK_USERS: 'later' }, '0.0.0.0');
+  assert.match(problem.message, /CLOAK_USERS/);
+
+  const setup = createSetupServer(problem.message);
+  await new Promise((r) => setup.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${setup.address().port}`;
+  try {
+    const page = await fetch(`${url}/`);
+    assert.equal(page.status, 503);
+    assert.match(await page.text(), /CLOAK_USERS/);
+    assert.equal((await fetch(`${url}/healthz`)).status, 200);
+    assert.equal((await fetch(`${url}/api/draft`, { method: 'POST', body: '{}' })).status, 503);
+  } finally {
+    setup.close();
+  }
+});
+
+test('the setup page never repeats a bad setting value', async () => {
+  const { startupProblem } = await import('../server/server.js');
+  const problem = startupProblem({ CLOAK_MOCK: '1', CLOAK_USERS: 'mySecretPassword123' }, '0.0.0.0');
+  assert.match(problem.message, /CLOAK_USERS/);
+  assert.doesNotMatch(problem.message, /mySecret/);
+  assert.match(problem.detail, /CLOAK_USERS/);
+});
