@@ -88,6 +88,12 @@ Settings (environment variables):
 | `CLOAK_MOCK` | auto | `1` forces demo mode, `0` forces live mode |
 | `PORT` / `HOST` | `3000` / `127.0.0.1` | Where the server listens |
 
+## Quick desk
+
+For admin staff: open `/desk` (the **Quick desk** button at the top), paste in an email, letter or message, and pick a job: **Write a reply**, **Summarise it**, **Make a to-do list** or **Turn into a formal letter**. Names, IC numbers, phones and addresses are hidden in the browser before anything is sent, and put back when the answer comes in.
+
+If a word might be a name Cloak doesn't know, the server refuses to call the AI and asks first (**Hide it** / **It's fine**). Words marked fine are remembered on that computer. No Microsoft setup is needed.
+
 ## Email assistant
 
 Cloak can also look after a lawyer's Outlook / Microsoft 365 inbox. It writes reply drafts with names hidden from the AI, sends a fixed acknowledgement to outside senders, holds anything it's unsure about for a person to check, and emails a morning summary with the day's meetings. See **[ASSISTANT.md](ASSISTANT.md)**.

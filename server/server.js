@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import Anthropic from '@anthropic-ai/sdk';
 import { DOCUMENTS, SYSTEM_PROMPT, buildUserPrompt } from './prompts.js';
 import { mockDraft } from './mock.js';
+import { DESK_SYSTEM_PROMPT, buildDeskPrompt, mockDesk, readDeskRequest, deskUnsure } from './desk.js';
 import { createAuth, parseUsers, rateLimiter } from './auth.js';
 import { createStore } from './assistant/store.js';
 import { createGraph, msConfigFromEnv } from './assistant/graph.js';
@@ -255,6 +256,55 @@ export function createApp(config = configFromEnv(), deps = {}) {
     }
   }
 
+  async function desk(task, text) {
+    if (config.mock) return { text: mockDesk(task, text), model: 'demo' };
+    const message = await client.beta.messages.create({
+      model: config.model,
+      max_tokens: 16000,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'medium' },
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      system: DESK_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: buildDeskPrompt(task, text) }],
+    });
+    if (message.stop_reason === 'refusal') {
+      throw Object.assign(new Error(message.stop_details?.explanation || 'The AI declined this request.'), { status: 422 });
+    }
+    const out = message.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    if (!out) throw Object.assign(new Error('The AI returned no text.'), { status: 502 });
+    return { text: out, model: message.model, truncated: message.stop_reason === 'max_tokens' };
+  }
+
+  async function handleDesk(req, res, user) {
+    if (!String(req.headers['content-type'] || '').startsWith('application/json')) {
+      return send(req, res, 415, { error: 'Expected JSON' });
+    }
+    const request = readDeskRequest(await readJson(req));
+    if (request.error) return send(req, res, 400, { error: request.error });
+    const { task, text, allow } = request;
+
+    // The gate runs here, not only in the browser, so it cannot be skipped.
+    const unsure = deskUnsure(text, allow);
+    if (unsure.length) {
+      audit('desk_check', { user, task, unsure: unsure.length });
+      return send(req, res, 200, { unsure });
+    }
+    if (!draftLimit.hit(user || clientIp(req))) {
+      audit('desk_limited', { user, task });
+      return send(req, res, 429, { error: `Limit reached (${config.draftsPerHour} an hour). Please try again later.` });
+    }
+    try {
+      const result = await desk(task, text);
+      audit('desk', { user, task, ok: true, model: result.model, chars_sent: text.length });
+      send(req, res, 200, result);
+    } catch (err) {
+      const status = err.status && err.status >= 400 && err.status < 600 ? err.status : 502;
+      audit('desk', { user, task, ok: false, status, error: `${err.name}: ${err.message}` });
+      send(req, res, status, { error: err.message || 'The AI request failed' });
+    }
+  }
+
   async function handleLogin(req, res) {
     const ip = clientIp(req);
     const form = new URLSearchParams(await readBody(req));
@@ -277,6 +327,7 @@ export function createApp(config = configFromEnv(), deps = {}) {
     let rel = pathname;
     if (rel === '/') rel = '/index.html';
     if (rel === '/assistant') rel = '/assistant.html';
+    if (rel === '/desk') rel = '/desk.html';
     const file = path.resolve(PUBLIC_DIR, '.' + rel);
     if (!file.startsWith(PUBLIC_DIR + path.sep) || path.basename(file) === 'package.json') {
       return send(req, res, 404, 'Not found', 'text/plain; charset=utf-8');
@@ -340,6 +391,7 @@ export function createApp(config = configFromEnv(), deps = {}) {
         });
       }
       if (req.method === 'POST' && pathname === '/api/draft') return await handleDraft(req, res, user);
+      if (req.method === 'POST' && pathname === '/api/desk') return await handleDesk(req, res, user);
       if (req.method === 'GET' || req.method === 'HEAD') return await serveStatic(req, res, pathname);
       send(req, res, 405, { error: 'Method not allowed' });
     } catch (err) {

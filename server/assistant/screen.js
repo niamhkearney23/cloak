@@ -107,8 +107,10 @@ export function unsureWords(cloaked, allowWords = []) {
   for (const s of findSuspects(cloaked)) {
     // Drop everyday words from the suspect ("Dear Mr" -> nothing left).
     const words = s.text.split(/\s+/).filter((w) => !STARTERS.has(w.toLowerCase().replace(/['’]s$/, '')));
-    if (!words.length || allow.has(s.text.toLowerCase())) continue;
-    found.set(s.text, s.count);
+    // Ask about the name itself: "Can Mathew" -> "Mathew".
+    const name = words.join(' ');
+    if (!words.length || allow.has(s.text.toLowerCase()) || allow.has(name.toLowerCase())) continue;
+    found.set(name, (found.get(name) || 0) + s.count);
   }
 
   // A capitalised word starting a sentence or a line (a signature, "Ahmad

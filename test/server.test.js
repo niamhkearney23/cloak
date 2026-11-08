@@ -119,3 +119,40 @@ test('the setup page never repeats a bad setting value', async () => {
   assert.doesNotMatch(problem.message, /mySecret/);
   assert.match(problem.detail, /CLOAK_USERS/);
 });
+
+test('quick desk: cloaked text in, answer with codes out', async () => {
+  const c = new Cloak();
+  c.addPerson('SENDER', 'Ahmad bin Ismail', { token: 'SENDER' });
+  const cloaked = c.cloak('From Ahmad bin Ismail: please send me the tenancy papers by Friday.');
+  assert.doesNotMatch(cloaked, /Ahmad/);
+  const res = await fetch(`${base}/api/desk`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ task: 'reply', text: cloaked }),
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.match(data.text, /\{\{SENDER\}\}/);
+  assert.match(c.uncloak(data.text).text, /Ahmad bin Ismail/);
+});
+
+test('quick desk: stops before the AI when a word might be a name', async () => {
+  const send = (body) => fetch(`${base}/api/desk`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  }).then((r) => r.json());
+  const text = 'Please call me back.\nRegards,\nZulkarnain';
+  const first = await send({ task: 'summary', text });
+  assert.deepEqual(first.unsure, ['Zulkarnain']);
+  assert.equal(first.text, undefined);
+  const second = await send({ task: 'summary', text, allow: ['Zulkarnain'] });
+  assert.equal(second.unsure, undefined);
+  assert.ok(second.text);
+});
+
+test('quick desk: rejects bad requests', async () => {
+  const post = (body, type = 'application/json') => fetch(`${base}/api/desk`, { method: 'POST', headers: { 'Content-Type': type }, body });
+  assert.equal((await post(JSON.stringify({ task: 'hack', text: 'x' }))).status, 400);
+  assert.equal((await post(JSON.stringify({ task: 'reply', text: '  ' }))).status, 400);
+  assert.equal((await post(JSON.stringify({ task: 'reply', text: 'a'.repeat(20001) }))).status, 400);
+  assert.equal((await post('task=reply&text=hi', 'application/x-www-form-urlencoded')).status, 415);
+  assert.equal((await fetch(`${base}/desk`)).status, 200);
+});

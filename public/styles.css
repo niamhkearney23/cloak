@@ -198,3 +198,18 @@ input[type="time"], input[type="number"] { padding: 8px 10px; border: 1px solid 
 .q-text { font-weight: 600; }
 .act-calendar { border-left-color: #2b8a9e; }
 .act-question, .act-answer { border-left-color: #c47f17; }
+
+/* Quick desk */
+.desk-title { font-size: 22px; margin: 0 0 4px; }
+.desk-h { font-size: 17px; margin: 0 0 6px; }
+.desk-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0 12px; }
+@media (max-width: 700px) { .desk-row { grid-template-columns: 1fr; } }
+.desk-row input, #text, #extra, .desk-answer { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: #fff; }
+#text, .desk-answer { resize: vertical; min-height: 180px; }
+.desk-more { margin: 12px 0; }
+.desk-more summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 13.5px; }
+.desk-more .field { margin-top: 8px; }
+.desk-jobs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.desk-jobs .button { padding: 11px 18px; font-size: 15px; }
+.desk-result-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.desk-pre { white-space: pre-wrap; word-break: break-word; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; margin: 4px 0 10px; }
