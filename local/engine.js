@@ -605,4 +605,29 @@ export class Matter {
   key() {
     return this.cloak.toJSON();
   }
+
+  /** Everything needed to carry on with this matter later (goes in the encrypted key file). */
+  state() {
+    return {
+      options: this.options,
+      entries: this.cloak.toJSON().entries,
+      people: [...this.people],
+      companies: [...this.companies],
+      ids: [...this.ids],
+      kinds: [...this.kinds],
+      merges: this.merges,
+      ambiguous: this.ambiguous,
+    };
+  }
+
+  static fromState(state, options) {
+    const m = new Matter({ options: { ...state.options, ...options }, key: { entries: state.entries } });
+    m.people = new Map(state.people);
+    m.companies = new Map(state.companies);
+    m.ids = new Map(state.ids);
+    m.kinds = new Map(state.kinds);
+    m.merges = state.merges || [];
+    m.ambiguous = state.ambiguous || [];
+    return m;
+  }
 }

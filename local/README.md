@@ -4,9 +4,9 @@ Cloaks a whole folder of documents on this computer. Nothing is sent anywhere:
 the code in this folder makes no network calls, and OCR runs locally with
 language data that ships with the app.
 
-Built so far: **feature 1, cloak a folder** (the engine, with no window yet).
-The key, review screen, double checker, restore and the Claude connector come
-next. Until the review screen and double checker exist, treat every cloaked
+Built so far: **feature 1, cloak a folder** and **feature 2, the key** (the
+engine, with no window yet). The review screen, double checker, restore and
+the Claude connector come next. Until the review screen and double checker exist, treat every cloaked
 copy as **not reviewed**.
 
 ## What it does
@@ -93,6 +93,46 @@ saved in UTF-8.
 
 **Not tested yet:** Outlook `.msg` files and scanned Tamil pages (no test
 file), and cloud-only files in OneDrive or Google Drive.
+
+## The key
+
+Each matter has its own folder, kept on the firm's own drive:
+
+| File | What it is |
+|---|---|
+| `matter.cloakkey` | the key: every tag and its real value, encrypted |
+| `matter.cloakkey.bak` | the previous save, also encrypted |
+| `cache/` | what was read from each file, encrypted with the matter key, so unchanged files are not read or put through OCR again |
+| `log.jsonl` | who did what and when. No real values. |
+| `matter.lock` | who has the matter open right now |
+
+- **Encryption:** AES-256-GCM under a random key made for the matter. That key
+  is locked twice, once by the matter password and once by the recovery code
+  (both stretched with scrypt). Either one opens the matter.
+- **The password** is chosen when the matter is created (10 characters or
+  more). It is never written to disk and never sent anywhere.
+- **The recovery code** is shown once when the matter is created. Print it and
+  keep it with the paper file or in the safe.
+- **If both are lost, the key cannot be opened. There is no back door.** The
+  originals are untouched, so the folder can be cloaked again under a new key,
+  but drafts made with the old tags can no longer be restored automatically.
+- **Sharing:** a second lawyer opens the same matter folder and types the
+  password. Only one person can have a matter open at a time.
+- **Adding files** to a matter reuses the key: the same person keeps the same
+  tag, and files keep their output numbers.
+- The matter folder must be outside the documents folder and outside the
+  cloaked folder. Cloak refuses otherwise.
+
+Limits to know about:
+
+- The one-at-a-time lock works on a shared network drive. In a folder synced
+  by OneDrive or Google Drive, two people on two computers can both open the
+  matter before the sync catches up, and one person's changes will end up in
+  a "conflicted copy". Use a real shared drive for matter folders.
+- A lock left behind by a crash clears itself after 12 hours.
+- Anyone who gets a copy of the key file can try passwords against it for as
+  long as they like. A long password is what protects it.
+- While a matter is open, the key is in the computer's memory.
 
 ## What it will miss
 

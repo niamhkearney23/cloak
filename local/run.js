@@ -13,7 +13,7 @@
 
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { appendFile, mkdir, readdir, stat, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { Worker } from 'node:worker_threads';
@@ -95,7 +95,7 @@ const STATUS_WORDS = { cloaked: 'cloaked', manual: 'needs manual check', partial
  * @param onCloudOnly called with the list of not-yet-downloaded files; return
  *                    true to download and include them
  */
-export async function cloakFolder({ folder, outDir, options = {}, user = os.userInfo().username, onProgress = () => {}, onCloudOnly = async () => false, logFile, matter = new Matter({ options }), concurrency }) {
+export async function cloakFolder({ folder, outDir, options = {}, user = os.userInfo().username, onProgress = () => {}, onCloudOnly = async () => false, logFile, matter = new Matter({ options }), session = null, concurrency }) {
   const started = Date.now();
   folder = path.resolve(folder);
   outDir = path.resolve(outDir);
@@ -118,7 +118,19 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   for (const f of refused) trees.set(f, [{ status: 'unreadable', type: path.extname(f.full).slice(1), parts: [], reasons: ['Not downloaded from the cloud yet. Download it (or allow Cloak to) and run again.'], notes: [], rel: f.rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }]);
   await Promise.all(todo.map(async (f) => {
     tell(f, 'reading');
-    const { results, ms } = await readers.run(f.full, f.rel);
+    // With a matter open, an unchanged file is taken from the encrypted
+    // cache instead of being read (and put through OCR) again.
+    let results = null;
+    let ms = 0;
+    if (session) {
+      f.hash = sha256(await readFile(f.full).catch(() => Buffer.alloc(0)));
+      results = await session.cache.get(f.hash);
+      if (results) { f.fromCache = true; results.forEach((r) => { r.rel = f.rel + r.rel.slice(results[0].rel.length); }); }
+    }
+    if (!results) {
+      ({ results, ms } = await readers.run(f.full, f.rel));
+      if (session && f.hash) await session.cache.put(f.hash, results);
+    }
     results[0].readMs = ms;
     trees.set(f, results);
     tell(f, 'read', { ocr: results.some((r) => r.proof.ocr.length > 0), status: results[0].status });
@@ -126,7 +138,13 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   if (readers) await readers.close();
 
   const files = onDisk.flatMap((f) => trees.get(f).map((r) => ({ ...r, disk: f })));
-  files.forEach((f, i) => { f.index = i + 1; f.ocrPages = f.proof.ocr; });
+  files.forEach((f, i) => {
+    f.index = i + 1;
+    f.ocrPages = f.proof.ocr;
+    // A stable fingerprint: the file's contents, plus where it sits inside
+    // its parent for attachments and zip entries.
+    if (f.disk.hash) f.fingerprint = sha256(`${f.disk.hash}|${f.rel.slice(f.disk.rel.length)}`);
+  });
 
   // Learn the whole folder before cloaking any of it. File and folder names
   // are part of what is learned and cloaked ("Affidavit_Ahmad_bin_Ismail").
@@ -157,7 +175,8 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
     // Only a fully read file is written out. Anything partly read, or
     // waiting for a manual check, stays in memory for the review screen.
     if (f.status === 'ok') {
-      f.out = `${String(f.index).padStart(width, '0')}-${f.type}.cloaked.txt`;
+      // In a matter a file keeps its number from run to run.
+      f.out = session && f.fingerprint ? `${String(session.numberFor(f.fingerprint)).padStart(3, '0')}-${f.type}.cloaked.txt` : `${String(f.index).padStart(width, '0')}-${f.type}.cloaked.txt`;
       await writeFile(path.join(outDir, f.out), text, 'utf8');
       f.status = 'cloaked';
     }
@@ -175,7 +194,7 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
     options: matter.options,
     seconds,
     review: 'NOT REVIEWED. These copies have not been through the review screen or the double checker.',
-    totals: { files_on_disk: total, files_including_those_inside_others: files.length, cloaked: count('cloaked'), needs_manual_check: count('manual'), partly_read_blocked: count('partial'), unreadable_blocked: count('unreadable'), archives_opened: count('container'), ocr_files: files.filter((f) => f.proof.ocr.length).length, replaced: byType },
+    totals: { files_on_disk: total, files_including_those_inside_others: files.length, cloaked: count('cloaked'), needs_manual_check: count('manual'), partly_read_blocked: count('partial'), unreadable_blocked: count('unreadable'), archives_opened: count('container'), ocr_files: files.filter((f) => f.proof.ocr.length).length, taken_from_cache: onDisk.filter((f) => f.fromCache).length, replaced: byType },
     // Real file names can contain client names, so files are listed by
     // their cloaked name only. "proof" shows what was found and what was read.
     files: files.map((f) => ({
@@ -184,6 +203,7 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
       name: f.parts.length || f.container ? `${f.name}.${f.type}` : `(file ${f.index}: name not shown because the file was not read)`,
       found_inside: f.inside,
       status: STATUS_WORDS[f.status],
+      taken_from_cache: !!f.disk.fromCache,
       type: f.type,
       proof: { [`${f.proof.unit}_found`]: f.proof.found, [`${f.proof.unit}_read`]: f.proof.read, characters_extracted: f.proof.characters, went_through_ocr: f.proof.ocr, could_not_be_read: f.proof.unread, parts_read: (f.proof.parts || []).map((p) => `${matter.apply(p.part)}: ${p.characters} characters`) },
       reasons: f.reasons,
