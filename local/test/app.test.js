@@ -34,6 +34,11 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     const page = await app.firstWindow();
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
+    // First run: the app asks for the person's full name before anything else.
+    await page.waitForSelector('#full-name');
+    await page.click('#save-name').catch(() => {});
+    await page.fill('#full-name', 'Reviewer Example');
+    await page.click('#save-name');
     await page.waitForSelector('#go-cloak');
 
     // The version is in the window title and on the page; two buttons on the home screen.
@@ -78,7 +83,7 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     assert.equal(await page.locator('#panel tbody tr').count(), 20);
     assert.equal(await page.locator('#panel .chip.ocr').count(), 2);
     assert.equal(await page.locator('#panel .chip.unreadable').count(), 2);
-    assert.equal(await page.locator('#panel .chip.manual').count(), 1);
+    assert.equal(await page.locator('#panel tr:has(.chip.manual)').count(), 1);
 
     // Nothing can be exported yet, and nothing has been written.
     assert.equal(await page.locator('#export').count(), 0);
@@ -96,15 +101,25 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
 
     // Decide everything that is waiting.
     await page.click('[data-tab="unsure"]');
-    while (await page.locator('[data-fine]').count()) await page.locator('[data-fine]').first().click();
+    const clickAll = async (sel) => {
+      for (let n = await page.locator(sel).count(); n > 0; n = await page.locator(sel).count()) {
+        await page.locator(sel).first().click();
+        await page.waitForFunction(([q, before]) => document.querySelectorAll(q).length < before, [sel, n], { timeout: 10000 });
+      }
+    };
+    await clickAll('[data-fine]');
     await page.click('[data-tab="joined"]');
     assert.ok(await page.locator('[data-same]').count() > 0, 'joined names are listed for confirmation');
-    while (await page.locator('[data-same], [data-short-ok]').count()) await page.locator('[data-same], [data-short-ok]').first().click();
+    await clickAll('[data-same], [data-short-ok]');
 
     // A file that needs a manual check: read it, tick the box, approve.
     await page.click('[data-tab="files"]');
     await page.click('[data-check]');
     await page.waitForSelector('.dialog');
+    // Non-Latin text is showing: the safe choice (hide it) is the default, and approving it as it is needs the typed word.
+    assert.equal(await page.isDisabled('#approve'), true);
+    await page.click('#hide-nl');
+    await page.waitForSelector('#checked');
     assert.equal(await page.isDisabled('#approve'), true);
     await page.check('#checked');
     await page.click('#approve');
