@@ -289,7 +289,12 @@
     }
 
     /** Replace every known value (and auto-detected identifiers) with tokens. */
-    cloak(text) {
+    // skipKnown: the desktop tool has already replaced known values (with a
+    // faster search) and only wants the pattern detectors to run.
+    // detectors: a replacement list (the desktop tool supplies faster versions
+    // of the patterns that start with a look-behind; those carry a `forward`
+    // flag and name their two parts __pre and __val).
+    cloak(text, { skipKnown = false, detectors = null } = {}) {
       let out = String(text || '');
 
       // Replaced spans are parked on a shelf and stood in for by a single
@@ -300,7 +305,7 @@
 
       // Known values first, longest first, so "John Smith" wins over "Smith"
       // and a full address wins over the postcode inside it.
-      const all = [...this.entries].sort((a, b) => b.value.length - a.value.length);
+      const all = skipKnown ? [] : [...this.entries].sort((a, b) => b.value.length - a.value.length);
       for (const { token, value, match } of all) {
         if (!match) continue;
         const lowerValue = value === value.toLowerCase();
@@ -312,12 +317,15 @@
       }
 
       // Then identifiers nobody typed in: emails, phone numbers, postcodes...
-      for (const d of DETECTORS) {
-        out = out.replace(d.re, (m) => {
-          if (d.minDigits && m.replace(/\D/g, '').length < d.minDigits) return m;
-          if (d.valid && !d.valid(m)) return m;
-          const token = this.addLiteral(d.type, m);
-          return shelve(`{{${token}}}`);
+      for (const d of detectors || DETECTORS) {
+        out = out.replace(d.re, (...args) => {
+          const m = args[0];
+          const groups = d.forward ? args[args.length - 1] : null;
+          const value = d.forward ? groups.__val : m;
+          if (d.minDigits && value.replace(/\D/g, '').length < d.minDigits) return m;
+          if (d.valid && !d.valid(value)) return m;
+          const token = this.addLiteral(d.type, value);
+          return (d.forward ? groups.__pre : '') + shelve(`{{${token}}}`);
         });
       }
 

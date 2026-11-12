@@ -95,3 +95,16 @@ pre.filetext { white-space: pre-wrap; word-break: break-word; background: #fff; 
 @media (max-width: 720px) { .choices { grid-template-columns: 1fr; } }
 
 select.merge { width: 150px; padding: 4px 8px; border-radius: 99px; font-size: 13px; }
+
+.btn.danger-fill { background: var(--red-fg); border-color: var(--red-fg); }
+.narrow-dialog { width: min(520px, 100%); }
+.more { margin-top: 12px; }
+.more summary { cursor: pointer; color: var(--blue-fg); font-weight: 600; }
+.print-only { display: none; }
+@media print {
+  .bar, .foot, .no-print, .overlay { display: none !important; }
+  .print-only { display: block; }
+  body { display: block; background: #fff; }
+  main { overflow: visible; padding: 0; }
+  .code { border-color: #000; }
+}

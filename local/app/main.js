@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 import { createMatter, openMatter } from '../matter.js';
 import { KEY_FILE_NAME } from '../keyfile.js';
 import { VERSION } from '../version.js';
+import { assertNotSynced, locate } from '../source.js';
+import { formatDate } from '../dates.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,7 +28,15 @@ if (process.env.CLOAK_TEST_USER_DATA) app.setPath('userData', process.env.CLOAK_
 
 let win = null;
 let matter = null; // the open matter session
-const user = os.userInfo().username;
+const login = os.userInfo().username;
+// The person's full name is asked for once and kept on this computer. Sign-offs
+// and logs carry it together with the computer login: "Siti Aminah (siti.a)".
+const profileFile = () => path.join(app.getPath('userData'), 'profile.json');
+let fullName = '';
+async function loadProfile() {
+  try { fullName = String(JSON.parse(await readFile(profileFile(), 'utf8')).fullName || '').trim(); } catch { fullName = ''; }
+}
+const who = () => (fullName ? `${fullName} (${login})` : login);
 // Tests cannot click the system's folder chooser: they supply the answers.
 const testPicks = process.env.CLOAK_TEST_PICKS ? JSON.parse(process.env.CLOAK_TEST_PICKS) : null;
 
@@ -48,7 +58,29 @@ async function remember(dir, password) {
 const needMatter = () => { if (!matter) throw new Error('Open a matter first.'); return matter; };
 
 const api = {
-  info: async () => ({ version: VERSION, user, canRemember: safeStorage.isEncryptionAvailable() }),
+  info: async () => ({ version: VERSION, login, fullName, who: who(), canRemember: safeStorage.isEncryptionAvailable() }),
+
+  setName: async ({ fullName: name }) => {
+    name = String(name || '').replace(/\s+/g, ' ').trim();
+    if (name.split(' ').length < 2 || name.length < 5) throw new Error('Please type your full name (first and last name). It is written next to your sign-offs.');
+    fullName = name;
+    await mkdir(path.dirname(profileFile()), { recursive: true });
+    await writeFile(profileFile(), JSON.stringify({ fullName }), { mode: 0o600 });
+    return { who: who() };
+  },
+
+  // Is a folder in iManage Drive, OneDrive or Google Drive?
+  inspectSource: async ({ folder, manual }) => {
+    const loc = await locate(folder, { manual: manual || null });
+    return { location: loc && { label: loc.label, kind: loc.kind, root: loc.root, workspacePath: loc.relative, how: loc.how } };
+  },
+
+  // The matter folder and the cloaked copies may not sit in a synced folder.
+  checkLocation: async ({ dir, what, folder, manual }) => {
+    const source = folder ? await locate(folder, { manual: manual || null }) : null;
+    await assertNotSynced(dir, what || 'That folder', { source });
+    return {};
+  },
 
   pickFolder: async ({ title }) => {
     if (testPicks) return testPicks.shift() ?? null;
@@ -62,9 +94,9 @@ const api = {
   },
 
   createMatter: async ({ dir, name, password }) => {
-    const made = await createMatter({ dir, name, password, user });
+    const made = await createMatter({ dir, name, password, user: who() });
     matter = made.session;
-    return { recoveryCode: made.recoveryCode, name: matter.name };
+    return { recoveryCode: made.recoveryCode, name: matter.name, createdText: formatDate(new Date()), who: who() };
   },
 
   openMatter: async ({ dir, password, recoveryCode, takeOver, rememberIt, useRemembered }) => {
@@ -73,23 +105,25 @@ const api = {
       if (!blob) throw new Error('No password is remembered for this matter on this computer.');
       password = safeStorage.decryptString(Buffer.from(blob, 'base64'));
     }
-    matter = await openMatter({ dir, password, recoveryCode, takeOver, user });
+    matter = await openMatter({ dir, password, recoveryCode, takeOver, user: who() });
     if (rememberIt && password) await remember(dir, password);
     return { name: matter.name, openedWith: matter.openedWith };
   },
 
   forgetPassword: async ({ dir }) => { await remember(dir, null); return {}; },
 
-  cloak: async ({ folder, options }) => {
+  cloak: async ({ folder, options, manualSource }) => {
     const m = needMatter();
     Object.assign(m.matter.options, options);
     const run = await m.cloakFolder({
       folder,
+      manualSource: manualSource || null,
       onProgress: (p) => win?.webContents.send('progress', p),
       // Files still in the cloud are only downloaded if the person says so.
       onCloudOnly: async (files) => {
         if (testPicks) return false;
-        const r = await dialog.showMessageBox(win, { type: 'question', buttons: ['Download and include them', 'Leave them out'], defaultId: 1, cancelId: 1, message: `${files.length} file(s) are in the cloud and not on this computer yet.`, detail: 'Opening them makes OneDrive or Google Drive download them. Files left out are listed as not read.' });
+        const shown = files.slice(0, 20).join('\n') + (files.length > 20 ? `\n…and ${files.length - 20} more` : '');
+        const r = await dialog.showMessageBox(win, { type: 'question', buttons: ['Download and include them', 'Leave them out'], defaultId: 1, cancelId: 1, message: `${files.length} file${files.length === 1 ? ' is' : 's are'} only placeholders in the synced folder: not downloaded to this computer yet.`, detail: `${shown}\n\nOpening them makes iManage Drive, OneDrive or Google Drive download them. Cloak has not opened them. Files left out are listed as not read, and are not exported.` });
         return r.response === 0;
       },
     });
@@ -98,7 +132,7 @@ const api = {
 
   review: async () => needMatter().reviewData(),
   action: async (action) => needMatter().reviewAction(action),
-  approve: async ({ number }) => needMatter().approveFile(number),
+  approve: async ({ number, confirmation }) => needMatter().approveFile(number, { confirmation }),
   complete: async () => needMatter().completeReview(),
   fileText: async ({ number }) => {
     const f = needMatter().run?.files.find((x) => x.index === number);
@@ -139,7 +173,8 @@ function createWindow() {
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    await loadProfile();
     const ses = electronSession.defaultSession;
     // Only the app's own files load. Everything else is refused.
     ses.webRequest.onBeforeRequest((details, done) => done({ cancel: !/^(?:file|devtools|chrome-devtools):/.test(details.url) }));

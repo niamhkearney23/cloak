@@ -50,6 +50,33 @@ const KEEP = [
   { type: 'PROVISION', option: 'provisions', re: new RegExp(String.raw`\b(?:Akta|Ordinan|Enakmen|Kanun|Kaedah-Kaedah)(?:\s+(?:${W}|dan|dan\s+${W})){1,6}\s+(?:19|20)\d{2}\b`, 'gu') },
 ];
 
+// ---------------------------------------------- patterns that start with a look-behind
+//
+// "(?<=label)number" asks, at every character of a long text, whether a label
+// stands just before it, which is slow (minutes on a big spreadsheet). The same
+// pattern written forwards, "(label)(number)", finds the same things at once.
+// This turns the one into the other.
+function toForward(re) {
+  const src = re.source;
+  if (!src.startsWith('(?<=')) return re;
+  let depth = 0;
+  let inClass = false;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (c === '\\') { i++; continue; }
+    if (inClass) { if (c === ']') inClass = false; continue; }
+    if (c === '[') { inClass = true; continue; }
+    if (c === '(') depth++;
+    else if (c === ')' && --depth === 0) {
+      const rewritten = new RegExp(`(?<__pre>${src.slice(4, i)})(?<__val>${src.slice(i + 1)})`, re.flags);
+      return Object.assign(rewritten, { forward: true });
+    }
+  }
+  return re;
+}
+const forwardOf = (d) => { const re = toForward(d.re); return re.forward ? { ...d, re, forward: true } : d; };
+const FORWARD_DETECTORS = DETECTORS.map(forwardOf);
+
 // ------------------------------------------------------- pattern rules
 
 const fromOld = (type) => DETECTORS.filter((d) => d.type === type);
@@ -89,7 +116,7 @@ function findAddresses(text) {
 }
 
 const LAND_TAIL = String.raw`(?:\s*,?\s*(?:Lot|PT|Plot)\s*(?:No\.?\s*)?\d[\w\/-]*)?(?:\s*,?\s*(?:Seksyen|Section)\s*\d+[A-Z]?)?(?:\s*,?\s*(?:Mukim|Bandar|Pekan|Daerah|District\s+of|Town\s+of|Tempat|Locality\s+of)\s+(?:of\s+)?\p{Lu}[\p{L}]*(?:\s+\p{Lu}[\p{L}]*){0,2})*`;
-const PATTERNS = [
+const RAW_PATTERNS = [
   { type: 'EMAIL', re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
   // Where a photo was taken.
   { type: 'LOCATION', re: /(?<=GPS(?: location)?:\s*)-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+/gi },
@@ -115,6 +142,8 @@ const PATTERNS = [
   { type: 'VEHICLE', re: /\b(?!(?:THE|AND|FOR|NOT|BUT|YOU|ARE|WAS|HAS|HAD|ALL|ANY|CAN|MAY|ITS|OUR|HIS|HER|WHO|ACT|SEC|ROC|ROB|SSM|PDF|USD|SGD|MYR|EUR|GBP|GST|SST|EPF|TNB|KWSP|PTD|PTB|PTG|HSD|HSM|GRN|LOT|NOS|REF|TEL|FAX|BIL|JLN|TMN)\b)[A-Z]{3}\s?\d{3,4}\b(?!\s*[\/-]\d)/g },
   ...fromOld('PHONE').slice(0, 2).map((d) => ({ type: 'PHONE', re: d.re })),
 ];
+
+const PATTERNS = RAW_PATTERNS.map(forwardOf);
 
 // The same number written differently is the same thing.
 const idKey = {
@@ -331,6 +360,74 @@ const SENTINEL_RE = /[\u{f0000}-\u{ffffd}]/gu;
 const HONOUR_MARK = (i) => String.fromCodePoint(0x100000 + i);
 const HONOUR_MARK_RE = /([\u{100000}-\u{10fffd}]) (?:(?=(\{\{(PERSON_\d+)[.}]))|)/gu;
 
+// ------------------------------------------------ fast search for known values
+//
+// Cloak.cloak() tries every known value against the whole text, one after the
+// other. That is fine for a few hundred values and far too slow for thousands.
+// This does the same job in one pass: it finds every place any known value
+// occurs, then accepts them longest value first, skipping any that overlap one
+// already accepted. That is exactly what trying the values one by one does.
+const WORD = /[\p{L}\p{N}_]/u;
+const TOKENS = /[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu;
+const tokenKey = (t) => (WORD.test(t[0]) ? `w${t.toLowerCase()}` : /\s/.test(t[0]) ? ' ' : `p${t === '’' ? "'" : t}`);
+
+function buildTrie(entries) {
+  const root = { next: new Map(), ends: null };
+  entries.forEach((e, order) => {
+    if (e.match === false) return;
+    let node = root;
+    for (const m of e.value.matchAll(TOKENS)) {
+      const key = tokenKey(m[0]);
+      if (!node.next.has(key)) node.next.set(key, { next: new Map(), ends: null });
+      node = node.next.get(key);
+    }
+    (node.ends ||= []).push({ token: e.token, value: e.value, lower: e.value === e.value.toLowerCase(), order });
+  });
+  return root;
+}
+
+function replaceKnown(text, root) {
+  const spans = []; // text that must not be touched: tags already in the text
+  for (const m of text.matchAll(TOKEN_RE)) spans.push([m.index, m.index + m[0].length]);
+  const toks = [...text.matchAll(TOKENS)].map((m) => ({ s: m[0], i: m.index, key: tokenKey(m[0]) }));
+  const found = [];
+  for (let a = 0; a < toks.length; a++) {
+    if (toks[a].key === ' ' || !root.next.has(toks[a].key)) continue;
+    if (a === 0 ? false : toks[a].i > 0 && WORD.test(text[toks[a].i - 1])) continue;
+    let node = root;
+    for (let b = a; b < toks.length; b++) {
+      node = node.next.get(toks[b].key);
+      if (!node) break;
+      if (!node.ends) continue;
+      const end = toks[b].i + toks[b].s.length;
+      if (end < text.length && WORD.test(text[end])) continue;
+      const slice = text.slice(toks[a].i, end);
+      for (const e of node.ends) {
+        // "may" or "wood" in ordinary prose is not the surname May / Wood.
+        if (!e.lower && slice === slice.toLowerCase()) continue;
+        found.push({ start: toks[a].i, end, e });
+      }
+    }
+  }
+  if (!found.length) return text;
+  found.sort((x, y) => y.e.value.length - x.e.value.length || x.e.order - y.e.order || x.start - y.start);
+  const taken = new Uint8Array(text.length);
+  for (const [s0, e0] of spans) taken.fill(1, s0, e0);
+  const keep = [];
+  for (const f of found) {
+    let free = true;
+    for (let k = f.start; k < f.end; k++) if (taken[k]) { free = false; break; }
+    if (!free) continue;
+    taken.fill(1, f.start, f.end);
+    keep.push(f);
+  }
+  keep.sort((x, y) => x.start - y.start);
+  let out = '';
+  let at = 0;
+  for (const f of keep) { out += text.slice(at, f.start) + `{{${f.e.token}}}`; at = f.end; }
+  return out + text.slice(at);
+}
+
 export { Cloak, TOKEN_RE, norm, isStop };
 
 export class Matter {
@@ -343,9 +440,47 @@ export class Matter {
     this.merges = [];            // variants joined under one tag, for review
     this.ambiguous = [];         // short forms that fit more than one person
     this.kinds = new Map();      // base tag -> how it was found
+    this.trie = null;            // fast search over the known values, rebuilt when they change
+    this.wordIdx = null;         // person key words -> person keys (so a big matter is not compared name by name)
+    this.coWordIdx = null;       // the same for companies
     this.keep = [];              // values a reviewer said are not confidential
     this.safeWords = [];         // "not sure" words a reviewer marked as fine
   }
+
+  /** Known values replaced with tags, in one pass. */
+  known(text) {
+    const entries = this.cloak.entries;
+    if (!this.trie || this.trie.cloak !== this.cloak || this.trie.size !== entries.length) {
+      this.trie = { root: buildTrie(entries), cloak: this.cloak, size: entries.length };
+    }
+    return replaceKnown(text, this.trie.root);
+  }
+
+  // Which people (or companies) have a given word in their key. Built when
+  // first needed and kept up to date; review changes reset it.
+  wordIndex() {
+    if (!this.wordIdx) {
+      this.wordIdx = new Map();
+      for (const k of this.people.keys()) for (const w of k.split(' ')) (this.wordIdx.get(w) || this.wordIdx.set(w, new Set()).get(w)).add(k);
+    }
+    return this.wordIdx;
+  }
+  coWordIndex() {
+    if (!this.coWordIdx) {
+      this.coWordIdx = new Map();
+      for (const k of this.companies.keys()) for (const w of k.split(' ')) (this.coWordIdx.get(w) || this.coWordIdx.set(w, new Set()).get(w)).add(k);
+    }
+    return this.coWordIdx;
+  }
+  setPerson(key, base) {
+    this.people.set(key, base);
+    if (this.wordIdx) for (const w of key.split(' ')) (this.wordIdx.get(w) || this.wordIdx.set(w, new Set()).get(w)).add(key);
+  }
+  setCompany(key, base) {
+    this.companies.set(key, base);
+    if (this.coWordIdx) for (const w of key.split(' ')) (this.coWordIdx.get(w) || this.coWordIdx.set(w, new Set()).get(w)).add(key);
+  }
+  resetIndexes() { this.wordIdx = null; this.coWordIdx = null; }
 
   /** Register a value under a new ending of an existing tag. */
   variant(base, value, ending) {
@@ -382,7 +517,7 @@ export class Matter {
       if (!key.includes(' ')) {
         const existing = this.cloak.byValue.get(name.toLowerCase());
         if (existing) return existing.split('.')[0];
-        const owners = [...this.people.entries()].filter(([k]) => k.split(' ').includes(key)).map(([, t]) => t);
+        const owners = [...(this.wordIndex().get(key) || [])].map((k) => this.people.get(k));
         if (owners.length === 1) base = owners[0];
         else if (owners.length > 1) { base = owners[0]; this.ambiguous.push({ token: base, also: owners[1], value_is_short_form: true }); }
         reason = 'short form';
@@ -390,15 +525,20 @@ export class Matter {
         // All its words belong to exactly one longer name: "David Wong" for
         // "David Wong Kah Fai".
         const mine = key.split(' ');
-        const longer = [...new Set([...this.people.entries()].filter(([k]) => { const theirs = k.split(' '); return theirs.length > mine.length && mine.every((w) => theirs.includes(w)); }).map(([, t]) => t))];
+        const longer = [...new Set([...(this.wordIndex().get(mine[0]) || [])].filter((k) => { const theirs = k.split(' '); return theirs.length > mine.length && mine.every((w) => theirs.includes(w)); }).map((k) => this.people.get(k)))];
         if (longer.length === 1) { base = longer[0]; reason = 'short form of a longer name'; }
       }
       if (!base && key.includes(' ')) {
-        // A near-identical spelling of a known full name.
-        for (const [k, t] of this.people) {
-          if (k.split(' ').length !== key.split(' ').length) continue;
-          const allowed = key.length >= 16 ? 2 : key.length >= 9 ? 1 : 0;
-          if (allowed && editDistance(k, key, allowed) <= allowed) { base = t; reason = 'spelling looks like the same person'; break; }
+        // A near-identical spelling of a known full name. With thousands of
+        // people only those sharing a word are compared.
+        const allowed = key.length >= 16 ? 2 : key.length >= 9 ? 1 : 0;
+        const words = key.split(' ');
+        if (allowed) {
+          const near = this.people.size < 400 ? this.people.keys() : new Set(words.flatMap((w) => [...(this.wordIndex().get(w) || [])]));
+          for (const k of near) {
+            if (k.split(' ').length !== words.length) continue;
+            if (editDistance(k, key, allowed) <= allowed) { base = this.people.get(k); reason = 'spelling looks like the same person'; break; }
+          }
         }
       }
     }
@@ -407,13 +547,13 @@ export class Matter {
       if (!this.cloak.byValue.has(name.toLowerCase())) {
         const token = this.variant(base, name, 'ALT');
         this.merges.push({ token, into: base, reason });
-        this.people.set(key, base);
+        this.setPerson(key, base);
         if (key.includes(' ')) this.personParts(base, words);
       }
     } else {
       base = this.cloak.nextToken('PERSON');
       this.cloak.register(base, name);
-      this.people.set(key, base);
+      this.setPerson(key, base);
       this.kinds.set(base, why);
       this.personParts(base, words);
     }
@@ -457,9 +597,12 @@ export class Matter {
     if (!key) return null;
     let base = this.companies.get(key);
     if (!base) {
-      for (const [k, t] of this.companies) {
-        const allowed = key.length >= 16 ? 2 : key.length >= 9 ? 1 : 0;
-        if (allowed && editDistance(k, key, allowed) <= allowed) { base = t; this.merges.push({ token: null, into: t, reason: 'spelling looks like the same company' }); break; }
+      const allowed = key.length >= 16 ? 2 : key.length >= 9 ? 1 : 0;
+      if (allowed) {
+        const near = this.companies.size < 400 ? this.companies.keys() : new Set(key.split(' ').flatMap((w) => [...(this.coWordIndex().get(w) || [])]));
+        for (const k of near) {
+          if (editDistance(k, key, allowed) <= allowed) { base = this.companies.get(k); this.merges.push({ token: null, into: base, reason: 'spelling looks like the same company' }); break; }
+        }
       }
     }
     if (base) {
@@ -467,12 +610,12 @@ export class Matter {
         const token = this.variant(base, name, 'ALT');
         if (!this.merges.some((m) => m.into === base && m.token === null)) this.merges.push({ token, into: base, reason: 'same company written differently' });
       }
-      this.companies.set(key, base);
+      this.setCompany(key, base);
       return base;
     }
     base = this.cloak.nextToken('COMPANY');
     this.cloak.register(base, name);
-    this.companies.set(key, base);
+    this.setCompany(key, base);
     this.kinds.set(base, 'company rule');
     // The name without "Sdn Bhd": matched as written, e.g. "Maju Jaya".
     const short = norm(name.replace(new RegExp(`[\\s,]+(?:\\((?:M|Malaysia|Asia)\\)\\s*)?${CO_END}\\.?$`, 'u'), '').replace(/\s*\((?:M|Malaysia|Asia)\)\s*$/i, ''));
@@ -519,25 +662,48 @@ export class Matter {
   learn(text) {
     const { text: safe } = this.protect(String(text || '').replace(TOKEN_RE, ' '));
     let rest = safe;
-    const blank = (start, end) => { rest = rest.slice(0, start) + rest.slice(start, end).replace(/[^\n]/g, ' ') + rest.slice(end); };
+    // Found values are blanked out so the name rules do not see them. All the
+    // spans found by one rule are blanked together, in one pass over the text.
+    const blank = (spans) => {
+      if (!spans.length) return;
+      spans.sort((x, y) => x[0] - y[0]);
+      let out = '';
+      let at = 0;
+      for (const [start, end] of spans) {
+        if (start < at) continue;
+        out += rest.slice(at, start) + rest.slice(start, end).replace(/[^\n]/g, ' ');
+        at = end;
+      }
+      rest = out + rest.slice(at);
+    };
 
-    for (const span of findAddresses(rest).sort((a, b) => (b.end - b.start) - (a.end - a.start))) {
+    const addresses = [];
+    const claimed = new Uint8Array(rest.length);
+    for (const span of findAddresses(rest).sort((x, y) => (y.end - y.start) - (x.end - x.start))) {
+      // The longest address wins: a street already inside a full address is not tagged again.
+      if (claimed.subarray(span.start, span.end).some(Boolean)) continue;
       const value = rest.slice(span.start, span.end);
       if (!value.trim() || /^\s*$/.test(value)) continue;
       this.addId('ADDRESS', value.replace(/[,.\s]+$/, ''));
-      blank(span.start, span.end);
+      claimed.fill(1, span.start, span.end);
+      addresses.push([span.start, span.end]);
     }
+    blank(addresses);
     for (const p of PATTERNS) {
-      for (const m of [...rest.matchAll(p.re)]) {
-        if (p.valid && !p.valid(m[0])) continue;
-        if (!m[0].trim()) continue;
-        this.addId(p.type, m[0]);
-        blank(m.index, m.index + m[0].length);
+      const spans = [];
+      for (const m of rest.matchAll(p.re)) {
+        const value = p.forward ? m.groups.__val : m[0];
+        const at = p.forward ? m.index + m.groups.__pre.length : m.index;
+        if (p.valid && !p.valid(value)) continue;
+        if (!value.trim()) continue;
+        this.addId(p.type, value);
+        spans.push([at, at + value.length]);
       }
+      blank(spans);
     }
     // Key search: hide what the map already knows, so the name rules only
     // look at what is left.
-    rest = this.cloak.cloak(rest).replace(TOKEN_RE, (m) => ' '.repeat(m.length));
+    rest = this.cloak.cloak(this.known(rest), { skipKnown: true, detectors: FORWARD_DETECTORS }).replace(TOKEN_RE, (m) => ' '.repeat(m.length));
     return findNames(rest);
   }
 
@@ -593,7 +759,7 @@ export class Matter {
     // so a term in those scripts is matched wherever it appears.
     let spaced = lifted;
     for (const e of this.cloak.entries.filter((x) => x.match !== false && NO_SPACES.test(x.value)).sort((x, y) => y.value.length - x.value.length)) spaced = spaced.split(e.value).join(`{{${e.token}}}`);
-    let out = this.cloak.cloak(spaced);
+    let out = this.cloak.cloak(this.known(spaced), { skipKnown: true, detectors: FORWARD_DETECTORS });
     // An honour in front of a person's tag becomes part of the tag;
     // anywhere else it goes back as it was.
     out = out.replace(HONOUR_MARK_RE, (m, c, after, base) => (base ? `{{${this.titleFor(base, norm(honours[c.codePointAt(0) - 0x100000]))}}} ` : honours[c.codePointAt(0) - 0x100000]));
@@ -643,6 +809,7 @@ export class Matter {
     const m = new Matter({ options: { ...state.options, ...options }, key: { entries: state.entries } });
     m.people = new Map(state.people);
     m.companies = new Map(state.companies);
+    m.resetIndexes();
     m.ids = new Map(state.ids);
     m.kinds = new Map(state.kinds);
     m.merges = state.merges || [];

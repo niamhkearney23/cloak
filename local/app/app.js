@@ -12,11 +12,47 @@
     return r.ok;
   }
 
-  const state = { info: null, folder: null, matterDir: null, matter: null, options: { dates: false, amounts: false, provisions: false }, progress: new Map(), review: null, tab: 'unsure', filter: '', busy: false, exported: null };
+  const state = { info: null, folder: null, matterDir: null, matter: null, options: { dates: false, amounts: false, provisions: false }, progress: new Map(), review: null, tab: 'unsure', filter: '', busy: false, exported: null, manualSource: '', location: null, recovery: null, showAll: false };
 
   function show(html) { main.innerHTML = html; main.scrollTop = 0; }
   function on(selector, event, fn) { main.querySelectorAll(selector).forEach((el) => el.addEventListener(event, fn)); }
   const message = (text, kind = 'bad') => `<div class="msg ${kind}" role="alert">${esc(text)}</div>`;
+
+  // A question that needs a deliberate yes. Cancel is the default.
+  function confirmDialog({ title, body, yes, danger }) {
+    return new Promise((resolve) => {
+      const o = document.createElement('div');
+      o.className = 'overlay';
+      o.innerHTML = `<div class="dialog narrow-dialog" role="alertdialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2><p>${body}</p><div class="row"><button class="btn" id="no">Cancel</button><button class="btn primary ${danger ? 'danger-fill' : ''}" id="yes">${esc(yes)}</button></div></div>`;
+      document.body.appendChild(o);
+      const done = (v) => { document.removeEventListener('keydown', onKey); o.remove(); resolve(v); };
+      const onKey = (e) => { if (e.key === 'Escape') done(false); };
+      document.addEventListener('keydown', onKey);
+      o.querySelector('#no').addEventListener('click', () => done(false));
+      o.querySelector('#yes').addEventListener('click', () => done(true));
+      o.querySelector('#no').focus();
+    });
+  }
+  const TYPE_WORDS = { ACCOUNT: 'bank account number', NRIC: 'NRIC or ID number', PASSPORT: 'passport number', PHONE: 'phone number', EMAIL: 'email address', ADDRESS: 'address', CASE: 'court case number', LAND: 'land title', VEHICLE: 'vehicle plate', COMPANY_NO: 'company number', UEN: 'company number', LOCATION: 'location', ID_NUMBER: 'ID or reference number', POSTCODE: 'postcode', NUMBER: 'long number', TAX_NO: 'tax number', CARD: 'card number' };
+
+  // ------------------------------------------------------------------ first run
+
+  function nameScreen(error, then) {
+    show(`<div class="narrow">
+      <h1>What is your full name?</h1>
+      <p class="muted">Cloak writes it next to your computer login on every sign-off and in the log, so it is clear who checked what. It stays on this computer.</p>
+      ${error ? message(error) : ''}
+      <div class="field"><label for="full-name">Full name</label><input type="text" id="full-name" value="${esc(state.info.fullName)}" autocomplete="off" placeholder="e.g. Siti Aminah binti Yusof"></div>
+      <p class="small muted">Computer login: <b>${esc(state.info.login)}</b></p>
+      <button class="btn primary" id="save-name">Save</button>
+    </div>`);
+    const save = async () => {
+      try { const r = await call('setName', { fullName: document.getElementById('full-name').value }); state.info = { ...state.info, ...(await call('info')), who: r.who }; home(); } catch (err) { nameScreen(err.message); }
+    };
+    on('#save-name', 'click', save);
+    on('#full-name', 'keydown', (e) => { if (e.key === 'Enter') save(); });
+    document.getElementById('full-name').focus();
+  }
 
   // ------------------------------------------------------------------ home
 
@@ -30,8 +66,10 @@
         <button class="choice primary" id="go-cloak"><b>Cloak a folder</b>Hide names and numbers in a folder of documents.</button>
         <button class="choice" id="go-restore" disabled><b>Restore a draft</b>Put the real details back into a draft. Coming in a later version.</button>
       </div>
+      <p class="small muted" style="margin-top:26px">Signed in as <b>${esc(state.info.who)}</b> · <button class="link" id="change-name">Change name</button></p>
     </div>`);
     on('#go-cloak', 'click', () => setup());
+    on('#change-name', 'click', () => nameScreen());
   }
 
   // ----------------------------------------------------------------- setup
@@ -45,6 +83,8 @@
         <h2>1. The documents</h2>
         <p class="muted small">The folder is only read. Nothing in it is changed.</p>
         <div class="row"><button class="btn" id="pick-folder">Choose folder…</button>${state.folder ? `<span class="path" id="folder-path">${esc(state.folder)}</span>` : ''}</div>
+        ${state.folder ? `${state.location ? `<div class="msg ok" id="source-note"><b>This folder is in ${esc(state.location.label)}.</b> Cloak only reads it. It will never create, rename, move or change anything there, and nothing of the matter (key, cache or cloaked copies) will be saved there.${state.location.workspacePath ? `<div class="small">Workspace path: <b>${esc(state.location.workspacePath)}</b></div>` : ''}<div class="small">Recognised from: ${esc(state.location.how)}.</div></div>` : ''}
+        <div class="field"><label for="manual-src">Where is this folder?</label><select id="manual-src"><option value="">Work it out automatically</option><option value="imanage" ${state.manualSource === 'imanage' ? 'selected' : ''}>It is on iManage Drive</option><option value="onedrive" ${state.manualSource === 'onedrive' ? 'selected' : ''}>It is in OneDrive</option><option value="googledrive" ${state.manualSource === 'googledrive' ? 'selected' : ''}>It is in Google Drive</option></select><span class="small muted">Choose one if Cloak did not recognise the folder as synced.</span></div>` : ''}
         <p class="small muted" id="keep-note">Dates, amounts and legal provisions are kept unless you tick them:</p>
         <label class="check"><input type="checkbox" data-opt="dates" ${o.dates ? 'checked' : ''}> Also hide dates</label>
         <label class="check"><input type="checkbox" data-opt="amounts" ${o.amounts ? 'checked' : ''}> Also hide amounts of money</label>
@@ -59,10 +99,22 @@
       <div class="row"><button class="btn" id="back">Back</button><button class="btn primary" id="start" ${state.folder && state.matter ? '' : 'disabled'}>Start cloaking</button></div>
     </div>`);
     on('#back', 'click', async () => { await call('closeMatter').catch(() => {}); state.matter = null; home(); });
-    on('#pick-folder', 'click', async () => { const p = await call('pickFolder', { title: 'Choose the folder of documents' }); if (p) { state.folder = p; setup(); } });
+    on('#pick-folder', 'click', async () => {
+      const p = await call('pickFolder', { title: 'Choose the folder of documents' });
+      if (!p) return;
+      state.folder = p;
+      state.manualSource = '';
+      await refreshSource();
+      setup();
+    });
+    on('#manual-src', 'change', async (e) => { state.manualSource = e.target.value; await refreshSource(); setup(); });
     on('#pick-matter', 'click', async () => {
       const p = await call('pickFolder', { title: 'Choose the matter folder (new or existing)' });
       if (!p) return;
+      try {
+        // The key and the matter may not sit where a sync app would upload them.
+        await call('checkLocation', { dir: p, what: 'The matter folder', folder: state.folder, manual: state.manualSource });
+      } catch (err) { return setup(err.message); }
       await call('closeMatter').catch(() => {});
       state.matter = null;
       state.matterDir = p;
@@ -71,6 +123,10 @@
     on('[data-opt]', 'change', (e) => { o[e.target.dataset.opt] = e.target.checked; });
     on('#start', 'click', () => runCloak());
     if (state.matter) matterOpenNote(); else if (state.matterDir) matterForm();
+  }
+
+  async function refreshSource() {
+    try { state.location = (await call('inspectSource', { folder: state.folder, manual: state.manualSource })).location; } catch { state.location = null; }
   }
 
   function matterOpenNote() {
@@ -94,7 +150,7 @@
         try {
           const made = await call('createMatter', { dir: state.matterDir, name: document.getElementById('m-name').value.trim(), password: pw });
           state.matter = { name: made.name };
-          recoveryCode(made.recoveryCode);
+          recoveryCode(made);
         } catch (err) { matterForm(err.message); }
       });
       return;
@@ -127,17 +183,22 @@
     on('#m-switch', 'click', () => matterForm(null, recovery ? 'password' : 'recovery'));
   }
 
-  function recoveryCode(code) {
+  function recoveryCode(made) {
+    state.recovery = made;
     show(`<div class="narrow">
       <h1>Write down the recovery code</h1>
       <p>This code opens the matter if the password is forgotten. <b>It is shown only once.</b> Print it or write it down, and keep it on the paper file or in the safe.</p>
-      <div class="code" id="recovery-code">${esc(code)}</div>
+      <p class="small"><b>Matter:</b> ${esc(made.name || '(no name)')}<br><b>Created:</b> ${esc(made.createdText)} by ${esc(made.who)}</p>
+      <div class="code" id="recovery-code">${esc(made.recoveryCode)}</div>
       <p class="msg warn">If both the password and this code are lost, the key cannot be opened by anyone. There is no back door.</p>
-      <label class="check"><input type="checkbox" id="wrote"> I have written the recovery code down</label>
-      <p><button class="btn primary" id="continue" disabled>Continue</button></p>
+      <p class="print-only small">Do not keep this sheet with the cloaked copies or in the matter folder on the computer.</p>
+      <div class="row no-print"><button class="btn" id="print">Print this page</button></div>
+      <label class="check no-print"><input type="checkbox" id="wrote"> I have written the recovery code down</label>
+      <p class="no-print"><button class="btn primary" id="continue" disabled>Continue</button></p>
     </div>`);
+    on('#print', 'click', () => window.print());
     on('#wrote', 'change', (e) => { document.getElementById('continue').disabled = !e.target.checked; });
-    on('#continue', 'click', () => setup());
+    on('#continue', 'click', () => { state.recovery = null; setup(); });
   }
 
   // --------------------------------------------------------------- running
@@ -161,7 +222,7 @@
       <div class="card white"><table><thead><tr><th>#</th><th>File</th><th>OCR</th><th>Progress</th></tr></thead><tbody id="progress"></tbody></table></div>
     </div>`);
     try {
-      const r = await call('cloak', { folder: state.folder, options: state.options });
+      const r = await call('cloak', { folder: state.folder, options: state.options, manualSource: state.manualSource });
       state.review = r.review;
       state.seconds = r.seconds;
       state.tab = r.review.unsure.length ? 'unsure' : r.review.merges.length + r.review.shortForms.length ? 'joined' : 'files';
@@ -192,6 +253,7 @@
     show(`<div class="wide">
       <h1>Review</h1>
       <p class="muted">${plural(d.files.length, 'file', 'files')} read in ${state.seconds.toFixed(1)} seconds. Nothing has been exported. Check the lists below, then finish the review.</p>
+      ${d.source && d.source.label ? `<p class="small muted">Source: <b>${esc(d.source.kind)}</b>${d.source.workspace_path ? ` · workspace path <b>${esc(d.source.workspace_path)}</b>` : ''}. Read only.</p>` : ''}
       ${error ? message(error) : ''}
       <div class="card">
         <h2>Add a word or name the tool missed</h2>
@@ -205,7 +267,7 @@
       <div id="panel"></div>
       <div class="finish">
         <div id="finish-note">${d.complete
-    ? `<span class="chip cloaked">Review finished</span> by ${esc(d.complete.by)} on ${esc(new Date(d.complete.when).toLocaleString())}. ${plural(willExport, 'file', 'files')} ready to export${blocked ? `, ${blocked} held back` : ''}.`
+    ? `<span class="chip cloaked">Review finished</span> by ${esc(d.complete.by)} on ${esc(d.complete.whenText)}. ${plural(willExport, 'file', 'files')} ready to export${blocked ? `, ${blocked} held back` : ''}.`
     : d.blockers.length ? `<b>Before you can finish:</b> ${d.blockers.map(esc).join(' ')}` : `Everything is decided. ${plural(willExport, 'file', 'files')} will be exported${blocked ? ` and ${blocked} held back` : ''}.`}</div>
         <div class="row">${d.complete ? '<button class="btn primary" id="export">Export cloaked copies…</button>' : `<button class="btn primary" id="finish" ${d.blockers.length ? 'disabled' : ''}>Finish review</button>`}</div>
       </div>
@@ -241,23 +303,56 @@
   function panelJoined() {
     const d = state.review;
     if (!d.merges.length && !d.shortForms.length) return panel('<div class="msg ok">No joined names waiting to be checked.</div>');
+    // Variants that differ only in punctuation or spacing can be confirmed together.
+    // "(M)", a different ending or a different spelling is always its own decision.
+    const groups = new Map();
+    for (const m of d.merges.filter((x) => x.onlyPunctuation)) groups.set(m.into, [...(groups.get(m.into) || []), m]);
+    const grouped = new Set([...groups].filter(([, list]) => list.length >= 2).map(([into]) => into));
+    const single = d.merges.filter((m) => !(m.onlyPunctuation && grouped.has(m.into)));
     panel(`<p class="muted small">The tool gave these the same tag because they look like the same person or company. Confirm each one, or split it off.</p>
-      <table><thead><tr><th>This</th><th>was joined to</th><th>Why</th><th></th></tr></thead><tbody>
-      ${d.merges.map((m, i) => `<tr><td><b>${esc(m.value)}</b><br><span class="tag">{{${esc(m.tag)}}}</span></td><td>${esc(m.intoValue)}<br><span class="tag">{{${esc(m.into)}}}</span></td><td class="small">${esc(m.reason)}</td>
-        <td><div class="row"><button class="btn small primary" data-same="${i}">Same</button><button class="btn small" data-split="${i}">Different: split</button></div></td></tr>`).join('')}
+      ${[...grouped].map((into) => { const list = groups.get(into); return `<div class="card white"><b>${plural(list.length, 'variant', 'variants')} of ${esc(list[0].intoValue)}</b> <span class="tag">{{${esc(into)}}}</span>
+        <div class="small muted">These differ only in punctuation or spacing: ${list.map((m) => esc(m.value)).join(' · ')}</div>
+        <div class="row" style="margin-top:8px"><button class="btn small primary" data-group="${esc(into)}">Confirm all ${list.length} in this group</button></div></div>`; }).join('')}
+      ${single.length || d.shortForms.length ? `<table><thead><tr><th>This</th><th>was joined to</th><th>Why</th><th></th></tr></thead><tbody>
+      ${single.map((m) => `<tr><td><b>${esc(m.value)}</b><br><span class="tag">{{${esc(m.tag)}}}</span></td><td>${esc(m.intoValue)}<br><span class="tag">{{${esc(m.into)}}}</span></td><td class="small">${esc(m.reason)}</td>
+        <td><div class="row"><button class="btn small primary" data-same="${esc(m.tag)}">Same</button><button class="btn small" data-split="${esc(m.tag)}">Different: split</button></div></td></tr>`).join('')}
       ${d.shortForms.map((a, i) => `<tr><td><b>${esc(a.value)}</b><br><span class="tag">{{${esc(a.tag)}}}</span></td><td>${esc(a.belongsToValue)}<br><span class="tag">{{${esc(a.belongsTo)}}}</span></td><td class="small">This short form could also mean ${esc(a.alsoValue)}.</td>
         <td><div class="row"><button class="btn small primary" data-short-ok="${i}">That's right</button><button class="btn small" data-short-split="${i}">Give it its own tag</button></div></td></tr>`).join('')}
-      </tbody></table>`);
-    on('[data-same]', 'click', (e) => act({ type: 'confirmMerge', tag: d.merges[+e.currentTarget.dataset.same].tag }));
-    on('[data-split]', 'click', (e) => act({ type: 'split', tag: d.merges[+e.currentTarget.dataset.split].tag }));
+      </tbody></table>` : ''}`);
+    on('[data-group]', 'click', (e) => act({ type: 'confirmGroup', into: e.currentTarget.dataset.group }));
+    on('[data-same]', 'click', (e) => act({ type: 'confirmMerge', tag: e.currentTarget.dataset.same }));
+    on('[data-split]', 'click', (e) => act({ type: 'split', tag: e.currentTarget.dataset.split }));
     on('[data-short-ok]', 'click', (e) => { const a = d.shortForms[+e.currentTarget.dataset.shortOk]; act({ type: 'confirmShortForm', tag: a.tag, also: a.also }); });
     on('[data-short-split]', 'click', (e) => act({ type: 'split', tag: d.shortForms[+e.currentTarget.dataset.shortSplit].tag }));
+  }
+
+  // "Don't hide" needs a deliberate yes. Numbers and IDs found by a pattern ask twice.
+  async function removeTerm(tag) {
+    const d = state.review;
+    const base = tag.split('.')[0];
+    const term = d.terms.find((t) => t.tag === base);
+    if (!term) return;
+    const form = term.forms.find((f) => f.tag === tag);
+    const value = form?.value ?? term.value;
+    const whole = !tag.includes('.');
+    const yes = await confirmDialog({ title: 'Stop hiding this?', body: `<b>${esc(value)}</b> will be shown as written in ${whole ? 'every place it appears' : 'every place this form of it appears'}, and it will be in the exported copies.`, yes: 'Yes, stop hiding it' });
+    if (!yes) return;
+    let confirmations = 1;
+    if (term.patternRule) {
+      const sure = await confirmDialog({ title: 'Are you sure?', body: `Cloak found <b>${esc(value)}</b> because it looks like a ${esc(TYPE_WORDS[term.type] || 'number or identifier')}. That kind of detail identifies a person or an account. If you go ahead it goes out in the exported copies.`, yes: 'Yes, show it', danger: true });
+      if (!sure) return;
+      confirmations = 2;
+    }
+    act({ type: 'remove', tag, confirmations });
   }
 
   function panelTerms() {
     const d = state.review;
     const q = state.filter.toLowerCase();
-    const list = d.terms.filter((t) => !q || t.tag.toLowerCase().includes(q) || t.forms.some((f) => f.value.toLowerCase().includes(q)));
+    const matching = d.terms.filter((t) => !q || t.tag.toLowerCase().includes(q) || t.forms.some((f) => f.value.toLowerCase().includes(q)));
+    // A big matter can have thousands of terms: show the first part, search for the rest.
+    const LIMIT = 300;
+    const list = state.showAll || matching.length <= LIMIT ? matching : matching.slice(0, LIMIT);
     panel(`<div class="row"><input type="text" id="filter" placeholder="Search by name or tag" value="${esc(state.filter)}" autocomplete="off"></div>
       <table><thead><tr><th>Tag</th><th>Real value</th><th>Found by</th><th class="num">Places</th><th class="num">Files</th><th></th></tr></thead><tbody>
       ${list.map((t) => `<tr>
@@ -269,10 +364,12 @@
         ${state.openTag === t.tag ? t.forms.filter((f) => f.tag !== t.tag).map((f) => `<tr class="sub"><td><span class="tag">{{${esc(f.tag)}}}</span></td><td>${esc(f.value)}</td><td></td><td class="num">${f.places}</td><td class="num">${f.files}</td>
           <td><div class="row"><button class="btn small danger" data-remove="${esc(f.tag)}">Don't hide this form</button><button class="btn small" data-split-form="${esc(f.tag)}">Split off</button></div></td></tr>`).join('') : ''}`).join('')}
       </tbody></table>
+      ${list.length < matching.length ? `<p class="small muted">Showing ${list.length} of ${matching.length.toLocaleString()}. Use the search box, or <button class="link" id="show-all">show them all</button>.</p>` : ''}
       ${d.kept.length ? `<p class="small muted">Left as they are, at a reviewer's request: ${d.kept.map(esc).join(', ')}. To hide one again, add it in the box above.</p>` : ''}`);
     on('#filter', 'input', (e) => { state.filter = e.target.value; const at = e.target.selectionStart; panelTerms(); const f = document.getElementById('filter'); f.focus(); f.setSelectionRange(at, at); });
     on('[data-open]', 'click', (e) => { state.openTag = state.openTag === e.currentTarget.dataset.open ? null : e.currentTarget.dataset.open; panelTerms(); });
-    on('[data-remove]', 'click', (e) => act({ type: 'remove', tag: e.currentTarget.dataset.remove }));
+    on('#show-all', 'click', () => { state.showAll = true; panelTerms(); });
+    on('[data-remove]', 'click', (e) => removeTerm(e.currentTarget.dataset.remove));
     on('[data-split-form]', 'click', (e) => act({ type: 'split', tag: e.currentTarget.dataset.splitForm }));
     on('[data-merge]', 'change', (e) => { if (e.target.value) act({ type: 'merge', from: e.target.dataset.merge, into: e.target.value }); });
   }
@@ -282,9 +379,10 @@
     panel(`<table><thead><tr><th>#</th><th>File</th><th>Result</th><th>Read</th><th></th></tr></thead><tbody>${d.files.map((f) => `<tr>
       <td class="num">${f.number}</td>
       <td>${esc(f.name)}${f.inside ? `<div class="reason">${esc(f.inside)}</div>` : ''}${f.reasons.map((r) => `<div class="reason">${esc(r)}</div>`).join('')}</td>
-      <td><span class="chip ${f.status}">${STATUS[f.status] || esc(f.status)}</span>${f.checkedBy ? `<div class="reason">Checked by ${esc(f.checkedBy.by)}</div>` : ''}</td>
+      <td><span class="chip ${f.status}">${STATUS[f.status] || esc(f.status)}</span>${f.nonLatinShowing ? `<div><span class="chip manual">${f.nonLatinShowing} non-Latin character${f.nonLatinShowing === 1 ? '' : 's'} showing</span></div>` : ''}${f.nonLatinHidden ? '<div><span class="chip cloaked">Non-Latin text hidden</span></div>' : ''}${f.checkedBy ? `<div class="reason">Checked by ${esc(f.checkedBy.by)}<br>${esc(f.checkedBy.whenText)}</div>` : ''}</td>
       <td class="small">${f.found ? `${f.read} of ${f.found} ${esc(f.unit)}<br>` : ''}${f.characters ? `${f.characters.toLocaleString()} characters` : ''}${f.ocr.length ? `<br><span class="chip ocr">OCR</span> ${esc(f.ocr.join(', '))}` : ''}${f.fromCache ? '<br><span class="muted">not re-read (unchanged)</span>' : ''}</td>
-      <td>${f.status === 'manual' && !f.checkedBy ? `<button class="btn small primary" data-check="${f.number}">Check this file…</button>` : f.status === 'cloaked' || f.checkedBy ? `<button class="btn small" data-view="${f.number}">View cloaked text</button>` : ''}</td></tr>`).join('')}</tbody></table>`);
+      <td>${f.nonLatinShowing ? `<div class="row"><button class="btn small primary" data-hide-nl="${f.number}">Hide all non-Latin text</button>` : ''}${f.status === 'manual' && !f.checkedBy ? `<button class="btn small ${f.nonLatinShowing ? '' : 'primary'}" data-check="${f.number}">Check this file…</button>` : f.status === 'cloaked' || f.checkedBy ? `<button class="btn small" data-view="${f.number}">View cloaked text</button>` : ''}${f.nonLatinShowing ? '</div>' : ''}</td></tr>`).join('')}</tbody></table>`);
+    on('[data-hide-nl]', 'click', (e) => act({ type: 'hideNonLatin', number: +e.currentTarget.dataset.hideNl }));
     on('[data-check]', 'click', (e) => viewFile(+e.currentTarget.dataset.check, true));
     on('[data-view]', 'click', (e) => viewFile(+e.currentTarget.dataset.view, false));
   }
@@ -292,6 +390,8 @@
   async function viewFile(number, approve) {
     let f;
     try { f = await call('fileText', { number }); } catch (err) { return review(err.message); }
+    const row = state.review.files.find((x) => x.number === number);
+    const showing = row?.nonLatinShowing || 0;
     const overlay = document.createElement('div');
     overlay.className = 'overlay';
     overlay.innerHTML = `<div class="dialog" role="dialog" aria-modal="true">
@@ -299,20 +399,30 @@
       ${f.reasons.map((r) => message(r, 'warn')).join('')}
       ${approve ? '<p class="small">This is the cloaked text as it would be exported. Read it against the original. If a name is still showing, close this, add it in the box at the top, and come back.</p>' : ''}
       <pre class="filetext">${tags(f.text)}</pre>
-      ${approve ? '<label class="check"><input type="checkbox" id="checked"> I have read this file against the original and it is safe to export</label>' : ''}
-      <div class="row"><button class="btn" id="close">Close</button>${approve ? '<button class="btn primary" id="approve" disabled>Approve this file</button>' : ''}</div></div>`;
+      ${approve && showing ? `<div class="msg warn"><b>${showing} character${showing === 1 ? '' : 's'} of non-Latin text (Chinese, Tamil or similar) ${showing === 1 ? 'is' : 'are'} still showing.</b> Cloak cannot check names in those scripts. The safe choice is to hide every passage: each becomes one tag and is put back when you restore a draft.</div>
+        <div class="row"><button class="btn primary" id="hide-nl">Hide all non-Latin text in this file</button><button class="btn" id="close">Close</button></div>
+        <details class="more"><summary>Approve it with the non-Latin text showing</summary>
+          <p class="small">The text will go out as written. Only do this if you have read it and it identifies no one. Type <b>APPROVE</b> to confirm.</p>
+          <div class="row"><input type="text" id="typed" autocomplete="off" placeholder="APPROVE" style="max-width:200px"><button class="btn" id="approve" disabled>Approve this file</button></div></details>`
+    : approve ? `<label class="check"><input type="checkbox" id="checked"> I have read this file against the original and it is safe to export</label>
+        <div class="row"><button class="btn" id="close">Close</button><button class="btn primary" id="approve" disabled>Approve this file</button></div>`
+      : '<div class="row"><button class="btn" id="close">Close</button></div>'}</div>`;
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
     overlay.querySelector('#close').addEventListener('click', close);
     overlay.querySelector('#checked')?.addEventListener('change', (e) => { overlay.querySelector('#approve').disabled = !e.target.checked; });
+    overlay.querySelector('#typed')?.addEventListener('input', (e) => { overlay.querySelector('#approve').disabled = e.target.value.trim().toUpperCase() !== 'APPROVE'; });
+    overlay.querySelector('#hide-nl')?.addEventListener('click', async () => {
+      try { state.review = await call('action', { type: 'hideNonLatin', number }); close(); viewFile(number, true); } catch (err) { close(); review(err.message); }
+    });
     overlay.querySelector('#approve')?.addEventListener('click', async () => {
-      try { state.review = await call('approve', { number }); close(); review(); } catch (err) { close(); review(err.message); }
+      try { state.review = await call('approve', { number, confirmation: overlay.querySelector('#typed')?.value || '' }); close(); review(); } catch (err) { close(); review(err.message); }
     });
   }
 
   call('info').then((info) => {
     state.info = info;
     document.getElementById('version').textContent = `Version ${info.version}`;
-    home();
+    if (info.fullName) home(); else nameScreen();
   });
 })();

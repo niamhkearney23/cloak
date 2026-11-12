@@ -21,15 +21,20 @@ import { KEY_FILE_NAME, cacheCrypto, createKeyFile, openKeyFile, replaceRecovery
 import { buildReport, cloakFolder, renderFile, writeOutput } from './run.js';
 import * as review from './review.js';
 import { VERSION } from './version.js';
+import { formatDate } from './dates.js';
+import { NON_LATIN_CHARS } from './run.js';
+import { assertNotSynced, locate } from './source.js';
 
 const LOCK_NAME = 'matter.lock';
+export const APPROVE_WORD = 'APPROVE';
 // A lock older than this is treated as left behind by a crash.
 const STALE_LOCK_MS = 12 * 60 * 60 * 1000;
 
 const inside = (child, parent) => { const rel = path.relative(parent, child); return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel)); };
 
 async function writeLog(dir, entry) {
-  await appendFile(path.join(dir, 'log.jsonl'), `${JSON.stringify({ t: new Date().toISOString(), cloak_version: VERSION, ...entry })}\n`, 'utf8');
+  // `t` is for sorting; `when` is how a person reads it.
+  await appendFile(path.join(dir, 'log.jsonl'), `${JSON.stringify({ t: new Date().toISOString(), when: formatDate(new Date()), cloak_version: VERSION, ...entry })}\n`, 'utf8');
 }
 
 async function takeLock(dir, user, { takeOver = false } = {}) {
@@ -44,7 +49,7 @@ async function takeLock(dir, user, { takeOver = false } = {}) {
       const held = JSON.parse(await readFile(file, 'utf8').catch(() => '{}'));
       const stale = !held.since || Date.now() - Date.parse(held.since) > STALE_LOCK_MS;
       if (!stale && !takeOver) {
-        throw Object.assign(new Error(`${held.user} has this matter open on ${held.computer} (since ${held.since}). Only one person can work on a matter at a time.`), { code: 'LOCKED', heldBy: held });
+        throw Object.assign(new Error(`${held.user} has this matter open on ${held.computer} (since ${formatDate(held.since)}). Only one person can work on a matter at a time.`), { code: 'LOCKED', heldBy: held });
       }
       await writeLog(dir, { by: user, action: stale ? 'stale-lock-cleared' : 'lock-taken-over', from: held.user || 'unknown' });
       await rm(file, { force: true });
@@ -62,7 +67,8 @@ class Session {
     this.files = contents.files || {};       // fingerprint of a file -> its number and status
     this.nextNumber = contents.nextNumber || 1;
     // Review state: who signed the review off, and files a person checked by hand.
-    this.review = contents.review || { complete: null, checked: {} };
+    this.review = { complete: null, checked: {}, hideNonLatin: {}, ...contents.review };
+    this.sources = contents.sources || []; // where documents came from, kept in the encrypted key
     this.run = null; // the files of the current run, held in memory only
     this.matter = Matter.fromState(contents.state);
     this.crypto = cacheCrypto(dataKey);
@@ -70,7 +76,7 @@ class Session {
   }
 
   contents() {
-    return { name: this.name, created: this.created, state: this.matter.state(), files: this.files, nextNumber: this.nextNumber, review: this.review };
+    return { name: this.name, created: this.created, state: this.matter.state(), files: this.files, nextNumber: this.nextNumber, review: this.review, sources: this.sources };
   }
 
   log(action, details = {}) {
@@ -109,24 +115,64 @@ class Session {
    * Nothing is written out: the cloaked text stays in memory until the review
    * is signed off and the copies are exported.
    */
-  async cloakFolder({ folder, ...rest }) {
+  async cloakFolder({ folder, manualSource = null, ...rest }) {
     folder = path.resolve(folder);
     if (inside(this.dir, folder)) throw new Error('Keep the matter folder (with the key) outside the documents folder.');
+    // Is the folder in iManage Drive, OneDrive or Google Drive? It is then a
+    // read-only source, and nothing of the matter may sit in that location.
+    const location = await locate(folder, { manual: manualSource });
+    await assertNotSynced(this.dir, 'The matter folder', { source: location });
     const before = JSON.stringify(this.matter.state().entries);
     const known = new Set(Object.keys(this.files));
-    const run = await cloakFolder({ folder, user: this.user, matter: this.matter, session: this, write: false, ...rest });
+    const source = this.describeSource(location);
+    const run = await cloakFolder({ folder, user: this.user, matter: this.matter, session: this, write: false, source: source.cloaked, ...rest });
+    run.location = location;
+    run.source = source;
     this.run = run;
+    this.sources.push({ when: run.report.when, by: this.user, kind: source.cloaked.kind, folder, workspace_path: location?.relative || null, how_recognised: location?.how || null });
+    this.sources = this.sources.slice(-50);
     for (const f of run.files) {
       f.approved = f.fingerprint ? this.review.checked[f.fingerprint] : undefined;
+      f.hideNonLatin = !!(f.fingerprint && this.review.hideNonLatin[f.fingerprint]);
       if (f.fingerprint && this.files[f.fingerprint]) Object.assign(this.files[f.fingerprint], { status: f.status, type: f.type, last_cloaked: run.report.when });
     }
     // New files or new terms mean the review has to be signed off again.
     const changed = before !== JSON.stringify(this.matter.state().entries) || run.files.some((f) => f.fingerprint && f.cloaked && !known.has(f.fingerprint));
     if (changed) this.review.complete = null;
-    this.reapply();
+    // Files the reviewer asked to have their non-Latin text hidden are cloaked again.
+    for (const f of run.files) if (f.hideNonLatin) renderFile(this.matter, f);
     await this.save();
     await this.log('cloak-folder', { ...run.report.totals, seconds: run.seconds });
     return run;
+  }
+
+  /**
+   * What the report says about where the documents came from. The workspace
+   * path usually holds client and matter names, so the report carries it as
+   * tags; the real path is kept in the encrypted key and shown in the app.
+   */
+  describeSource(location) {
+    if (!location) return { cloaked: { kind: 'ordinary folder', read_only: true }, real: { kind: 'ordinary folder' } };
+    const generic = /^(?:workspace|workspaces|documents|emails|email|correspondence|pleadings|folders?|my drive|shared drives|inbox|sent|drafts|attachments)$/i;
+    const m = this.matter;
+    const segments = location.relative ? location.relative.split('/') : [];
+    const cloaked = segments.map((seg) => {
+      if (generic.test(seg)) return seg;
+      const have = m.cloak.entries.find((e) => /^PATH_\d+$/.test(e.token) && e.value === seg);
+      const token = have?.token || m.cloak.register(m.cloak.nextToken('PATH'), seg, { match: false });
+      m.kinds.set(token, 'source folder path');
+      return `{{${token}}}`;
+    });
+    return {
+      cloaked: {
+        kind: `${location.label} folder`,
+        read_only: true,
+        recognised_from: location.how.replace(/"[^"]*"/, '"…"'),
+        workspace_path: cloaked.join('/'),
+        note: 'The real path is kept in the encrypted matter key.',
+      },
+      real: { kind: `${location.label} folder`, label: location.label, root: location.root, workspace_path: location.relative, how: location.how },
+    };
   }
 
   /** Re-cloak every file in memory after the name map changed. */
@@ -150,11 +196,13 @@ class Session {
         number: f.index, name: f.rel, inside: f.inside, type: f.type, status: f.status, output: f.out || null,
         reasons: f.reasons, ocr: f.proof.ocr, fromCache: !!f.disk?.fromCache, characters: f.proof.characters,
         found: f.proof.found, read: f.proof.read, unit: f.proof.unit, notSure: f.unsure?.length || 0,
-        checkedBy: f.approved || null, willExport: f.status === 'cloaked' || (f.status === 'manual' && !!f.approved),
+        nonLatinShowing: (f.cloaked?.match(NON_LATIN_CHARS) || []).length, nonLatinHidden: !!f.hideNonLatin,
+        checkedBy: f.approved ? { ...f.approved, whenText: formatDate(f.approved.when) } : null, willExport: f.status === 'cloaked' || (f.status === 'manual' && !!f.approved),
       })),
       waitingForManualCheck: waiting.length,
       blockers,
-      complete: this.review.complete,
+      complete: this.review.complete && { ...this.review.complete, whenText: formatDate(this.review.complete.when) },
+      source: this.run?.source?.real || null,
     };
   }
 
@@ -163,10 +211,23 @@ class Session {
     const m = this.matter;
     const done = {
       add: () => review.addTerm(m, action.text, action.kind),
-      remove: () => review.removeTerm(m, action.tag),
+      remove: () => {
+        // "Don't hide" must be confirmed; twice for numbers and IDs found by a pattern rule.
+        const term = this.reviewData().terms.find((t) => t.tag === action.tag.split('.')[0]);
+        const needed = term?.patternRule ? 2 : 1;
+        if ((action.confirmations || 0) < needed) throw Object.assign(new Error(`Confirm ${needed === 2 ? 'twice ' : ''}before this stops being hidden.`), { code: 'CONFIRM', needed });
+        review.removeTerm(m, action.tag);
+      },
       merge: () => review.mergeTags(m, action.from, action.into),
       split: () => review.splitForm(m, action.tag),
       confirmMerge: () => review.confirmMerge(m, action.tag),
+      confirmGroup: () => review.confirmGroup(m, action.into),
+      hideNonLatin: () => {
+        const f = this.run?.files.find((x) => x.index === action.number);
+        if (!f?.fingerprint) throw new Error('That file is not in this run.');
+        f.hideNonLatin = true;
+        this.review.hideNonLatin[f.fingerprint] = true;
+      },
       confirmShortForm: () => review.confirmShortForm(m, action.tag, action.also),
       fine: () => review.markFine(m, action.text),
     }[action.type];
@@ -176,20 +237,26 @@ class Session {
     this.reapply();
     await this.save();
     // The log records what kind of change was made, never the value.
-    await this.log('review-change', { change: action.type, tag: action.tag || action.into || undefined });
+    await this.log('review-change', { change: action.type, tag: action.tag || action.into || undefined, file_number: action.number ? this.files[this.run.files.find((x) => x.index === action.number)?.fingerprint]?.number : undefined });
     return this.reviewData();
   }
 
   /** A person has read a file that needed a manual check and accepts it. */
-  async approveFile(number) {
+  async approveFile(number, { confirmation } = {}) {
     const f = this.run?.files.find((x) => x.index === number);
     if (!f) throw new Error('That file is not in this run.');
     if (f.status !== 'manual') throw new Error(f.status === 'cloaked' ? 'That file does not need a manual check.' : 'That file could not be fully read, so it cannot be approved. Fix the file and run again.');
-    f.approved = { by: this.user, when: new Date().toISOString(), reasons: f.reasons };
+    // Text in a script the tool cannot check is still showing: a tick is
+    // not enough, the reviewer has to type the word.
+    const showing = (f.cloaked?.match(NON_LATIN_CHARS) || []).length;
+    if (showing && String(confirmation || '').trim().toUpperCase() !== APPROVE_WORD) {
+      throw Object.assign(new Error(`This file still shows ${showing} character(s) of non-Latin text. Hide it, or type ${APPROVE_WORD} to approve the file as it is.`), { code: 'TYPE_TO_CONFIRM' });
+    }
+    f.approved = { by: this.user, when: new Date().toISOString(), reasons: f.reasons, nonLatinShowing: showing };
     this.review.checked[f.fingerprint] = f.approved;
     if (!f.out) f.out = `${String(this.numberFor(f.fingerprint)).padStart(3, '0')}-${f.type}.cloaked.txt`;
     await this.save();
-    await this.log('file-checked-by-hand', { file_number: this.files[f.fingerprint].number });
+    await this.log('file-checked-by-hand', { file_number: this.files[f.fingerprint].number, non_latin_text_showing: showing });
     return this.reviewData();
   }
 
@@ -213,10 +280,11 @@ class Session {
     if (!this.review.complete) throw new Error('Nothing can be exported until the review is finished.');
     outDir = path.resolve(outDir);
     if (inside(this.dir, outDir) || inside(outDir, this.dir)) throw new Error('The cloaked copies must not go into the matter folder. The key must never sit with the cloaked files.');
+    await assertNotSynced(outDir, 'The folder for the cloaked copies', { source: this.run.location });
     const files = this.run.files;
     const allowed = (f) => f.status === 'cloaked' || (f.status === 'manual' && !!f.approved);
-    const note = `Reviewed by ${this.review.complete.by} on ${this.review.complete.when}. NOT YET DOUBLE-CHECKED.`;
-    const report = buildReport({ matter: this.matter, files, total: this.run.total, user: this.user, seconds: this.run.seconds, cached: this.run.cached, review: note });
+    const note = `Reviewed by ${this.review.complete.by} on ${formatDate(this.review.complete.when)}. NOT YET DOUBLE-CHECKED.`;
+    const report = buildReport({ matter: this.matter, files, total: this.run.total, user: this.user, seconds: this.run.seconds, cached: this.run.cached, source: this.run.source.cloaked, review: note });
     const written = await writeOutput(outDir, files, report, `Cloak ${VERSION}\n\n${note}\nThe double checker has not been run on these copies.\n`, 'REVIEWED-NOT-DOUBLE-CHECKED.txt', allowed);
     await this.log('exported', { files_written: written.length, files_held_back: files.filter((f) => f.cloaked && !allowed(f)).length });
     return { outDir, written, heldBack: files.filter((f) => !f.container && !allowed(f)).length };
@@ -256,6 +324,8 @@ class Session {
  */
 export async function createMatter({ dir, name = '', password, options = {}, user = os.userInfo().username, kdf }) {
   dir = path.resolve(dir);
+  // The key must never be saved where a sync app would upload it.
+  await assertNotSynced(dir, 'The matter folder');
   await mkdir(dir, { recursive: true });
   if ((await readdir(dir)).includes(KEY_FILE_NAME)) throw new Error('This folder already holds a matter. Open it instead.');
   const contents = { name, created: new Date().toISOString(), state: new Matter({ options }).state(), files: {}, nextNumber: 1 };
@@ -268,6 +338,7 @@ export async function createMatter({ dir, name = '', password, options = {}, use
 /** Open an existing matter with its password or its recovery code. */
 export async function openMatter({ dir, password, recoveryCode, user = os.userInfo().username, takeOver = false }) {
   dir = path.resolve(dir);
+  await assertNotSynced(dir, 'This matter folder');
   await stat(path.join(dir, KEY_FILE_NAME)).catch(() => { throw new Error('There is no matter key in this folder.'); });
   let opened;
   try {

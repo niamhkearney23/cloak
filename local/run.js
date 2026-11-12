@@ -12,13 +12,14 @@
 //   pass 2  write a cloaked copy of each fully read file with the shared map
 
 import { createHash } from 'node:crypto';
-import { execFile } from 'node:child_process';
 import { appendFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { Matter } from './engine.js';
 import { VERSION } from './version.js';
+import { formatDate } from './dates.js';
+import { findStubs } from './source.js';
 
 const TAG = /\{\{([A-Z][A-Z0-9_]*?)_(\d+)(?:\.[A-Z0-9_]+)?(?:\|[A-Z]+)?\}\}/g;
 
@@ -32,24 +33,11 @@ async function walk(dir, skip, out = []) {
   return out;
 }
 
-/**
- * True for a file that sits in a synced cloud folder (OneDrive, Google Drive)
- * but has not been downloaded to this computer yet. Opening such a file makes
- * the sync app download it, so the user is asked first.
- * Windows: the "offline" attribute. Mac: a file with a size but no blocks.
- */
-export async function isCloudOnly(file) {
-  const s = await stat(file);
-  if (process.platform === 'win32') {
-    return new Promise((resolve) => {
-      execFile('attrib', [file], { windowsHide: true }, (err, out) => resolve(!err && /^[A-Z ]*O[A-Z ]*\s/.test(String(out).slice(0, 20))));
-    });
-  }
-  return s.size > 0 && s.blocks === 0;
-}
-
 function pool(size) {
-  const workers = Array.from({ length: size }, () => new Worker(new URL('./extract-worker.js', import.meta.url)));
+  // The cores are shared out: with one reader (say, one big scanned PDF) it
+  // gets all of them for OCR; with several readers each gets its share.
+  const ocrThreads = Number(process.env.CLOAK_OCR_THREADS) || Math.max(1, Math.floor(os.availableParallelism() / size));
+  const workers = Array.from({ length: size }, () => new Worker(new URL('./extract-worker.js', import.meta.url), { workerData: { ocrThreads } }));
   const waiting = new Map();
   const idle = [...workers];
   const queue = [];
@@ -95,29 +83,36 @@ const STATUS_WORDS = { cloaked: 'cloaked', manual: 'needs manual check', partial
  * @param onCloudOnly called with the list of not-yet-downloaded files; return
  *                    true to download and include them
  */
-export async function cloakFolder({ folder, outDir, options = {}, user = os.userInfo().username, onProgress = () => {}, onCloudOnly = async () => false, logFile, matter = new Matter({ options }), session = null, write = true, concurrency }) {
+export async function cloakFolder({ folder, outDir, options = {}, user = os.userInfo().username, onProgress = () => {}, onCloudOnly = async () => false, logFile, matter = new Matter({ options }), session = null, write = true, concurrency, detectStubs = null, source = null }) {
   const started = Date.now();
+  const timing = {};
+  const lap = (name, t0) => { timing[name] = (Date.now() - t0) / 1000; };
   folder = path.resolve(folder);
   if (write) {
+    // The folder of documents is only ever read. Nothing is created in it.
     outDir = path.resolve(outDir);
-    if (outDir === folder) throw new Error('The cloaked copies must go to a different folder from the originals.');
+    const rel = path.relative(folder, outDir);
+    if (rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel))) throw new Error('The cloaked copies must go outside the documents folder. Cloak never saves anything in the folder it reads.');
   }
-  const onDisk = (await walk(folder, write ? outDir : null)).map((full, i) => ({ index: i + 1, full, rel: path.relative(folder, full).split(path.sep).join('/') }));
+  const onDisk = (await walk(folder, null)).map((full, i) => ({ index: i + 1, full, rel: path.relative(folder, full).split(path.sep).join('/') }));
   const total = onDisk.length;
   const tell = (f, stage, extra = {}) => onProgress({ index: f.index, total, file: f.rel, stage, ...extra });
 
-  // Files still in the cloud: ask before anything is downloaded.
-  const cloud = [];
-  for (const f of onDisk) if (await isCloudOnly(f.full)) cloud.push(f);
+  // Files that are only stubs (not downloaded yet) are listed, and nothing
+  // opens them until the person says so: opening one makes the sync app
+  // download it.
+  const stubs = await findStubs(folder, onDisk.map((f) => f.full), { detect: detectStubs });
+  const cloud = onDisk.filter((f) => stubs.has(f.full));
   const refused = new Set(cloud.length && !(await onCloudOnly(cloud.map((f) => f.rel))) ? cloud : []);
 
+  const tRead = Date.now();
   // Pass 1: read in parallel. One file on disk can turn into several files
   // (a zip, an email with attachments).
   const todo = onDisk.filter((f) => !refused.has(f));
   const size = Math.max(1, Math.min(concurrency || os.availableParallelism() - 1, 6, todo.length));
   const readers = todo.length ? pool(size) : null;
   const trees = new Map();
-  for (const f of refused) trees.set(f, [{ status: 'unreadable', type: path.extname(f.full).slice(1), parts: [], reasons: ['Not downloaded from the cloud yet. Download it (or allow Cloak to) and run again.'], notes: [], rel: f.rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }]);
+  for (const f of refused) trees.set(f, [{ status: 'unreadable', type: path.extname(f.full).slice(1), parts: [], reasons: ['Not downloaded yet (it is only a placeholder in the synced folder). Cloak did not open it. Download it, or allow Cloak to, and run again.'], notes: [], rel: f.rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }]);
   await Promise.all(todo.map(async (f) => {
     tell(f, 'reading');
     // With a matter open, an unchanged file is taken from the encrypted
@@ -139,6 +134,7 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   }));
   if (readers) await readers.close();
 
+  lap('reading_and_ocr', tRead);
   const files = onDisk.flatMap((f) => trees.get(f).map((r) => ({ ...r, disk: f })));
   files.forEach((f, i) => {
     f.index = i + 1;
@@ -152,11 +148,16 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   // are part of what is learned and cloaked ("Affidavit_Ahmad_bin_Ismail").
   const readable = files.filter((f) => f.parts.length);
   const whole = (f) => [nameText(f), ...f.parts.map((p) => p.text)].join('\n\n');
+  const tLearn = Date.now();
   const candidates = [];
   for (const f of readable) candidates.push(...matter.learn(whole(f)));
   for (const f of files) if (!f.parts.length) candidates.push(...matter.learn(nameText(f)));
+  lap('finding_names', tLearn);
+  const tReg = Date.now();
   matter.register(candidates);
   for (const f of readable) matter.learnDefinitions(whole(f));
+  lap('merging_variants', tReg);
+  const tApply = Date.now();
 
   // Pass 2: cloak every file with the shared map.
   const width = String(files.length).length;
@@ -171,8 +172,9 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
     if (f.parts.length && !f.inside) tell(f.disk, 'cloaked', { ocr: f.proof.ocr.length > 0, status: f.status });
   }
 
+  lap('cloaking_and_checking', tApply);
   const seconds = (Date.now() - started) / 1000;
-  const report = buildReport({ matter, files, total, user, seconds, cached: onDisk.filter((f) => f.fromCache).length });
+  const report = buildReport({ matter, files, total, user, seconds, cached: onDisk.filter((f) => f.fromCache).length, source });
   // Without a matter (and its review screen) copies are written straight
   // away, marked as not reviewed. With a matter nothing is written until the
   // review is finished and the copies are exported.
@@ -182,10 +184,10 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   // folder is recorded as a fingerprint, not a path.
   if (logFile) {
     await mkdir(path.dirname(logFile), { recursive: true });
-    await appendFile(logFile, `${JSON.stringify({ t: report.when, cloak_version: VERSION, by: user, action: 'cloak-folder', folder: sha256(folder).slice(0, 16), ...report.totals, seconds })}\n`, 'utf8');
+    await appendFile(logFile, `${JSON.stringify({ t: report.when, when: report.when_text, cloak_version: VERSION, by: user, action: 'cloak-folder', folder: sha256(folder).slice(0, 16), ...report.totals, seconds })}\n`, 'utf8');
   }
 
-  return { matter, files, report, seconds, outDir, total, cached: onDisk.filter((f) => f.fromCache).length };
+  return { matter, files, report, seconds, timing, outDir, total, cached: onDisk.filter((f) => f.fromCache).length };
 }
 
 export const nameText = (f) => f.rel.replace(/\.[A-Za-z0-9]{1,5}(?=\/|$)/g, '').replace(/[_/\\]+/g, ' ');
@@ -196,14 +198,27 @@ export function renderFile(matter, f, safeWords = []) {
   if (!f.parts.length) return;
   const plainLabel = (p) => f.parts.length === 1 && !p.ocr && /^(?:Text|Body|Email|Page 1)$/.test(p.label);
   // Labels can carry names too (a sheet called after a client).
-  const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${matter.apply(p.label)}]\n`) + matter.apply(p.text)).join('\n\n');
+  // "Hide all non-Latin text in this file": each passage becomes one tag.
+  const prepare = (t) => (f.hideNonLatin ? hidePassages(matter, t) : t);
+  const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${matter.apply(p.label)}]\n`) + matter.apply(prepare(p.text))).join('\n\n');
   f.cloaked = `File: ${f.name}.${f.type}\n\n${body}\n`;
   f.unsure = matter.unsure(f.cloaked, safeWords);
   f.tags = {};
   for (const m of f.cloaked.matchAll(TAG)) f.tags[`${m[1]}_${m[2]}`] = (f.tags[`${m[1]}_${m[2]}`] || 0) + 1;
 }
 
-export function buildReport({ matter, files, total, user, seconds, cached = 0, review = 'NOT REVIEWED. These copies have not been through the review screen or the double checker.' }) {
+// A passage is a run of non-Latin writing on one line, with the punctuation,
+// spaces and digits inside it.
+const SCRIPT = String.raw`\p{Script=Han}\p{Script=Tamil}\p{Script=Arabic}\p{Script=Devanagari}\p{Script=Thai}\p{Script=Hangul}\p{Script=Hiragana}\p{Script=Katakana}`;
+const PASSAGE = new RegExp(`[${SCRIPT}](?:[${SCRIPT}\\p{P}\\p{Zs}\\p{N}\\p{M}\\u3000-\\u303f\\uff00-\\uffef]*[${SCRIPT}\\p{M}\\u3000-\\u303f\\uff00-\\uffef])?`, 'gu');
+export const NON_LATIN_CHARS = new RegExp(`[${SCRIPT}]`, 'gu');
+
+/** Replace every non-Latin passage with one {{PASSAGE_n}} tag, kept in the key so it can be restored. */
+export function hidePassages(matter, text) {
+  return text.replace(PASSAGE, (m) => `{{${matter.cloak.addLiteral('PASSAGE', m)}}}`);
+}
+
+export function buildReport({ matter, files, total, user, seconds, cached = 0, source = null, review = 'NOT REVIEWED. These copies have not been through the review screen or the double checker.' }) {
   const count = (st) => files.filter((f) => f.status === st).length;
   const byType = {};
   for (const f of files) for (const [tag, n] of Object.entries(f.tags || {})) { const t = tag.replace(/_\d+$/, ''); byType[t] = (byType[t] || 0) + n; }
@@ -213,7 +228,10 @@ export function buildReport({ matter, files, total, user, seconds, cached = 0, r
   return {
     cloak_version: VERSION,
     when: new Date().toISOString(),
+    when_text: formatDate(new Date()),
     by: user,
+    // Where the documents came from. The folder is only ever read.
+    source: source || { kind: 'ordinary folder', read_only: true },
     options: matter.options,
     seconds,
     review,
@@ -230,7 +248,8 @@ export function buildReport({ matter, files, total, user, seconds, cached = 0, r
       type: f.type,
       proof: { [`${f.proof.unit}_found`]: f.proof.found, [`${f.proof.unit}_read`]: f.proof.read, characters_extracted: f.proof.characters, went_through_ocr: f.proof.ocr, could_not_be_read: f.proof.unread.map(safe), parts_read: (f.proof.parts || []).map((p) => `${matter.apply(p.part)}: ${p.characters} characters`) },
       reasons: f.reasons.map(safe),
-      checked_by_hand: f.approved ? { by: f.approved.by, when: f.approved.when } : undefined,
+      checked_by_hand: f.approved ? { by: f.approved.by, when: f.approved.when, with_non_latin_text_showing: !!f.approved.nonLatinShowing } : undefined,
+      non_latin_text_hidden: f.hideNonLatin ? true : undefined,
       tags: f.tags || {},
       not_sure_count: f.unsure?.length || 0,
     })),

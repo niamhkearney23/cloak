@@ -1,7 +1,10 @@
 // Runs in a worker thread: reads files one at a time so several cores can
 // work on a folder at once. Text goes back to the main thread in memory only.
-import { parentPort } from 'node:worker_threads';
-import { extractTree, closeOcr } from './extract.js';
+import { parentPort, workerData } from 'node:worker_threads';
+import { extractTree, closeOcr, setOcrThreads } from './extract.js';
+
+// How many OCR workers this reader may run (the runner shares the cores out).
+setOcrThreads(workerData?.ocrThreads || 1);
 
 parentPort.on('message', async (msg) => {
   if (msg.type === 'close') {

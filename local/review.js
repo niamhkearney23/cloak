@@ -45,6 +45,7 @@ export function addTerm(matter, text, kind = 'OTHER') {
  * picked up again on the next run.
  */
 export function removeTerm(matter, token) {
+  matter.resetIndexes();
   const whole = !token.includes('.');
   const gone = matter.cloak.entries.filter((e) => (whole ? baseOf(e.token) === token : e.token === token));
   if (!gone.length) throw new Error('That tag is not in this matter.');
@@ -60,6 +61,7 @@ export function removeTerm(matter, token) {
 
 /** Two tags are the same person or company: fold `from` into `into`. */
 export function mergeTags(matter, from, into) {
+  matter.resetIndexes();
   from = baseOf(from);
   into = baseOf(into);
   if (from === into) throw new Error('Those are already the same tag.');
@@ -86,6 +88,7 @@ export function mergeTags(matter, from, into) {
 
 /** A form that was joined to a tag is really someone else: give it its own tag. */
 export function splitForm(matter, token) {
+  matter.resetIndexes();
   if (!token.includes('.')) throw new Error('Pick one form of the name to split off.');
   const entries = matter.cloak.toJSON().entries;
   const entry = entries.find((e) => e.token === token);
@@ -101,6 +104,19 @@ export function splitForm(matter, token) {
   matter.merges = matter.merges.filter((m) => m.token !== token);
   matter.splits = [...(matter.splits || []), { value: entry.value, from: baseOf(token), to: fresh }];
   return fresh;
+}
+
+const squash = (v) => String(v || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+export const onlyPunctuation = (a, b) => squash(a) === squash(b);
+
+/** Confirm every form joined to `into` that differs only in punctuation or spacing. */
+export function confirmGroup(matter, into) {
+  const valueOf = new Map(matter.cloak.entries.map((e) => [e.token, e.value]));
+  let n = 0;
+  for (const m of matter.merges) {
+    if (m.into === into && m.token && !m.confirmed && onlyPunctuation(valueOf.get(m.token), valueOf.get(m.into))) { m.confirmed = true; n++; }
+  }
+  return n;
 }
 
 /** A join the tool made is right. */
@@ -145,7 +161,7 @@ export function reviewData(matter, files) {
   const terms = new Map();
   for (const e of entries) {
     const base = baseOf(e.token);
-    if (!terms.has(base)) terms.set(base, { tag: base, type: typeOf(base), value: valueOf.get(base) ?? e.value, how: matter.kinds.get(base) || 'pattern rule', forms: [], places: 0, files: inFiles.get(base) || 0 });
+    if (!terms.has(base)) terms.set(base, { tag: base, type: typeOf(base), value: valueOf.get(base) ?? e.value, how: matter.kinds.get(base) || 'pattern rule', patternRule: !matter.kinds.has(base), forms: [], places: 0, files: inFiles.get(base) || 0 });
     const t = terms.get(base);
     const n = places.get(e.token) || 0;
     t.forms.push({ tag: e.token, value: e.value, places: n, files: inFiles.get(e.token) || 0 });
@@ -167,10 +183,10 @@ export function reviewData(matter, files) {
     }
   }
 
-  // Two forms that differ only in capitals, spacing, punctuation or the way
-  // bin / binti is abbreviated are plainly the same: no need to ask.
-  const plain = (v) => String(v || '').toLowerCase().replace(/\b(?:binti|bt|bte)\b\.?/g, 'binti').replace(/\bb\.|\bbin\b/g, 'bin').replace(/[^\p{L}\p{N}]/gu, '');
-  const merges = matter.merges.filter((m) => m.token && !m.confirmed && valueOf.has(m.token) && plain(valueOf.get(m.token)) !== plain(valueOf.get(m.into))).map((m) => ({ tag: m.token, value: valueOf.get(m.token), into: m.into, intoValue: valueOf.get(m.into), reason: m.reason }));
+  // Forms that differ only in punctuation, spacing or capitals can be
+  // confirmed as a group. Anything else ("(M)", a different company ending,
+  // bin against b.) is decided one by one.
+  const merges = matter.merges.filter((m) => m.token && !m.confirmed && valueOf.has(m.token)).map((m) => ({ ...m, trivial: onlyPunctuation(valueOf.get(m.token), valueOf.get(m.into)) })).map((m) => ({ tag: m.token, value: valueOf.get(m.token), into: m.into, intoValue: valueOf.get(m.into), reason: m.trivial ? 'differs only in punctuation or spacing' : m.reason, onlyPunctuation: m.trivial }));
   const shortForms = matter.ambiguous.filter((a) => !a.confirmed && valueOf.has(a.token) && valueOf.has(a.also)).map((a) => ({ tag: a.token, value: valueOf.get(a.token), belongsTo: baseOf(a.token), belongsToValue: valueOf.get(baseOf(a.token)), also: a.also, alsoValue: valueOf.get(a.also) }));
 
   return {

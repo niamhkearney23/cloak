@@ -170,6 +170,8 @@ test('nothing real is left in temp or cache locations', async () => {
   const suspects = [];
   for (const name of await readdir(os.tmpdir())) {
     if (tmpBefore.has(name) && name !== 'cloak-ocr-lang') continue;
+    // Other tests run at the same time and keep their own made-up originals in folders named cloak-<test>-….
+    if (/^cloak-(?!ocr-lang$)/.test(name)) continue;
     const full = path.join(os.tmpdir(), name);
     if (full === root) continue;
     const s = await stat(full).catch(() => null);

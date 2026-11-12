@@ -84,7 +84,10 @@ test('add a missed term: it is hidden in every file', async () => {
 test('remove a wrong term: it is shown again in every file, and stays that way on the next run', async () => {
   const tag = tagOf('Hong Seng Trading');
   assert.doesNotMatch(texts(), /Hong Seng/);
-  const data = await session.reviewAction({ type: 'remove', tag });
+  // "Don't hide" has to be confirmed.
+  await assert.rejects(session.reviewAction({ type: 'remove', tag }), /Confirm before/);
+  assert.doesNotMatch(texts(), /Hong Seng/);
+  const data = await session.reviewAction({ type: 'remove', tag, confirmations: 1 });
   assert.equal((texts().match(/Hong Seng Trading/g) || []).length, 2);
   assert.ok(!data.terms.some((t) => t.tag === tag));
   assert.ok(data.kept.includes('Hong Seng Trading'));
@@ -147,8 +150,22 @@ test('a file that needs a manual check is only exported after a person approves 
   const chinese = data.files.find((f) => f.name === 'chinese note.txt');
   const old = data.files.find((f) => f.name === 'old.doc');
   await assert.rejects(session.approveFile(old.number), /could not be fully read/);
-  // The reviewer hides the Chinese name by hand, then approves the file.
-  await session.reviewAction({ type: 'add', text: '陈文华', kind: 'PERSON' });
+  // Non-Latin text is showing: a tick is not enough, the word must be typed.
+  assert.ok(chinese.nonLatinShowing > 0);
+  await assert.rejects(session.approveFile(chinese.number), /type APPROVE/);
+  await assert.rejects(session.approveFile(chinese.number, { confirmation: 'yes' }), /type APPROVE/);
+  // The default action: hide all non-Latin text in the file, one tag per passage.
+  const hidden = await session.reviewAction({ type: 'hideNonLatin', number: chinese.number });
+  const row0 = hidden.files.find((f) => f.name === 'chinese note.txt');
+  assert.equal(row0.nonLatinShowing, 0);
+  assert.equal(row0.nonLatinHidden, true);
+  const text = session.run.files.find((f) => f.rel === 'chinese note.txt').cloaked;
+  assert.match(text, /^\{\{PASSAGE_1\}\}\n\n\{\{PASSAGE_2\}\}\n\nReceipt for the deposit\.$/m);
+  assert.doesNotMatch(text, /\p{Script=Han}/u);
+  // The passages are in the key, so a draft can be restored later.
+  assert.equal(tagOf('收据'), 'PASSAGE_1');
+  assert.equal(session.matter.cloak.uncloak('{{PASSAGE_2}}').text, '订金已由陈文华先生收讫。');
+  // With nothing non-Latin showing, the file can be approved without typing.
   const after = await session.approveFile(chinese.number);
   const row = after.files.find((f) => f.name === 'chinese note.txt');
   assert.equal(row.checkedBy.by, 'reviewer-one');
@@ -172,10 +189,11 @@ test('once everything is decided the review can be signed off, and only then exp
   const names = await readdir(out);
   assert.ok(names.includes('REVIEWED-NOT-DOUBLE-CHECKED.txt'));
   const all = (await Promise.all(names.map((n) => readFile(path.join(out, n), 'utf8')))).join('\n');
-  for (const w of ['Bobby', 'Rahim', 'Osman', 'Along', 'Ah Kow', 'Ah Kaw', '陈文华']) assert.ok(!all.includes(w), `${w} is in the exported files: …${all.slice(Math.max(0, all.indexOf(w) - 80), all.indexOf(w) + 40)}…`);
+  for (const w of ['Bobby', 'Rahim', 'Osman', 'Along', 'Ah Kow', 'Ah Kaw', '陈文华', '收据']) assert.ok(!all.includes(w), `${w} is in the exported files: …${all.slice(Math.max(0, all.indexOf(w) - 80), all.indexOf(w) + 40)}…`);
   assert.match(all, /Hong Seng Trading/);
   const report = JSON.parse(await readFile(path.join(out, 'cloak-report.json'), 'utf8'));
-  assert.match(report.review, /Reviewed by reviewer-one/);
+  assert.match(report.review, /^Reviewed by reviewer-one on \d{1,2} [A-Z][a-z]{2} \d{4}, \d{1,2}:\d{2} (?:am|pm)\./);
+  assert.equal(report.files.find((f) => f.checked_by_hand).non_latin_text_hidden, true);
   assert.equal(report.files.find((f) => f.checked_by_hand).checked_by_hand.by, 'reviewer-one');
 });
 
@@ -205,4 +223,55 @@ test('review decisions are kept in the matter for the next lawyer, and logged wi
   assert.match(log, /"action":"exported","files_written":4/);
   assert.doesNotMatch(log, /Bobby|Rahim|Osman|Along|Hong Seng|Tan Ah|Pavilion/);
   await again.close();
+});
+
+test('pattern-rule items (numbers and IDs) need two confirmations before they stop being hidden', async () => {
+  const dir2 = path.join(root, 'matter2');
+  const src2 = path.join(root, 'documents2');
+  await mkdir(src2, { recursive: true });
+  await writeFile(path.join(src2, 'note.txt'), 'Call the court registry on 03-2161 8899. The client, Encik Ahmad bin Ismail, holds NRIC 800505-14-5521.\n');
+  const { session: s2 } = await createMatter({ dir: dir2, password: PASSWORD, user: 'reviewer-one', kdf: FAST });
+  await s2.cloakFolder({ folder: src2 });
+  const phone = s2.reviewData().terms.find((t) => t.type === 'PHONE');
+  const person = s2.reviewData().terms.find((t) => t.type === 'PERSON');
+  assert.equal(phone.patternRule, true);
+  assert.equal(person.patternRule, false);
+  await assert.rejects(s2.reviewAction({ type: 'remove', tag: phone.tag }), /Confirm twice/);
+  await assert.rejects(s2.reviewAction({ type: 'remove', tag: phone.tag, confirmations: 1 }), /Confirm twice/);
+  assert.doesNotMatch(s2.run.files[0].cloaked, /2161/);
+  await s2.reviewAction({ type: 'remove', tag: phone.tag, confirmations: 2 });
+  assert.match(s2.run.files[0].cloaked, /03-2161 8899/);
+  await s2.reviewAction({ type: 'remove', tag: person.tag, confirmations: 1 });
+  await s2.close();
+});
+
+test('joined forms that differ only in punctuation or spacing can be confirmed as a group; the rest one by one', async () => {
+  const dir3 = path.join(root, 'matter3');
+  const src3 = path.join(root, 'documents3');
+  await mkdir(src3, { recursive: true });
+  await writeFile(path.join(src3, 'a.txt'), [
+    'Kota Barang Sdn Bhd supplied the goods. Kota Barang Sdn. Bhd. sent the invoice. KOTA BARANG SDN BHD. was paid.',
+    'Bina Jaya (M) Sdn Bhd is named on the receipt, and Bina Jaya Sdn Bhd on the delivery order. Bina Jaya Berhad is a third entity.',
+    'Mr Tan Ah Kow and Mr Tan Ah Kaw both signed.', ''].join('\n'));
+  const { session: s3 } = await createMatter({ dir: dir3, password: PASSWORD, user: 'reviewer-one', kdf: FAST });
+  await s3.cloakFolder({ folder: src3 });
+  let data = s3.reviewData();
+  const kota = data.terms.find((t) => /^Kota Barang/i.test(t.value)).tag;
+  const easy = data.merges.filter((m) => m.onlyPunctuation);
+  const hard = data.merges.filter((m) => !m.onlyPunctuation);
+  assert.ok(easy.length >= 2, 'punctuation-only variants are listed');
+  assert.ok(easy.every((m) => m.into === kota && /Kota Barang/i.test(m.value)));
+  assert.match(easy[0].reason, /only in punctuation or spacing/);
+  // "(M)" and a different company ending are never grouped: each is its own decision.
+  assert.ok(hard.some((m) => /Bina Jaya/.test(m.value) && /\(M\)|Berhad|Bhd/.test(m.value + m.intoValue)), 'the "(M)" / suffix variants are individual decisions');
+  assert.ok(hard.some((m) => /Tan Ah Ka?w/.test(m.value)));
+  assert.ok(hard.every((m) => !/Kota Barang/i.test(m.value) || m.into !== kota));
+  data = await s3.reviewAction({ type: 'confirmGroup', into: kota });
+  assert.equal(data.merges.filter((m) => m.into === kota).length, 0);
+  assert.equal(data.merges.filter((m) => !m.onlyPunctuation).length, hard.length, 'the others are still waiting');
+  // Confirming a group never touches the individual decisions.
+  const bina = data.merges.find((m) => /Bina Jaya/.test(m.value + m.intoValue));
+  await s3.reviewAction({ type: 'confirmGroup', into: bina.into });
+  assert.ok(s3.reviewData().merges.some((m) => /Bina Jaya/.test(m.value + m.intoValue)), '(M) and suffix variants stay listed after "confirm group"');
+  await s3.close();
 });

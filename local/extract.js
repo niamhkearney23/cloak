@@ -81,9 +81,12 @@ const add = (result, label, text, extra = {}) => { if (String(text || '').trim()
 
 // ------------------------------------------------------------------- OCR
 
-let ocrLatin = null;
-let ocrOther = null;
 let langDirReady = null;
+let OCR_THREADS = 1;
+
+/** How many OCR workers one reader may run at once (set by the folder runner). */
+export function setOcrThreads(n) { OCR_THREADS = Math.max(1, Math.floor(n) || 1); }
+export const ocrThreads = () => OCR_THREADS;
 
 // The OCR engine looks for language data in one folder. The data ships inside
 // the app (npm packages); it is copied once to a local folder and never
@@ -110,14 +113,43 @@ async function ocrWorker(langs) {
   return createWorker(langs, 1, { langPath: dir, cachePath: dir, gzip: true });
 }
 
+// A pool of OCR workers. It starts with one and only adds another when a
+// page is waiting and every worker is busy, up to the limit, so one picture
+// costs one worker and a 300-page scan uses all the cores it is given.
+function makePool(langs) {
+  const slots = [];
+  const waiting = [];
+  const pump = () => {
+    while (waiting.length) {
+      let slot = slots.find((x) => !x.busy);
+      if (!slot) {
+        if (slots.length >= OCR_THREADS) return;
+        slot = { busy: false, worker: ocrWorker(langs) };
+        slots.push(slot);
+      }
+      const job = waiting.shift();
+      slot.busy = true;
+      slot.worker
+        .then((w) => w.recognize(job.image, {}, job.output))
+        .then(job.resolve, job.reject)
+        .finally(() => { slot.busy = false; pump(); });
+    }
+  };
+  return {
+    run: (image, output) => new Promise((resolve, reject) => { waiting.push({ image, output, resolve, reject }); pump(); }),
+    close: () => Promise.all(slots.map((x) => x.worker.then((w) => w.terminate()).catch(() => {}))),
+  };
+}
+const pools = {};
+const pool = (name, langs) => (pools[name] ||= makePool(langs));
+
 /**
  * OCR one image held in memory. Nothing is written to disk.
  * Returns the text, the page confidence, the script, and the words with their
  * own confidence so unclear marks can be told apart from clear print.
  */
 export async function ocrImage(image) {
-  ocrLatin ||= ocrWorker(['eng', 'msa']);
-  const first = (await (await ocrLatin).recognize(image, {}, { blocks: true })).data;
+  const first = (await pool('latin', ['eng', 'msa']).run(image, { blocks: true })).data;
   let text = first.text || '';
   let confidence = first.confidence ?? 0;
   let script = nonLatinCount(text) >= 5 ? 'non-latin' : 'latin';
@@ -126,8 +158,7 @@ export async function ocrImage(image) {
   // Poor or empty Latin OCR may mean the page is in another script: look
   // again with the Chinese and Tamil models.
   if (confidence < 75 || chars(text) < 20) {
-    ocrOther ||= ocrWorker(['chi_sim', 'chi_tra', 'tam']);
-    const second = (await (await ocrOther).recognize(image)).data;
+    const second = (await pool('other', ['chi_sim', 'chi_tra', 'tam']).run(image, {})).data;
     if (nonLatinCount(second.text) >= 8 && (second.confidence ?? 0) >= confidence - 10) {
       script = 'non-latin';
       text = second.text;
@@ -138,8 +169,8 @@ export async function ocrImage(image) {
 }
 
 export async function closeOcr() {
-  for (const w of [ocrLatin, ocrOther]) if (w) await (await w).terminate().catch(() => {});
-  ocrLatin = ocrOther = null;
+  await Promise.all(Object.values(pools).map((p) => p.close()));
+  for (const k of Object.keys(pools)) delete pools[k];
 }
 
 /** Share of dark pixels on a canvas: is there anything drawn on the page? */
@@ -441,75 +472,107 @@ async function extractPdf(buf, result) {
   const wordsOf = (t) => new Set((t.toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) || []));
   const pinned = new Map(); // files attached to pages
 
-  for (let n = 1; n <= doc.numPages; n++) {
-    let page;
-    try {
-      page = await doc.getPage(n);
-      const content = await page.getTextContent();
-      const text = content.items.map((it) => it.str + (it.hasEOL ? '\n' : '')).join('').trim();
-      const ops = await page.getOperatorList();
-      const hasPicture = ops.fnArray.some((f) => f === pdfjs.OPS.paintImageXObject || f === pdfjs.OPS.paintInlineImageXObject);
-      const sparse = chars(text) < SPARSE_PAGE_CHARS;
+  // Pages are read several at a time (as many as there are OCR workers) and
+  // put back together in page order.
+  const readPage = async (n) => {
+    const local = newResult('pdf');
+  let page;
+  try {
+    page = await doc.getPage(n);
+    const content = await page.getTextContent();
+    const text = content.items.map((it) => it.str + (it.hasEOL ? '\n' : '')).join('').trim();
+    const ops = await page.getOperatorList();
+    const hasPicture = ops.fnArray.some((f) => f === pdfjs.OPS.paintImageXObject || f === pdfjs.OPS.paintInlineImageXObject);
+    const sparse = chars(text) < SPARSE_PAGE_CHARS;
 
-      // The page is also read as a picture when it has pictures on it or
-      // has very little typed text: words may be drawn, scanned or stamped.
-      let ocr = null;
-      let ink = null;
-      if (hasPicture || sparse) {
-        const viewport = page.getViewport({ scale: 2 });
+    // The page is also read as a picture when it has pictures on it or
+    // has very little typed text: words may be drawn, scanned or stamped.
+    let ocr = null;
+    let ink = null;
+    if (hasPicture || sparse) {
+      const draw = async (scale) => {
+        const viewport = page.getViewport({ scale });
         const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height));
         const g = canvas.getContext('2d');
         g.fillStyle = '#fff';
         g.fillRect(0, 0, canvas.width, canvas.height);
         await page.render({ canvasContext: g, viewport, canvas }).promise;
-        ink = inkRatio(canvas);
-        if (ink > 0.0005) ocr = await ocrImage(canvas.toBuffer('image/png'));
-      }
-
-      const layer = chars(text);
-      if (!ocr) {
-        add(result, `Page ${n}`, text);
-      } else if (layer < 20) {
-        // No usable text layer: a scanned page.
-        result.proof.ocr.push(n);
-        judgeOcr(result, `Page ${n}`, ocr, ink);
-        add(result, `Page ${n} (scanned)`, ocr.text, { ocr: true });
-      } else {
-        add(result, `Page ${n}`, text);
-        // Lines the picture of the page shows that the text layer does not
-        // have: words inside pictures, stamps, handwriting.
-        const known = wordsOf(text);
-        const extra = ocr.lines.filter((l) => {
-          const w = [...wordsOf(l.text)];
-          return w.length >= 1 && w.filter((x) => known.has(x)).length < w.length * 0.5;
-        });
-        const clear = extra.filter((l) => l.words.every((w) => w.confidence >= 50) || l.words.filter((w) => w.confidence >= 60).length >= l.words.length * 0.7);
-        const unclear = extra.length - clear.length;
-        if (extra.length) result.proof.ocr.push(n);
-        if (clear.length) add(result, `Page ${n} (text found only in pictures)`, clear.map((l) => l.text).join('\n'), { ocr: true });
-        if (unclear >= 2) flag(result, 'manual', `Page ${n} has ${unclear} line(s) inside pictures that could not be read reliably (stamp, handwriting or faint print). Needs a manual check.`);
-        if (nonLatinCount(ocr.text) >= 5 && nonLatinCount(text) < 5) flag(result, 'manual', `Page ${n} has a picture with non-Latin script. Needs a manual check.`);
-      }
-
-      // Notes, highlights with comments, form fields and files pinned to the page.
-      const notes = [];
-      for (const a of await page.getAnnotations()) {
-        const bits = [a.titleObj?.str && `Note by: ${a.titleObj.str}`, a.contentsObj?.str, a.fieldName && a.fieldValue ? `Form field ${a.fieldName}: ${[].concat(a.fieldValue).join(', ')}` : (typeof a.fieldValue === 'string' ? a.fieldValue : null), a.alternativeText, a.url || a.unsafeUrl].filter((x) => x && String(x).trim());
-        notes.push(...bits);
-        if (a.fileId || a.file) {
-          const content = a.file?.content || (a.fileId ? await doc.getAttachmentContent(a.fileId).catch(() => null) : null);
-          const fileName = a.filename || a.file?.filename || `attachment-page-${n}`;
-          if (content) pinned.set(fileName, Buffer.from(content));
-          else flag(result, 'partial', `A file attached to page ${n} could not be opened.`);
+        return canvas;
+      };
+      const canvas = await draw(2);
+      ink = inkRatio(canvas);
+      if (ink > 0.0005) {
+        ocr = await ocrImage(canvas.toBuffer('image/png'));
+        // A page that came out uncertain is read again at a higher
+        // resolution, and the better reading is kept.
+        if (chars(text) < 20 && ocr.confidence < 70) {
+          const again = await ocrImage((await draw(3)).toBuffer('image/png'));
+          if (again.confidence > ocr.confidence) ocr = again;
         }
       }
-      if (notes.length) add(result, `Page ${n} notes and form fields`, [...new Set(notes)].join('\n'));
-      result.proof.read++;
-    } catch (err) {
-      flag(result, 'partial', `Page ${n} could not be read (${err.message}).`);
-    } finally {
-      page?.cleanup();
     }
+
+    const layer = chars(text);
+    if (!ocr) {
+      add(local, `Page ${n}`, text);
+    } else if (layer < 20) {
+      // No usable text layer: a scanned page.
+      local.proof.ocr.push(n);
+      judgeOcr(local, `Page ${n}`, ocr, ink);
+      add(local, `Page ${n} (scanned)`, ocr.text, { ocr: true });
+    } else {
+      add(local, `Page ${n}`, text);
+      // Lines the picture of the page shows that the text layer does not
+      // have: words inside pictures, stamps, handwriting.
+      const known = wordsOf(text);
+      const extra = ocr.lines.filter((l) => {
+        const w = [...wordsOf(l.text)];
+        return w.length >= 1 && w.filter((x) => known.has(x)).length < w.length * 0.5;
+      });
+      const clear = extra.filter((l) => l.words.every((w) => w.confidence >= 50) || l.words.filter((w) => w.confidence >= 60).length >= l.words.length * 0.7);
+      const unclear = extra.length - clear.length;
+      if (extra.length) local.proof.ocr.push(n);
+      if (clear.length) add(local, `Page ${n} (text found only in pictures)`, clear.map((l) => l.text).join('\n'), { ocr: true });
+      if (unclear >= 2) flag(local, 'manual', `Page ${n} has ${unclear} line(s) inside pictures that could not be read reliably (stamp, handwriting or faint print). Needs a manual check.`);
+      if (nonLatinCount(ocr.text) >= 5 && nonLatinCount(text) < 5) flag(local, 'manual', `Page ${n} has a picture with non-Latin script. Needs a manual check.`);
+    }
+
+    // Notes, highlights with comments, form fields and files pinned to the page.
+    const notes = [];
+    for (const a of await page.getAnnotations()) {
+      const bits = [a.titleObj?.str && `Note by: ${a.titleObj.str}`, a.contentsObj?.str, a.fieldName && a.fieldValue ? `Form field ${a.fieldName}: ${[].concat(a.fieldValue).join(', ')}` : (typeof a.fieldValue === 'string' ? a.fieldValue : null), a.alternativeText, a.url || a.unsafeUrl].filter((x) => x && String(x).trim());
+      notes.push(...bits);
+      if (a.fileId || a.file) {
+        const content = a.file?.content || (a.fileId ? await doc.getAttachmentContent(a.fileId).catch(() => null) : null);
+        const fileName = a.filename || a.file?.filename || `attachment-page-${n}`;
+        if (content) pinned.set(fileName, Buffer.from(content));
+        else flag(local, 'partial', `A file attached to page ${n} could not be opened.`);
+      }
+    }
+    if (notes.length) add(local, `Page ${n} notes and form fields`, [...new Set(notes)].join('\n'));
+    local.proof.read++;
+  } catch (err) {
+    flag(local, 'partial', `Page ${n} could not be read (${err.message}).`);
+  } finally {
+    page?.cleanup();
+  }
+    return local;
+  };
+  const locals = new Array(doc.numPages);
+  const running = new Set();
+  for (let n = 1; n <= doc.numPages; n++) {
+    while (running.size >= OCR_THREADS) await Promise.race(running);
+    const job = readPage(n).then((l) => { locals[n - 1] = l; }).finally(() => running.delete(job));
+    running.add(job);
+  }
+  await Promise.all(running);
+  for (const l of locals) {
+    result.parts.push(...l.parts);
+    if (RANK[l.status] > RANK[result.status]) result.status = l.status;
+    result.reasons.push(...l.reasons);
+    result.proof.unread.push(...l.proof.unread);
+    result.proof.ocr.push(...l.proof.ocr);
+    result.proof.read += l.proof.read;
   }
 
   const outline = [];
