@@ -1,0 +1,24 @@
+{
+  "name": "cloak-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloak for the desktop: cloaks a folder of documents on this machine. Nothing leaves the computer.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@kenjiuno/msgreader": "^1.29.0",
+    "@napi-rs/canvas": "^1.1.0",
+    "@tesseract.js-data/chi_sim": "^1.0.0",
+    "@tesseract.js-data/chi_tra": "^1.0.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "@tesseract.js-data/msa": "^1.0.0",
+    "@tesseract.js-data/tam": "^1.0.0",
+    "pdfjs-dist": "^6.5.438",
+    "tesseract.js": "^7.0.0"
+  }
+}

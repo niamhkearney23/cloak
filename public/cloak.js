@@ -57,7 +57,9 @@
     'chassis', 'engine', 'enjin', 'vin', 'imei', 'meter', 'tnb account', 'contract', 'kontrak', 'loan', 'pinjaman', 'facility',
     'title', 'geran', 'grant', 'hakmilik', 'lot', 'pn', 'hs(d)', 'hs(m)', 'strata', 'mukim',
   ];
-  const LABEL_TAIL = String.raw`(?:\s*(?:[Nn][Oo]s?\.?|[Nn]umber|[Nn]ombor|[Bb]il\.?|#|[Cc]ode))?\s*(?:[:.]|is|ialah)?\s*`;
+  // A label and its number sit on one line: "TUNTUTAN" followed by a new
+  // paragraph "1." is a heading, not "claim no. 1".
+  const LABEL_TAIL = String.raw`(?:[ \t]*(?:[Nn][Oo]s?\.?|[Nn]umber|[Nn]ombor|[Bb]il\.?|#|[Cc]ode))?[ \t]*(?:[:.]|is|ialah)?[ \t]*`;
   const LABEL_RE = `(?<![\\p{L}\\p{N}])(?:${ID_LABELS.slice().sort((a, b) => b.length - a.length).map((l) => ci(l).replace(/[()]/g, '\\$&')).join('|')})${LABEL_TAIL}`;
   // The identifier itself: digit groups ("5141 2345 6789") or a code with at
   // least one digit ("WA-22NCvC-123-01/2024", "IG12345678090").
@@ -441,5 +443,6 @@
     return COMMON.has(String(word).toLowerCase().replace(/['’]s$/, ''));
   }
 
-  return { Cloak, findSuspects, isCommonWord, TOKEN_RE };
+  // DETECTORS is shared with the desktop folder tool (local/).
+  return { Cloak, findSuspects, isCommonWord, TOKEN_RE, DETECTORS };
 });
