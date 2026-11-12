@@ -36,7 +36,7 @@ before(async () => {
   await makeMatter(src);
   const made = await createMatter({ dir, name: 'Ahmad bin Ismail v Maju Jaya', password: PASSWORD, user: 'lawyer-one', kdf: FAST });
   recoveryCode = made.recoveryCode;
-  firstRun = await made.session.cloakFolder({ folder: src, outDir: out });
+  firstRun = await made.session.cloakFolder({ folder: src });
   firstKey = made.session.matter.key().entries;
   await made.session.close();
 });
@@ -127,7 +127,7 @@ test('only one person can have the matter open; a second lawyer gets in once it 
 test('adding files to the matter reuses the key: same people, same tags, same file numbers', async () => {
   const s = await openMatter({ dir, password: PASSWORD, user: 'lawyer-two' });
   await writeFile(path.join(src, '21 New letter.txt'), 'Dear Sirs,\n\nWe refer to Encik Ahmad bin Ismail (NRIC 800505145521) and to Tan Boon Huat of Maju Jaya Sdn Bhd.\nA new witness, Rosli bin Karim, will also give evidence.\n');
-  const run = await s.cloakFolder({ folder: src, outDir: out });
+  const run = await s.cloakFolder({ folder: src });
   const tokenOf = (entries, value) => entries.find((e) => e.value.toLowerCase() === value.toLowerCase())?.token;
   const entries = s.matter.key().entries;
   // Everything from the first run is still there, unchanged.
@@ -149,13 +149,13 @@ test('adding files to the matter reuses the key: same people, same tags, same fi
 test('unchanged files come from the encrypted cache and are not read again', async () => {
   const s = await openMatter({ dir, password: PASSWORD, user: 'lawyer-one' });
   const reread = [];
-  const run = await s.cloakFolder({ folder: src, outDir: out, onProgress: (p) => p.stage === 'read' && reread.push(p.file) });
+  const run = await s.cloakFolder({ folder: src, onProgress: (p) => p.stage === 'read' && reread.push(p.file) });
   assert.equal(run.report.totals.taken_from_cache, 21);
   assert.ok(run.files.filter((f) => !f.inside).every((f) => f.disk.fromCache));
   assert.ok(run.files.find((f) => f.rel.startsWith('09')).cloaked.includes('SALE AND PURCHASE AGREEMENT'), 'OCR text came back from the cache');
   // Change one file: only that one is read again.
   await writeFile(path.join(src, '21 New letter.txt'), 'Changed: Rosli bin Karim has withdrawn.\n');
-  const again = await s.cloakFolder({ folder: src, outDir: out });
+  const again = await s.cloakFolder({ folder: src });
   assert.equal(again.report.totals.taken_from_cache, 20);
   console.log(`      second run with everything cached: ${run.seconds.toFixed(2)} seconds (first run ${firstRun.seconds.toFixed(2)})`);
   await s.close();
@@ -186,9 +186,11 @@ test('the log shows who did what and when', async () => {
 
 test('the key can never sit with the documents or the cloaked copies', async () => {
   const s = await openMatter({ dir, password: PASSWORD });
-  await assert.rejects(s.cloakFolder({ folder: src, outDir: path.join(dir, 'cloaked') }), /must not go into the matter folder/);
-  await assert.rejects(s.cloakFolder({ folder: root, outDir: out }), /outside the documents folder/);
-  assert.ok(!(await readdir(out)).includes(KEY_FILE_NAME));
+  await assert.rejects(s.cloakFolder({ folder: root }), /outside the documents folder/);
+  await s.cloakFolder({ folder: src });
+  // Nothing is written anywhere until the review is finished.
+  await assert.rejects(stat(out));
+  await assert.rejects(s.export({ outDir: out }), /until the review is finished/);
   await s.close();
 });
 

@@ -4,9 +4,10 @@ Cloaks a whole folder of documents on this computer. Nothing is sent anywhere:
 the code in this folder makes no network calls, and OCR runs locally with
 language data that ships with the app.
 
-Built so far: **feature 1, cloak a folder** and **feature 2, the key** (the
-engine, with no window yet). The review screen, double checker, restore and
-the Claude connector come next. Until the review screen and double checker exist, treat every cloaked
+Built so far: **feature 1, cloak a folder**, **feature 2, the key** and
+**feature 3, the review screen**, in one app window. The double checker,
+restore and the Claude connector come next. Until the double checker exists,
+exported copies are marked **reviewed, not double-checked**. Until the review screen and double checker exist, treat every cloaked
 copy as **not reviewed**.
 
 ## What it does
@@ -93,6 +94,41 @@ saved in UTF-8.
 
 **Not tested yet:** Outlook `.msg` files and scanned Tamil pages (no test
 file), and cloud-only files in OneDrive or Google Drive.
+
+## The app and the review screen
+
+```
+npm install
+npm run app          # open the window
+npm run dist         # build the installer for this system
+```
+
+Installers for Windows and Mac are built by the "Desktop installer" workflow
+on GitHub (Actions tab, Run workflow). They are not code-signed yet, so
+Windows shows a "publisher unknown" warning.
+
+The window has two buttons: **Cloak a folder** and **Restore a draft** (not
+built yet). Cloaking goes: choose the documents, choose or create the matter,
+watch the files being read, then review.
+
+- **Nothing is written anywhere until the review is finished.** Cloaked text
+  stays in memory. Export is refused until every item is decided.
+- **Not sure:** each word once, with how many places and files. Hide it (as a
+  person, a company or something else) or mark it fine.
+- **Joined names:** forms the tool gave one tag. Confirm, or split one off.
+  Forms that differ only in capitals, spacing or punctuation are not asked about.
+- **Everything replaced:** each term once, with its other forms, places and
+  files. "Don't hide" removes it everywhere and remembers that; "Same as…"
+  merges two tags.
+- **Files:** every file with its result, what was read, and why it is blocked
+  if it is. A file that needs a manual check can be read and approved by a
+  person; who approved it is recorded.
+- Any change after the review is finished, and any new file, means it has to
+  be finished again.
+- A tag number is never reused, even after its tag is removed.
+
+The window can load only its own files. Network requests are refused, name
+lookups are switched off, and there is no auto-update.
 
 ## The key
 

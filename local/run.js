@@ -95,12 +95,14 @@ const STATUS_WORDS = { cloaked: 'cloaked', manual: 'needs manual check', partial
  * @param onCloudOnly called with the list of not-yet-downloaded files; return
  *                    true to download and include them
  */
-export async function cloakFolder({ folder, outDir, options = {}, user = os.userInfo().username, onProgress = () => {}, onCloudOnly = async () => false, logFile, matter = new Matter({ options }), session = null, concurrency }) {
+export async function cloakFolder({ folder, outDir, options = {}, user = os.userInfo().username, onProgress = () => {}, onCloudOnly = async () => false, logFile, matter = new Matter({ options }), session = null, write = true, concurrency }) {
   const started = Date.now();
   folder = path.resolve(folder);
-  outDir = path.resolve(outDir);
-  if (outDir === folder) throw new Error('The cloaked copies must go to a different folder from the originals.');
-  const onDisk = (await walk(folder, outDir)).map((full, i) => ({ index: i + 1, full, rel: path.relative(folder, full).split(path.sep).join('/') }));
+  if (write) {
+    outDir = path.resolve(outDir);
+    if (outDir === folder) throw new Error('The cloaked copies must go to a different folder from the originals.');
+  }
+  const onDisk = (await walk(folder, write ? outDir : null)).map((full, i) => ({ index: i + 1, full, rel: path.relative(folder, full).split(path.sep).join('/') }));
   const total = onDisk.length;
   const tell = (f, stage, extra = {}) => onProgress({ index: f.index, total, file: f.rel, stage, ...extra });
 
@@ -149,7 +151,6 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   // Learn the whole folder before cloaking any of it. File and folder names
   // are part of what is learned and cloaked ("Affidavit_Ahmad_bin_Ismail").
   const readable = files.filter((f) => f.parts.length);
-  const nameText = (f) => f.rel.replace(/\.[A-Za-z0-9]{1,5}(?=\/|$)/g, '').replace(/[_/\\]+/g, ' ');
   const whole = (f) => [nameText(f), ...f.parts.map((p) => p.text)].join('\n\n');
   const candidates = [];
   for (const f of readable) candidates.push(...matter.learn(whole(f)));
@@ -157,69 +158,25 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   matter.register(candidates);
   for (const f of readable) matter.learnDefinitions(whole(f));
 
-  // Pass 2: write the cloaked copies.
-  await mkdir(outDir, { recursive: true });
+  // Pass 2: cloak every file with the shared map.
   const width = String(files.length).length;
   for (const f of files) {
-    f.name = matter.apply(nameText(f));
+    renderFile(matter, f);
     if (f.container) f.status = f.status === 'ok' ? 'container' : f.status;
-    if (!f.parts.length) continue;
-    const plainLabel = (p) => f.parts.length === 1 && !p.ocr && /^(?:Text|Body|Email|Page 1)$/.test(p.label);
-    // Labels can carry names too (a sheet called after a client).
-    const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${matter.apply(p.label)}]\n`) + matter.apply(p.text)).join('\n\n');
-    const text = `File: ${f.name}.${f.type}\n\n${body}\n`;
-    f.cloaked = text;
-    f.unsure = matter.unsure(text);
-    f.tags = {};
-    for (const m of text.matchAll(TAG)) f.tags[`${m[1]}_${m[2]}`] = (f.tags[`${m[1]}_${m[2]}`] || 0) + 1;
-    // Only a fully read file is written out. Anything partly read, or
-    // waiting for a manual check, stays in memory for the review screen.
-    if (f.status === 'ok') {
+    if (f.parts.length && f.status === 'ok') {
       // In a matter a file keeps its number from run to run.
       f.out = session && f.fingerprint ? `${String(session.numberFor(f.fingerprint)).padStart(3, '0')}-${f.type}.cloaked.txt` : `${String(f.index).padStart(width, '0')}-${f.type}.cloaked.txt`;
-      await writeFile(path.join(outDir, f.out), text, 'utf8');
       f.status = 'cloaked';
     }
-    if (!f.inside) tell(f.disk, 'cloaked', { ocr: f.proof.ocr.length > 0, status: f.status });
+    if (f.parts.length && !f.inside) tell(f.disk, 'cloaked', { ocr: f.proof.ocr.length > 0, status: f.status });
   }
 
   const seconds = (Date.now() - started) / 1000;
-  const count = (s) => files.filter((f) => f.status === s).length;
-  const byType = {};
-  for (const f of files) for (const [tag, n] of Object.entries(f.tags || {})) { const t = tag.replace(/_\d+$/, ''); byType[t] = (byType[t] || 0) + n; }
-  const report = {
-    cloak_version: VERSION,
-    when: new Date().toISOString(),
-    by: user,
-    options: matter.options,
-    seconds,
-    review: 'NOT REVIEWED. These copies have not been through the review screen or the double checker.',
-    totals: { files_on_disk: total, files_including_those_inside_others: files.length, cloaked: count('cloaked'), needs_manual_check: count('manual'), partly_read_blocked: count('partial'), unreadable_blocked: count('unreadable'), archives_opened: count('container'), ocr_files: files.filter((f) => f.proof.ocr.length).length, taken_from_cache: onDisk.filter((f) => f.fromCache).length, replaced: byType },
-    // Real file names can contain client names, so files are listed by
-    // their cloaked name only. "proof" shows what was found and what was read.
-    files: files.map((f) => ({
-      number: f.index,
-      output: f.out || null,
-      name: f.parts.length || f.container ? `${f.name}.${f.type}` : `(file ${f.index}: name not shown because the file was not read)`,
-      found_inside: f.inside,
-      status: STATUS_WORDS[f.status],
-      taken_from_cache: !!f.disk.fromCache,
-      type: f.type,
-      proof: { [`${f.proof.unit}_found`]: f.proof.found, [`${f.proof.unit}_read`]: f.proof.read, characters_extracted: f.proof.characters, went_through_ocr: f.proof.ocr, could_not_be_read: f.proof.unread, parts_read: (f.proof.parts || []).map((p) => `${matter.apply(p.part)}: ${p.characters} characters`) },
-      reasons: f.reasons,
-      tags: f.tags || {},
-      not_sure_count: f.unsure?.length || 0,
-    })),
-  };
-  // Reasons can quote the name of an attachment: cloak them like any text.
-  // In the report the name itself is left out, since it may not be cloaked.
-  const safe = (r) => matter.apply(r.replace(/"[^"]*"/g, '(a file inside it)').replace(/: [^:]*\.$/, (m) => (/could not be read: /.test(r) ? ': (part name hidden).' : m)));
-  for (const f of report.files) {
-    f.reasons = f.reasons.map(safe);
-    f.proof.could_not_be_read = f.proof.could_not_be_read.map(safe);
-  }
-  await writeFile(path.join(outDir, 'cloak-report.json'), JSON.stringify(report, null, 2), 'utf8');
-  await writeFile(path.join(outDir, 'NOT-REVIEWED.txt'), `Cloak ${VERSION}\n\nThese cloaked copies have NOT been reviewed or double-checked.\nDo not send them to any AI tool yet.\n`, 'utf8');
+  const report = buildReport({ matter, files, total, user, seconds, cached: onDisk.filter((f) => f.fromCache).length });
+  // Without a matter (and its review screen) copies are written straight
+  // away, marked as not reviewed. With a matter nothing is written until the
+  // review is finished and the copies are exported.
+  if (write) await writeOutput(outDir, files, report, `Cloak ${VERSION}\n\nThese cloaked copies have NOT been reviewed or double-checked.\nDo not send them to any AI tool yet.\n`, 'NOT-REVIEWED.txt');
 
   // The log says what was done, when and by whom. No real values, and the
   // folder is recorded as a fingerprint, not a path.
@@ -228,7 +185,70 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
     await appendFile(logFile, `${JSON.stringify({ t: report.when, cloak_version: VERSION, by: user, action: 'cloak-folder', folder: sha256(folder).slice(0, 16), ...report.totals, seconds })}\n`, 'utf8');
   }
 
-  return { matter, files, report, seconds, outDir };
+  return { matter, files, report, seconds, outDir, total, cached: onDisk.filter((f) => f.fromCache).length };
+}
+
+export const nameText = (f) => f.rel.replace(/\.[A-Za-z0-9]{1,5}(?=\/|$)/g, '').replace(/[_/\\]+/g, ' ');
+
+/** Build the cloaked text of one file from what was read. */
+export function renderFile(matter, f, safeWords = []) {
+  f.name = matter.apply(nameText(f));
+  if (!f.parts.length) return;
+  const plainLabel = (p) => f.parts.length === 1 && !p.ocr && /^(?:Text|Body|Email|Page 1)$/.test(p.label);
+  // Labels can carry names too (a sheet called after a client).
+  const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${matter.apply(p.label)}]\n`) + matter.apply(p.text)).join('\n\n');
+  f.cloaked = `File: ${f.name}.${f.type}\n\n${body}\n`;
+  f.unsure = matter.unsure(f.cloaked, safeWords);
+  f.tags = {};
+  for (const m of f.cloaked.matchAll(TAG)) f.tags[`${m[1]}_${m[2]}`] = (f.tags[`${m[1]}_${m[2]}`] || 0) + 1;
+}
+
+export function buildReport({ matter, files, total, user, seconds, cached = 0, review = 'NOT REVIEWED. These copies have not been through the review screen or the double checker.' }) {
+  const count = (st) => files.filter((f) => f.status === st).length;
+  const byType = {};
+  for (const f of files) for (const [tag, n] of Object.entries(f.tags || {})) { const t = tag.replace(/_\d+$/, ''); byType[t] = (byType[t] || 0) + n; }
+  // In the report the name of a file inside another is left out of reasons,
+  // since it may not be cloaked.
+  const safe = (r) => matter.apply(r.replace(/"[^"]*"/g, '(a file inside it)').replace(/: [^:]*\.$/, (m) => (/could not be read: /.test(r) ? ': (part name hidden).' : m)));
+  return {
+    cloak_version: VERSION,
+    when: new Date().toISOString(),
+    by: user,
+    options: matter.options,
+    seconds,
+    review,
+    totals: { files_on_disk: total, files_including_those_inside_others: files.length, cloaked: count('cloaked'), needs_manual_check: count('manual'), partly_read_blocked: count('partial'), unreadable_blocked: count('unreadable'), archives_opened: count('container'), ocr_files: files.filter((f) => f.proof.ocr.length).length, taken_from_cache: cached, replaced: byType },
+    // Real file names can contain client names, so files are listed by
+    // their cloaked name only. "proof" shows what was found and what was read.
+    files: files.map((f) => ({
+      number: f.index,
+      output: f.out || null,
+      name: f.parts.length || f.container ? `${f.name}.${f.type}` : `(file ${f.index}: name not shown because the file was not read)`,
+      found_inside: f.inside,
+      status: STATUS_WORDS[f.status],
+      taken_from_cache: !!f.disk?.fromCache,
+      type: f.type,
+      proof: { [`${f.proof.unit}_found`]: f.proof.found, [`${f.proof.unit}_read`]: f.proof.read, characters_extracted: f.proof.characters, went_through_ocr: f.proof.ocr, could_not_be_read: f.proof.unread.map(safe), parts_read: (f.proof.parts || []).map((p) => `${matter.apply(p.part)}: ${p.characters} characters`) },
+      reasons: f.reasons.map(safe),
+      checked_by_hand: f.approved ? { by: f.approved.by, when: f.approved.when } : undefined,
+      tags: f.tags || {},
+      not_sure_count: f.unsure?.length || 0,
+    })),
+  };
+}
+
+/** Write cloaked copies, the report and a marker file saying what state they are in. */
+export async function writeOutput(outDir, files, report, markerText, markerName, allow = (f) => f.status === 'cloaked') {
+  await mkdir(outDir, { recursive: true });
+  const written = [];
+  for (const f of files) {
+    if (!f.out || !f.cloaked || !allow(f)) continue;
+    await writeFile(path.join(outDir, f.out), f.cloaked, 'utf8');
+    written.push(f.out);
+  }
+  await writeFile(path.join(outDir, 'cloak-report.json'), JSON.stringify(report, null, 2), 'utf8');
+  await writeFile(path.join(outDir, markerName), markerText, 'utf8');
+  return written;
 }
 
 export { sha256 };

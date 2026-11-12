@@ -70,7 +70,7 @@ export const NAME_WORDS = new Set([...CHINESE_SURNAMES, ...MALAY_NAMES, ...INDIA
 export const GENERIC_PARTS = words('Mohd Mohamad Mohamed Mohammad Mohammed Muhammad Muhamad Muhammed Md Abdul Abd Nur Nurul Noor Nor Noorul Siti Wan Nik Che Syed Sharifah Syarifah Tengku Tunku Raja Megat Puteri Putri Awang Dayang Abang Ku Engku Ungku Sayed Sheikh Syeikh Haji Hajah Hj Hjh Al Ah');
 
 // Titles that stay in the text ("Encik {{PERSON_1.FIRST}}").
-export const GENERIC_TITLES = ['Mr', 'Mrs', 'Ms', 'Miss', 'Mdm', 'Madam', 'Encik', 'En', 'Puan', 'Pn', 'Cik', 'Tuan', 'Dr', 'Prof', 'Professor', 'Ir', 'Ar', 'Ts', 'Haji', 'Hajah', 'Hj', 'Hjh', 'Sir', 'Inspector', 'Insp', 'Sergeant', 'Sgt', 'Sjn', 'Kpl', 'Cpl', 'ASP', 'DSP', 'Supt', 'Justice', 'Judge', 'Hakim'];
+export const GENERIC_TITLES = ['Mr', 'Mrs', 'Ms', 'Miss', 'Mdm', 'Madam', 'Encik', 'En', 'Puan', 'Pn', 'Cik', 'Tuan', 'Dr', 'Prof', 'Professor', 'Ir', 'Ar', 'Ts', 'Haji', 'Hajah', 'Hj', 'Hjh', 'Sir', 'Cikgu', 'Ustaz', 'Ustazah', 'Inspector', 'Insp', 'Sergeant', 'Sgt', 'Sjn', 'Kpl', 'Cpl', 'ASP', 'DSP', 'Supt', 'Justice', 'Judge', 'Hakim'];
 // Honours that identify a person: hidden together with the name.
 export const HONOURS = ['Yang Amat Berhormat', 'Yang Berhormat', 'Yang Berbahagia', 'Yang Mulia', 'YAB', 'YBhg', 'YB', 'YM', 'Tan Sri', 'Puan Sri', 'Toh Puan', "Dato' Seri", "Dato' Sri", 'Dato Seri', 'Dato Sri', 'Datuk Seri', 'Datuk Sri', 'Datin Seri', 'Datin Sri', "Dato'", 'Dato’', 'Datuk', 'Datin', 'Dato', 'Tun', 'Toh'];
 
@@ -98,5 +98,7 @@ export const NOT_NAMES = words(`
   on in at by for from of to with without within into onto over under about above below between through during against
   enclosed attached herewith hereby herein thereof thereto pursuant according regarding concerning referring refer
   reviewer author user admin administrator unknown microsoft office windows computer scanner owner
+  guaman sivil jenayah peguamcara peguambela anor ors advocates demand finance branch purchase sale payer payee account amount
+  sessions suit mykad passport reminder correspondence english note refund deposit syarikat tuntutan balas pembelaan
   re ref no nos tel fax hp mobile email website tetuan messrs sirs menurut merujuk sila adalah bahawa
 `);

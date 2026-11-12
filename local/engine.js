@@ -325,10 +325,13 @@ export function findNames(text) {
 
 // ------------------------------------------------------------ the matter
 
+const NO_SPACES = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}]/u;
 const SENTINEL = (i) => String.fromCodePoint(0xf0000 + i);
 const SENTINEL_RE = /[\u{f0000}-\u{ffffd}]/gu;
 const HONOUR_MARK = (i) => String.fromCodePoint(0x100000 + i);
 const HONOUR_MARK_RE = /([\u{100000}-\u{10fffd}]) (?:(?=(\{\{(PERSON_\d+)[.}]))|)/gu;
+
+export { Cloak, TOKEN_RE, norm, isStop };
 
 export class Matter {
   constructor({ options = {}, key = null } = {}) {
@@ -340,6 +343,8 @@ export class Matter {
     this.merges = [];            // variants joined under one tag, for review
     this.ambiguous = [];         // short forms that fit more than one person
     this.kinds = new Map();      // base tag -> how it was found
+    this.keep = [];              // values a reviewer said are not confidential
+    this.safeWords = [];         // "not sure" words a reviewer marked as fine
   }
 
   /** Register a value under a new ending of an existing tag. */
@@ -492,6 +497,11 @@ export class Matter {
   protect(text) {
     const kept = [];
     let out = text;
+    // Values a reviewer took off the list stay as they are from then on.
+    for (const value of this.keep.slice().sort((a, b) => b.length - a.length)) {
+      const re = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRe(value).replace(/\s+/g, '\\s+')}(?![\\p{L}\\p{N}_])`, 'giu');
+      out = out.replace(re, (m) => { kept.push(m); return SENTINEL(kept.length - 1); });
+    }
     for (const k of KEEP) {
       out = out.replace(k.re, (m) => {
         if (this.options[k.option]) return `{{${this.addId(k.type, m)}}}`;
@@ -579,7 +589,11 @@ export class Matter {
       honours.push(m);
       return `${HONOUR_MARK(honours.length - 1)} `;
     });
-    let out = this.cloak.cloak(lifted);
+    // Chinese, Japanese and Thai are written without spaces between words,
+    // so a term in those scripts is matched wherever it appears.
+    let spaced = lifted;
+    for (const e of this.cloak.entries.filter((x) => x.match !== false && NO_SPACES.test(x.value)).sort((x, y) => y.value.length - x.value.length)) spaced = spaced.split(e.value).join(`{{${e.token}}}`);
+    let out = this.cloak.cloak(spaced);
     // An honour in front of a person's tag becomes part of the tag;
     // anywhere else it goes back as it was.
     out = out.replace(HONOUR_MARK_RE, (m, c, after, base) => (base ? `{{${this.titleFor(base, norm(honours[c.codePointAt(0) - 0x100000]))}}} ` : honours[c.codePointAt(0) - 0x100000]));
@@ -588,7 +602,7 @@ export class Matter {
 
   /** Words in cloaked text that still look like names. */
   unsure(cloaked, safeWords = []) {
-    const safe = new Set(safeWords.map((w) => w.toLowerCase()));
+    const safe = new Set([...safeWords, ...this.safeWords].map((w) => w.toLowerCase()));
     const { text } = this.protect(cloaked);
     const plain = text.replace(SENTINEL_RE, ' ').replace(TOKEN_RE, ' | ');
     const caps = new Map();
@@ -598,7 +612,7 @@ export class Matter {
     }
     return [...findSuspects(text.replace(SENTINEL_RE, ' ')), ...[...caps].map(([t, count]) => ({ text: t, count }))]
       .map((s) => ({ ...s, text: s.text.split(/\s+/).filter((w) => !NOT_NAMES.has(w.toLowerCase())).join(' ') }))
-      .filter((s) => s.text.length > 1 && !safe.has(s.text.toLowerCase()) && !s.text.split(' ').every((w) => isStop(w)));
+      .filter((s) => s.text.length > 1 && !safe.has(s.text.toLowerCase()) && !s.text.split(/[ -]/).every((w) => isStop(w)));
   }
 
   /** The key: tag -> real value. Stays on this machine. */
@@ -617,6 +631,11 @@ export class Matter {
       kinds: [...this.kinds],
       merges: this.merges,
       ambiguous: this.ambiguous,
+      // Numbers are never reused, even after a tag is removed: an old draft
+      // must not restore to a different person.
+      counters: [...this.cloak.counters],
+      keep: this.keep,
+      safeWords: this.safeWords,
     };
   }
 
@@ -628,6 +647,9 @@ export class Matter {
     m.kinds = new Map(state.kinds);
     m.merges = state.merges || [];
     m.ambiguous = state.ambiguous || [];
+    for (const [prefix, n] of state.counters || []) if (n > (m.cloak.counters.get(prefix) || 0)) m.cloak.counters.set(prefix, n);
+    m.keep = state.keep || [];
+    m.safeWords = state.safeWords || [];
     return m;
   }
 }

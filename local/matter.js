@@ -18,7 +18,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { Matter } from './engine.js';
 import { KEY_FILE_NAME, cacheCrypto, createKeyFile, openKeyFile, replaceRecoveryCode, saveKeyFile, setPassword } from './keyfile.js';
-import { cloakFolder } from './run.js';
+import { buildReport, cloakFolder, renderFile, writeOutput } from './run.js';
+import * as review from './review.js';
 import { VERSION } from './version.js';
 
 const LOCK_NAME = 'matter.lock';
@@ -60,13 +61,16 @@ class Session {
     this.created = contents.created;
     this.files = contents.files || {};       // fingerprint of a file -> its number and status
     this.nextNumber = contents.nextNumber || 1;
+    // Review state: who signed the review off, and files a person checked by hand.
+    this.review = contents.review || { complete: null, checked: {} };
+    this.run = null; // the files of the current run, held in memory only
     this.matter = Matter.fromState(contents.state);
     this.crypto = cacheCrypto(dataKey);
     this.open = true;
   }
 
   contents() {
-    return { name: this.name, created: this.created, state: this.matter.state(), files: this.files, nextNumber: this.nextNumber };
+    return { name: this.name, created: this.created, state: this.matter.state(), files: this.files, nextNumber: this.nextNumber, review: this.review };
   }
 
   log(action, details = {}) {
@@ -100,17 +104,122 @@ class Session {
     },
   };
 
-  /** Cloak a folder into this matter. New files reuse the existing key. */
-  async cloakFolder({ folder, outDir, ...rest }) {
+  /**
+   * Cloak a folder into this matter. New files reuse the existing key.
+   * Nothing is written out: the cloaked text stays in memory until the review
+   * is signed off and the copies are exported.
+   */
+  async cloakFolder({ folder, ...rest }) {
     folder = path.resolve(folder);
-    outDir = path.resolve(outDir);
     if (inside(this.dir, folder)) throw new Error('Keep the matter folder (with the key) outside the documents folder.');
-    if (inside(this.dir, outDir) || inside(outDir, this.dir)) throw new Error('The cloaked copies must not go into the matter folder. The key must never sit with the cloaked files.');
-    const run = await cloakFolder({ folder, outDir, user: this.user, matter: this.matter, session: this, ...rest });
-    for (const f of run.files) if (f.fingerprint && this.files[f.fingerprint]) Object.assign(this.files[f.fingerprint], { status: f.status, type: f.type, last_cloaked: run.report.when });
+    const before = JSON.stringify(this.matter.state().entries);
+    const known = new Set(Object.keys(this.files));
+    const run = await cloakFolder({ folder, user: this.user, matter: this.matter, session: this, write: false, ...rest });
+    this.run = run;
+    for (const f of run.files) {
+      f.approved = f.fingerprint ? this.review.checked[f.fingerprint] : undefined;
+      if (f.fingerprint && this.files[f.fingerprint]) Object.assign(this.files[f.fingerprint], { status: f.status, type: f.type, last_cloaked: run.report.when });
+    }
+    // New files or new terms mean the review has to be signed off again.
+    const changed = before !== JSON.stringify(this.matter.state().entries) || run.files.some((f) => f.fingerprint && f.cloaked && !known.has(f.fingerprint));
+    if (changed) this.review.complete = null;
+    this.reapply();
     await this.save();
     await this.log('cloak-folder', { ...run.report.totals, seconds: run.seconds });
     return run;
+  }
+
+  /** Re-cloak every file in memory after the name map changed. */
+  reapply() {
+    if (!this.run) return;
+    for (const f of this.run.files) renderFile(this.matter, f);
+  }
+
+  /** What the review screen shows. Real values: this never leaves the machine. */
+  reviewData() {
+    const files = this.run?.files || [];
+    const data = review.reviewData(this.matter, files);
+    const waiting = files.filter((f) => f.status === 'manual' && !f.approved);
+    const blockers = [];
+    if (data.unsure.length) blockers.push(`${data.unsure.length} word(s) the tool is not sure about still need a decision.`);
+    if (data.merges.length) blockers.push(`${data.merges.length} joined name(s) need to be confirmed or split.`);
+    if (data.shortForms.length) blockers.push(`${data.shortForms.length} short form(s) that could be two people need to be confirmed.`);
+    return {
+      ...data,
+      files: files.map((f) => ({
+        number: f.index, name: f.rel, inside: f.inside, type: f.type, status: f.status, output: f.out || null,
+        reasons: f.reasons, ocr: f.proof.ocr, fromCache: !!f.disk?.fromCache, characters: f.proof.characters,
+        found: f.proof.found, read: f.proof.read, unit: f.proof.unit, notSure: f.unsure?.length || 0,
+        checkedBy: f.approved || null, willExport: f.status === 'cloaked' || (f.status === 'manual' && !!f.approved),
+      })),
+      waitingForManualCheck: waiting.length,
+      blockers,
+      complete: this.review.complete,
+    };
+  }
+
+  /** One change from the review screen, applied across all files. */
+  async reviewAction(action) {
+    const m = this.matter;
+    const done = {
+      add: () => review.addTerm(m, action.text, action.kind),
+      remove: () => review.removeTerm(m, action.tag),
+      merge: () => review.mergeTags(m, action.from, action.into),
+      split: () => review.splitForm(m, action.tag),
+      confirmMerge: () => review.confirmMerge(m, action.tag),
+      confirmShortForm: () => review.confirmShortForm(m, action.tag, action.also),
+      fine: () => review.markFine(m, action.text),
+    }[action.type];
+    if (!done) throw new Error('Unknown review action.');
+    done();
+    this.review.complete = null;
+    this.reapply();
+    await this.save();
+    // The log records what kind of change was made, never the value.
+    await this.log('review-change', { change: action.type, tag: action.tag || action.into || undefined });
+    return this.reviewData();
+  }
+
+  /** A person has read a file that needed a manual check and accepts it. */
+  async approveFile(number) {
+    const f = this.run?.files.find((x) => x.index === number);
+    if (!f) throw new Error('That file is not in this run.');
+    if (f.status !== 'manual') throw new Error(f.status === 'cloaked' ? 'That file does not need a manual check.' : 'That file could not be fully read, so it cannot be approved. Fix the file and run again.');
+    f.approved = { by: this.user, when: new Date().toISOString(), reasons: f.reasons };
+    this.review.checked[f.fingerprint] = f.approved;
+    if (!f.out) f.out = `${String(this.numberFor(f.fingerprint)).padStart(3, '0')}-${f.type}.cloaked.txt`;
+    await this.save();
+    await this.log('file-checked-by-hand', { file_number: this.files[f.fingerprint].number });
+    return this.reviewData();
+  }
+
+  /** Sign the review off. Refused while anything is still undecided. */
+  async completeReview() {
+    const data = this.reviewData();
+    if (!this.run) throw new Error('Cloak a folder first.');
+    if (data.blockers.length) throw new Error(`The review is not finished. ${data.blockers.join(' ')}`);
+    this.review.complete = { by: this.user, when: new Date().toISOString() };
+    await this.save();
+    await this.log('review-completed', { terms: data.terms.length, files: data.files.length });
+    return this.reviewData();
+  }
+
+  /**
+   * Write the cloaked copies to a folder. Only after the review is signed
+   * off, and only files that were fully read (or checked by hand).
+   */
+  async export({ outDir }) {
+    if (!this.run) throw new Error('Cloak a folder first.');
+    if (!this.review.complete) throw new Error('Nothing can be exported until the review is finished.');
+    outDir = path.resolve(outDir);
+    if (inside(this.dir, outDir) || inside(outDir, this.dir)) throw new Error('The cloaked copies must not go into the matter folder. The key must never sit with the cloaked files.');
+    const files = this.run.files;
+    const allowed = (f) => f.status === 'cloaked' || (f.status === 'manual' && !!f.approved);
+    const note = `Reviewed by ${this.review.complete.by} on ${this.review.complete.when}. NOT YET DOUBLE-CHECKED.`;
+    const report = buildReport({ matter: this.matter, files, total: this.run.total, user: this.user, seconds: this.run.seconds, cached: this.run.cached, review: note });
+    const written = await writeOutput(outDir, files, report, `Cloak ${VERSION}\n\n${note}\nThe double checker has not been run on these copies.\n`, 'REVIEWED-NOT-DOUBLE-CHECKED.txt', allowed);
+    await this.log('exported', { files_written: written.length, files_held_back: files.filter((f) => f.cloaked && !allowed(f)).length });
+    return { outDir, written, heldBack: files.filter((f) => !f.container && !allowed(f)).length };
   }
 
   async changePassword(newPassword) {

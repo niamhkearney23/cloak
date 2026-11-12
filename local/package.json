@@ -5,7 +5,10 @@
   "description": "Cloak for the desktop: cloaks a folder of documents on this machine. Nothing leaves the computer.",
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "app": "electron .",
+    "dist": "electron-builder --publish never",
+    "test:app": "node --test test/app.test.js"
   },
   "engines": {
     "node": ">=20"
@@ -20,5 +23,48 @@
     "@tesseract.js-data/tam": "^1.0.0",
     "pdfjs-dist": "^6.5.438",
     "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "playwright-core": "^1.65.0"
+  },
+  "main": "app/main.js",
+  "build": {
+    "appId": "my.lawgistics.cloak",
+    "productName": "Cloak",
+    "asar": false,
+    "files": [
+      "*.js",
+      "app/**",
+      "package.json",
+      "node_modules/**",
+      "!test/**"
+    ],
+    "extraMetadata": {
+      "main": "app/main.js"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
+    },
+    "extraResources": [
+      {
+        "from": "../public/cloak.js",
+        "to": "public/cloak.js"
+      },
+      {
+        "from": "../public/package.json",
+        "to": "public/package.json"
+      }
+    ],
+    "publish": null
   }
 }
