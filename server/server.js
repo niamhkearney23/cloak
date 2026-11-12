@@ -22,6 +22,7 @@ import { createGraph, msConfigFromEnv } from './assistant/graph.js';
 import { createAI } from './assistant/ai.js';
 import { createAssistant } from './assistant/worker.js';
 import { createAssistantRoutes } from './assistant/routes.js';
+import { createPausedAssistant } from './assistant/paused.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(here, '..', 'public');
@@ -71,7 +72,9 @@ export function configFromEnv(rawEnv = process.env) {
     secureCookies: env.COOKIE_SECURE === '1' || env.NODE_ENV === 'production',
     draftsPerHour: Number(env.CLOAK_DRAFTS_PER_HOUR || 60),
     firmName: env.CLOAK_FIRM_NAME || '',
-    // Email assistant (optional): needs CLOAK_DATA_KEY to store its data.
+    // Email assistant: off (paused) unless CLOAK_ASSISTANT_ENABLED=1. It also
+    // needs CLOAK_DATA_KEY to store its data.
+    assistantEnabled: env.CLOAK_ASSISTANT_ENABLED === '1',
     dataKey: env.CLOAK_DATA_KEY || '',
     dataDir: env.CLOAK_DATA_DIR || path.resolve(here, '..', 'data'),
     publicUrl: env.CLOAK_PUBLIC_URL || '',
@@ -131,7 +134,11 @@ export function createApp(config = configFromEnv(), deps = {}) {
   let assistant = null;
   let assistantRoutes = null;
   const store = deps.store || (config.dataKey ? createStore({ dir: config.dataDir, key: config.dataKey }) : null);
-  if (store) {
+  // Paused: the mailbox is not read and none of the assistant's routes run.
+  const pausedAssistant = config.assistantEnabled ? null : createPausedAssistant({
+    store, dataDir: config.dataDir, allowedUsers: config.assistantUsers, authEnabled: auth.enabled, audit,
+  });
+  if (store && config.assistantEnabled) {
     const graphFor = deps.makeGraph || ((tokenIO) => createGraph({ ms: config.ms, ...tokenIO }));
     const makeGraph = (tokenIO) => graphFor(tokenIO || {
       getTokens: async () => (await store.load()).account?.tokens,
@@ -370,6 +377,10 @@ export function createApp(config = configFromEnv(), deps = {}) {
         if (pathname.startsWith('/api/')) return send(req, res, 401, { error: 'Please sign in again.' });
         return redirect(req, res, '/login');
       }
+
+      if (pausedAssistant && await pausedAssistant(req, res, {
+        pathname, user, send: (status, body, type) => send(req, res, status, body, type),
+      })) return;
 
       if (assistantRoutes) {
         const handled = await assistantRoutes(req, res, {

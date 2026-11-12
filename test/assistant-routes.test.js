@@ -20,7 +20,7 @@ const fakeGraph = () => ({ me: async () => ({ displayName: 'Mathew Lee', mail: '
 
 let server, base;
 before(async () => {
-  const config = configFromEnv({ CLOAK_MOCK: '1', CLOAK_USERS: USERS, CLOAK_SECRET: 'y'.repeat(40), CLOAK_ASSISTANT_USERS: 'nk' });
+  const config = configFromEnv({ CLOAK_MOCK: '1', CLOAK_USERS: USERS, CLOAK_SECRET: 'y'.repeat(40), CLOAK_ASSISTANT_USERS: 'nk', CLOAK_ASSISTANT_ENABLED: '1' });
   server = createApp(config, { store, makeGraph: fakeGraph, ms, fetchImpl: fakeFetch, startWorker: false });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${server.address().port}`;
