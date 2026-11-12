@@ -91,6 +91,8 @@ function findAddresses(text) {
 const LAND_TAIL = String.raw`(?:\s*,?\s*(?:Lot|PT|Plot)\s*(?:No\.?\s*)?\d[\w\/-]*)?(?:\s*,?\s*(?:Seksyen|Section)\s*\d+[A-Z]?)?(?:\s*,?\s*(?:Mukim|Bandar|Pekan|Daerah|District\s+of|Town\s+of|Tempat|Locality\s+of)\s+(?:of\s+)?\p{Lu}[\p{L}]*(?:\s+\p{Lu}[\p{L}]*){0,2})*`;
 const PATTERNS = [
   { type: 'EMAIL', re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
+  // Where a photo was taken.
+  { type: 'LOCATION', re: /(?<=GPS(?: location)?:\s*)-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+/gi },
   // Land titles: Geran 12345, GM 678, HS(D) 12345, PN 4321, Lot 1234 Mukim X.
   { type: 'LAND', re: new RegExp(String.raw`\b(?:Geran(?:\s+Mukim)?|GRN|GM|GN|PN|PM|H\.?S\.?\s?\(?[DM]\)?|Pajakan\s+(?:Negeri|Mukim)|Hakmilik(?:\s+Sementara)?(?:\s+(?:Daerah|Mukim))?|Title)\s*(?:No\.?|Nombor)?\s*:?\s*\d[\d\/-]*${LAND_TAIL}`, 'gu') },
   { type: 'LAND', re: new RegExp(String.raw`\b(?:Lot|PT|Plot)\s*(?:No\.?\s*)?\d[\w\/-]*(?:\s*,?\s*(?:Seksyen|Section)\s*\d+[A-Z]?)?\s*,?\s*(?:Mukim|Bandar|Pekan|Daerah)\s+(?:of\s+)?\p{Lu}[\p{L}]*(?:\s+\p{Lu}[\p{L}]*){0,2}`, 'gu') },
@@ -275,7 +277,17 @@ export function findNames(text) {
   }
 
   // 4. Email headers: From: "Lim Mei Ling" <meiling@example.com>.
-  for (const line of rest.matchAll(/^(?:From|To|Cc|Bcc|Daripada|Kepada|Sent by|Reply-To):[ \t]*(.+)$/gim)) {
+  // Document properties and reviewer names: "Author: Lim Mei Ling".
+  for (const line of rest.matchAll(/^(?:Author|Last modified by|Reviewer|Note by|Comment by|Owner|Manager|Artist|creator|Signed by|Prepared by|Disediakan oleh):[ \t]*(.+)$/gim)) {
+    const name = norm(line[1].replace(/<[^>]*>|\S+@\S+|["']/g, ''));
+    const words = name.split(' ').filter(Boolean);
+    if (words.length >= 1 && words.length <= 6 && words.every((w) => /^\p{Lu}/u.test(w) || PARTICLE_WORD.test(w)) && !words.every((w) => isStop(w) && !isNameWord(w))) add('PERSON', words.length === 1 ? `Mr ${name}` : name, 'named in the document details');
+  }
+  for (const line of rest.matchAll(/^Company:[ \t]*(.+)$/gim)) {
+    const name = norm(line[1]);
+    if (name.length > 2 && name.length < 80 && !name.split(' ').every((w) => isStop(w))) add('COMPANY', name, 'named in the document details');
+  }
+  for (const line of rest.matchAll(/^(?:From|Sender|To|Cc|Bcc|Daripada|Kepada|Sent by|Reply-To):[ \t]*(.+)$/gim)) {
     for (const piece of line[1].split(/[;,]/)) {
       const name = norm(piece.replace(/<[^>]*>|\S+@\S+|["']/g, ''));
       const words = name.split(' ').filter(Boolean);

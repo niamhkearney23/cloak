@@ -58,7 +58,7 @@ export function xlsx(sheetName, rows) {
   });
 }
 
-function pdfFile(objects) {
+export function pdfFile(objects, trailer = "") {
   const parts = [Buffer.from('%PDF-1.4\n')];
   const offsets = [];
   const length = () => parts.reduce((n, p) => n + p.length, 0);
@@ -67,19 +67,19 @@ function pdfFile(objects) {
     parts.push(Buffer.from(`${i + 1} 0 obj\n`), Buffer.isBuffer(o) ? o : Buffer.from(o), Buffer.from('\nendobj\n'));
   });
   const xref = length();
-  parts.push(Buffer.from(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`));
+  parts.push(Buffer.from(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R ${trailer} >>\nstartxref\n${xref}\n%%EOF\n`));
   return Buffer.concat(parts);
 }
 
-const stream = (dict, data) => Buffer.concat([Buffer.from(`<< ${dict} /Length ${data.length} >>\nstream\n`), Buffer.isBuffer(data) ? data : Buffer.from(data), Buffer.from('\nendstream')]);
+export const stream = (dict, data) => Buffer.concat([Buffer.from(`<< ${dict} /Length ${data.length} >>\nstream\n`), Buffer.isBuffer(data) ? data : Buffer.from(data), Buffer.from('\nendstream')]);
 
-function textPage(lines) {
+export function textPage(lines) {
   const body = lines.map((l) => `(${l.replace(/[\\()]/g, '\\$&')}) Tj T*`).join('\n');
   return `BT /F1 11 Tf 14 TL 60 780 Td\n${body}\nET`;
 }
 
 /** Draws lines of text as a picture: a "scan" with no text layer. */
-function scanImage(lines) {
+export function scanImage(lines) {
   const { createCanvas } = require('@napi-rs/canvas');
   const W = 1654, H = 2339;
   const c = createCanvas(W, H);

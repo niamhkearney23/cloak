@@ -1,10 +1,15 @@
 // Cloaks a whole folder. Originals are only ever opened for reading; cloaked
-// copies go to a new folder as plain text.
+// copies go to a new folder as plain text rebuilt from what was read.
+//
+// Every file is read, including hidden files, files in sub-folders, files
+// inside zip archives and files attached to emails or embedded in documents.
+// A file is exported only if every part of it was read. Anything else is
+// listed with the reason and blocked.
 //
 // Two passes, so a short form in one file ("Mr Tan") gets the tag of the full
 // name that only appears in another ("Tan Boon Huat"):
 //   pass 1  read every file (in parallel) and learn what is in the folder
-//   pass 2  write a cloaked copy of each file with the shared name map
+//   pass 2  write a cloaked copy of each fully read file with the shared map
 
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
@@ -15,7 +20,6 @@ import { Worker } from 'node:worker_threads';
 import { Matter } from './engine.js';
 import { VERSION } from './version.js';
 
-const SYSTEM_FILE = /^(?:~\$.*|\..*|Thumbs\.db|desktop\.ini|.*\.tmp|.*\.lnk)$/i;
 const TAG = /\{\{([A-Z][A-Z0-9_]*?)_(\d+)(?:\.[A-Z0-9_]+)?(?:\|[A-Z]+)?\}\}/g;
 
 async function walk(dir, skip, out = []) {
@@ -23,7 +27,7 @@ async function walk(dir, skip, out = []) {
     const full = path.join(dir, entry.name);
     if (path.resolve(full) === skip) continue;
     if (entry.isDirectory()) await walk(full, skip, out);
-    else if (entry.isFile()) out.push(full);
+    else out.push(full); // every file, hidden ones included
   }
   return out;
 }
@@ -55,29 +59,32 @@ function pool(size) {
       const w = idle.pop();
       const job = queue.shift();
       waiting.set(job.id, { ...job, w });
-      w.postMessage({ id: job.id, file: job.file });
+      w.postMessage({ id: job.id, file: job.file, rel: job.rel });
     }
   };
+  const failed = (rel, message) => [{ status: 'unreadable', type: 'unknown', parts: [], reasons: [`The file could not be opened (${message}).`], notes: [], rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }];
   for (const w of workers) {
     w.on('message', (msg) => {
       const job = waiting.get(msg.id);
       waiting.delete(msg.id);
       idle.push(w);
-      job.resolve({ ...msg.result, ms: msg.ms });
+      job.resolve({ results: msg.results, ms: msg.ms });
       next();
     });
+    // A crashed reader must not lose a file: it is reported as unreadable.
     w.on('error', (err) => {
-      // A crashed reader must not lose a file: it is reported as unreadable.
-      for (const [id, job] of waiting) if (job.w === w) { waiting.delete(id); job.resolve({ status: 'unreadable', type: 'unknown', parts: [], reasons: [`The file could not be opened (${err.message}).`], notes: [], pages: 0, ocrPages: [], ocrImages: 0, ms: 0 }); }
+      for (const [id, job] of waiting) if (job.w === w) { waiting.delete(id); job.resolve({ results: failed(job.rel, err.message), ms: 0 }); }
     });
   }
   return {
-    run: (file) => new Promise((resolve) => { queue.push({ id: ++seq, file, resolve }); next(); }),
+    run: (file, rel) => new Promise((resolve) => { queue.push({ id: ++seq, file, rel, resolve }); next(); }),
     close: () => Promise.all(workers.map((w) => new Promise((resolve) => { w.once('exit', resolve); w.postMessage({ type: 'close' }); }))),
   };
 }
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
+
+const STATUS_WORDS = { cloaked: 'cloaked', manual: 'needs manual check', partial: 'partly read - blocked', unreadable: 'unreadable - blocked', container: 'opened (its files are listed separately)' };
 
 /**
  * @param folder      the folder to cloak (read only)
@@ -93,71 +100,74 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   folder = path.resolve(folder);
   outDir = path.resolve(outDir);
   if (outDir === folder) throw new Error('The cloaked copies must go to a different folder from the originals.');
-  const all = await walk(folder, outDir);
-
-  const files = all.map((full, i) => ({ index: i + 1, full, rel: path.relative(folder, full), status: 'waiting', reasons: [], notes: [], ocrPages: [], ocrImages: 0, pages: 0 }));
-  const total = files.length;
-  const tell = (f, stage) => onProgress({ index: f.index, total, file: f.rel, stage, ocr: f.ocrPages.length > 0 || f.ocrImages > 0, status: f.status });
+  const onDisk = (await walk(folder, outDir)).map((full, i) => ({ index: i + 1, full, rel: path.relative(folder, full).split(path.sep).join('/') }));
+  const total = onDisk.length;
+  const tell = (f, stage, extra = {}) => onProgress({ index: f.index, total, file: f.rel, stage, ...extra });
 
   // Files still in the cloud: ask before anything is downloaded.
   const cloud = [];
-  for (const f of files) {
-    if (SYSTEM_FILE.test(path.basename(f.full))) { f.status = 'ignored'; f.reasons.push('System or temporary file.'); continue; }
-    if (await isCloudOnly(f.full)) cloud.push(f);
-  }
-  if (cloud.length && !(await onCloudOnly(cloud.map((f) => f.rel)))) {
-    for (const f of cloud) { f.status = 'unreadable'; f.reasons.push('Not downloaded from the cloud yet. Download it (or allow Cloak to) and run again.'); }
-  }
+  for (const f of onDisk) if (await isCloudOnly(f.full)) cloud.push(f);
+  const refused = new Set(cloud.length && !(await onCloudOnly(cloud.map((f) => f.rel))) ? cloud : []);
 
-  // Pass 1: read in parallel.
-  const todo = files.filter((f) => f.status === 'waiting');
+  // Pass 1: read in parallel. One file on disk can turn into several files
+  // (a zip, an email with attachments).
+  const todo = onDisk.filter((f) => !refused.has(f));
   const size = Math.max(1, Math.min(concurrency || os.availableParallelism() - 1, 6, todo.length));
   const readers = todo.length ? pool(size) : null;
+  const trees = new Map();
+  for (const f of refused) trees.set(f, [{ status: 'unreadable', type: path.extname(f.full).slice(1), parts: [], reasons: ['Not downloaded from the cloud yet. Download it (or allow Cloak to) and run again.'], notes: [], rel: f.rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }]);
   await Promise.all(todo.map(async (f) => {
     tell(f, 'reading');
-    const r = await readers.run(f.full);
-    Object.assign(f, { type: r.type, parts: r.parts, pages: r.pages, ocrPages: r.ocrPages, ocrImages: r.ocrImages, readMs: r.ms });
-    f.status = r.status === 'ok' ? 'read' : r.status;
-    f.reasons.push(...r.reasons);
-    f.notes.push(...r.notes);
-    tell(f, 'read');
+    const { results, ms } = await readers.run(f.full, f.rel);
+    results[0].readMs = ms;
+    trees.set(f, results);
+    tell(f, 'read', { ocr: results.some((r) => r.proof.ocr.length > 0), status: results[0].status });
   }));
   if (readers) await readers.close();
 
+  const files = onDisk.flatMap((f) => trees.get(f).map((r) => ({ ...r, disk: f })));
+  files.forEach((f, i) => { f.index = i + 1; f.ocrPages = f.proof.ocr; });
+
   // Learn the whole folder before cloaking any of it. File and folder names
   // are part of what is learned and cloaked ("Affidavit_Ahmad_bin_Ismail").
-  const readable = files.filter((f) => f.parts?.length);
-  const nameText = (f) => f.rel.replace(/\.[^.\\/]+$/, '').replace(/[_\\/]+/g, ' ');
+  const readable = files.filter((f) => f.parts.length);
+  const nameText = (f) => f.rel.replace(/\.[A-Za-z0-9]{1,5}(?=\/|$)/g, '').replace(/[_/\\]+/g, ' ');
   const whole = (f) => [nameText(f), ...f.parts.map((p) => p.text)].join('\n\n');
   const candidates = [];
   for (const f of readable) candidates.push(...matter.learn(whole(f)));
+  for (const f of files) if (!f.parts.length) candidates.push(...matter.learn(nameText(f)));
   matter.register(candidates);
   for (const f of readable) matter.learnDefinitions(whole(f));
 
   // Pass 2: write the cloaked copies.
   await mkdir(outDir, { recursive: true });
-  const width = String(total).length;
-  for (const f of readable) {
+  const width = String(files.length).length;
+  for (const f of files) {
+    f.name = matter.apply(nameText(f));
+    if (f.container) f.status = f.status === 'ok' ? 'container' : f.status;
+    if (!f.parts.length) continue;
     const plainLabel = (p) => f.parts.length === 1 && !p.ocr && /^(?:Text|Body|Email|Page 1)$/.test(p.label);
-    const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${p.label}]\n`) + matter.apply(p.text)).join('\n\n');
-    const text = `File: ${matter.apply(nameText(f))}.${f.type}\n\n${body}\n`;
+    // Labels can carry names too (a sheet called after a client).
+    const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${matter.apply(p.label)}]\n`) + matter.apply(p.text)).join('\n\n');
+    const text = `File: ${f.name}.${f.type}\n\n${body}\n`;
     f.cloaked = text;
     f.unsure = matter.unsure(text);
     f.tags = {};
     for (const m of text.matchAll(TAG)) f.tags[`${m[1]}_${m[2]}`] = (f.tags[`${m[1]}_${m[2]}`] || 0) + 1;
-    // A file that needs a manual check is never written out as if it were
-    // clean. Its cloaked text stays in memory for the review screen only.
-    if (f.status === 'read') {
+    // Only a fully read file is written out. Anything partly read, or
+    // waiting for a manual check, stays in memory for the review screen.
+    if (f.status === 'ok') {
       f.out = `${String(f.index).padStart(width, '0')}-${f.type}.cloaked.txt`;
       await writeFile(path.join(outDir, f.out), text, 'utf8');
       f.status = 'cloaked';
     }
-    tell(f, 'cloaked');
+    if (!f.inside) tell(f.disk, 'cloaked', { ocr: f.proof.ocr.length > 0, status: f.status });
   }
 
   const seconds = (Date.now() - started) / 1000;
+  const count = (s) => files.filter((f) => f.status === s).length;
   const byType = {};
-  for (const f of readable) for (const [tag, n] of Object.entries(f.tags)) { const t = tag.replace(/_\d+$/, ''); byType[t] = (byType[t] || 0) + n; }
+  for (const f of files) for (const [tag, n] of Object.entries(f.tags || {})) { const t = tag.replace(/_\d+$/, ''); byType[t] = (byType[t] || 0) + n; }
   const report = {
     cloak_version: VERSION,
     when: new Date().toISOString(),
@@ -165,11 +175,29 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
     options: matter.options,
     seconds,
     review: 'NOT REVIEWED. These copies have not been through the review screen or the double checker.',
-    totals: { files: total, cloaked: files.filter((f) => f.status === 'cloaked').length, needs_manual_check: files.filter((f) => f.status === 'manual').length, unreadable: files.filter((f) => f.status === 'unreadable').length, ignored: files.filter((f) => f.status === 'ignored').length, ocr_files: files.filter((f) => f.ocrPages.length || f.ocrImages).length, replaced: byType },
+    totals: { files_on_disk: total, files_including_those_inside_others: files.length, cloaked: count('cloaked'), needs_manual_check: count('manual'), partly_read_blocked: count('partial'), unreadable_blocked: count('unreadable'), archives_opened: count('container'), ocr_files: files.filter((f) => f.proof.ocr.length).length, replaced: byType },
     // Real file names can contain client names, so files are listed by
-    // their cloaked name only.
-    files: files.map((f) => ({ output: f.out || null, name: f.parts?.length ? `${matter.apply(nameText(f))}.${f.type}` : `(file ${f.index}, not read)`, status: f.status, type: f.type || path.extname(f.full).slice(1).toLowerCase(), pages: f.pages, ocr_pages: f.ocrPages, ocr_pictures: f.ocrImages, reasons: f.reasons, notes: f.notes, tags: f.tags || {}, not_sure_count: f.unsure?.length || 0 })),
+    // their cloaked name only. "proof" shows what was found and what was read.
+    files: files.map((f) => ({
+      number: f.index,
+      output: f.out || null,
+      name: f.parts.length || f.container ? `${f.name}.${f.type}` : `(file ${f.index}: name not shown because the file was not read)`,
+      found_inside: f.inside,
+      status: STATUS_WORDS[f.status],
+      type: f.type,
+      proof: { [`${f.proof.unit}_found`]: f.proof.found, [`${f.proof.unit}_read`]: f.proof.read, characters_extracted: f.proof.characters, went_through_ocr: f.proof.ocr, could_not_be_read: f.proof.unread, parts_read: (f.proof.parts || []).map((p) => `${matter.apply(p.part)}: ${p.characters} characters`) },
+      reasons: f.reasons,
+      tags: f.tags || {},
+      not_sure_count: f.unsure?.length || 0,
+    })),
   };
+  // Reasons can quote the name of an attachment: cloak them like any text.
+  // In the report the name itself is left out, since it may not be cloaked.
+  const safe = (r) => matter.apply(r.replace(/"[^"]*"/g, '(a file inside it)').replace(/: [^:]*\.$/, (m) => (/could not be read: /.test(r) ? ': (part name hidden).' : m)));
+  for (const f of report.files) {
+    f.reasons = f.reasons.map(safe);
+    f.proof.could_not_be_read = f.proof.could_not_be_read.map(safe);
+  }
   await writeFile(path.join(outDir, 'cloak-report.json'), JSON.stringify(report, null, 2), 'utf8');
   await writeFile(path.join(outDir, 'NOT-REVIEWED.txt'), `Cloak ${VERSION}\n\nThese cloaked copies have NOT been reviewed or double-checked.\nDo not send them to any AI tool yet.\n`, 'utf8');
 

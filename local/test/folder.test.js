@@ -67,7 +67,7 @@ test('originals are never changed', async () => {
 test('every file is accounted for: cloaked, needs a manual check, or unreadable', () => {
   const by = (n) => run.files.find((f) => f.rel.startsWith(n));
   assert.equal(run.files.length, 20);
-  assert.equal(run.report.totals.cloaked + run.report.totals.needs_manual_check + run.report.totals.unreadable + run.report.totals.ignored, 20);
+  assert.equal(run.report.totals.cloaked + run.report.totals.needs_manual_check + run.report.totals.partly_read_blocked + run.report.totals.unreadable_blocked, 20);
   assert.equal(by('18 Old memo').status, 'unreadable');
   assert.match(by('18 Old memo').reasons[0], /\.doc/);
   assert.equal(by('19 Photo').status, 'unreadable');
@@ -194,7 +194,7 @@ test('the log says who, when and what, with no real values and no folder path', 
   assert.equal(entry.by, 'test-user');
   assert.equal(entry.action, 'cloak-folder');
   assert.equal(entry.cloak_version, VERSION);
-  assert.equal(entry.files, 20);
+  assert.equal(entry.files_on_disk, 20);
   assert.ok(!JSON.stringify(entry).includes(src));
   assert.ok(Date.parse(entry.t) > 0);
 });

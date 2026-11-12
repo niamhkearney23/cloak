@@ -1,7 +1,7 @@
 // Runs in a worker thread: reads files one at a time so several cores can
 // work on a folder at once. Text goes back to the main thread in memory only.
 import { parentPort } from 'node:worker_threads';
-import { extractFile, closeOcr } from './extract.js';
+import { extractTree, closeOcr } from './extract.js';
 
 parentPort.on('message', async (msg) => {
   if (msg.type === 'close') {
@@ -9,6 +9,7 @@ parentPort.on('message', async (msg) => {
     process.exit(0);
   }
   const started = Date.now();
-  const result = await extractFile(msg.file);
-  parentPort.postMessage({ id: msg.id, result, ms: Date.now() - started });
+  // The file and every file found inside it (attachments, zip entries).
+  const results = await extractTree(msg.file, msg.rel);
+  parentPort.postMessage({ id: msg.id, results, ms: Date.now() - started });
 });

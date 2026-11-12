@@ -22,8 +22,9 @@ test('OCR runs only on the pages of a PDF that have no text layer', async () => 
   ]));
   const r = await extractFile(file);
   assert.equal(r.status, 'ok');
-  assert.equal(r.pages, 3);
-  assert.deepEqual(r.ocrPages, [2]);
+  assert.equal(r.proof.found, 3);
+  assert.equal(r.proof.read, 3);
+  assert.deepEqual(r.proof.ocr, [2]);
   assert.deepEqual(r.parts.map((p) => p.label), ['Page 1', 'Page 2 (scanned)', 'Page 3']);
   assert.match(r.parts[1].text, /scanned picture of a letter/);
 });
