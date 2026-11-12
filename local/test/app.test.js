@@ -129,12 +129,12 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     await page.waitForSelector('#export');
     await page.click('#export');
     await page.waitForSelector('#exported');
-    assert.match(await page.textContent('#exported'), /18 cloaked copies written/);
+    assert.match(await page.textContent('#exported'), /19 cloaked copies written/);
     assert.match(await page.textContent('#exported'), /2 files were held back/);
 
     // What was exported holds no real value.
     const names = await readdir(out);
-    assert.equal(names.filter((n) => n.endsWith('.cloaked.txt')).length, 18);
+    assert.equal(names.filter((n) => n.endsWith('.cloaked.txt')).length, 19);
     for (const n of names) {
       const text = await readFile(path.join(out, n), 'utf8');
       for (const v of REAL_VALUES) assert.ok(!new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(v)}(?![\\p{L}\\p{N}])`, 'iu').test(text), `${v} in ${n}`);

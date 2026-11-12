@@ -24,6 +24,9 @@ import { VERSION } from './version.js';
 import { formatDate } from './dates.js';
 import { NON_LATIN_CHARS } from './run.js';
 import { assertNotSynced, locate } from './source.js';
+import { Chronology } from './chronology.js';
+import { contextSheet } from './context.js';
+import { keySweep } from './doublecheck.js';
 
 const LOCK_NAME = 'matter.lock';
 export const APPROVE_WORD = 'APPROVE';
@@ -69,6 +72,7 @@ class Session {
     // Review state: who signed the review off, and files a person checked by hand.
     this.review = { complete: null, checked: {}, hideNonLatin: {}, ...contents.review };
     this.sources = contents.sources || []; // where documents came from, kept in the encrypted key
+    this.chronology = contents.chronology ? Chronology.fromJSON(contents.chronology) : null; // real text: it lives only in the encrypted key
     this.run = null; // the files of the current run, held in memory only
     this.matter = Matter.fromState(contents.state);
     this.crypto = cacheCrypto(dataKey);
@@ -76,7 +80,7 @@ class Session {
   }
 
   contents() {
-    return { name: this.name, created: this.created, state: this.matter.state(), files: this.files, nextNumber: this.nextNumber, review: this.review, sources: this.sources };
+    return { name: this.name, created: this.created, state: this.matter.state(), files: this.files, nextNumber: this.nextNumber, review: this.review, sources: this.sources, chronology: this.chronology?.toJSON() };
   }
 
   log(action, details = {}) {
@@ -178,6 +182,7 @@ class Session {
   /** Re-cloak every file in memory after the name map changed. */
   reapply() {
     if (!this.run) return;
+    this.matter.facts.syncInto(this.matter.cloak);
     for (const f of this.run.files) renderFile(this.matter, f);
   }
 
@@ -230,6 +235,9 @@ class Session {
       },
       confirmShortForm: () => review.confirmShortForm(m, action.tag, action.also),
       fine: () => review.markFine(m, action.text),
+      // A person chose to leave one blurred fact visible; the matter records who.
+      unblurFact: () => { if (!m.facts.on) throw new Error('This matter is not set to blur facts.'); m.facts.unblur(action.kind, action.key, this.user); },
+      reblurFact: () => m.facts.reblur(action.kind, action.key),
     }[action.type];
     if (!done) throw new Error('Unknown review action.');
     done();
@@ -239,6 +247,42 @@ class Session {
     // The log records what kind of change was made, never the value.
     await this.log('review-change', { change: action.type, tag: action.tag || action.into || undefined, file_number: action.number ? this.files[this.run.files.find((x) => x.index === action.number)?.fingerprint]?.number : undefined });
     return this.reviewData();
+  }
+
+  // ------------------------------------------------------------ chronology
+
+  /** Build the first version of the chronology from every readable file of the run. */
+  async buildChronology() {
+    if (!this.run) throw new Error('Cloak a folder first.');
+    this.chronology = Chronology.build({ files: this.run.files, matter: this.matter });
+    await this.save();
+    await this.log('chronology-built', { rows: this.chronology.active().length });
+    return this.chronologyView();
+  }
+
+  /** The chronology as the screen shows it. Real text: it never leaves this machine. */
+  chronologyView({ undated = true } = {}) {
+    const c = this.chronology;
+    if (!c) return null;
+    return { rows: c.table({ undated }), confirmed: c.confirmed && { ...c.confirmed, whenText: formatDate(c.confirmed.when) }, dated: c.dated().length, undated: c.undated().length, conflicts: c.active().filter((r) => r.conflict).length, removed: c.rows.filter((r) => r.removed).length };
+  }
+
+  /** One change to the chronology. The log records the kind of change and who made it, never the text. */
+  async chronologyAction(action) {
+    const c = this.chronology;
+    if (!c) throw new Error('Build the chronology first.');
+    const by = this.user;
+    ({
+      edit: () => c.edit(action.id, action.patch, by),
+      merge: () => c.merge(action.ids, by),
+      remove: () => c.remove(action.id, by),
+      restore: () => c.restore(action.id, by),
+      add: () => c.add(action.row, by),
+      confirm: () => c.confirm(by),
+    }[action.type] || (() => { throw new Error('Unknown chronology action.'); }))();
+    await this.save();
+    await this.log(`chronology-${action.type}`);
+    return this.chronologyView();
   }
 
   /** A person has read a file that needed a manual check and accepts it. */
@@ -275,19 +319,46 @@ class Session {
    * Write the cloaked copies to a folder. Only after the review is signed
    * off, and only files that were fully read (or checked by hand).
    */
-  async export({ outDir }) {
+  async export({ outDir, only = 'all' }) {
     if (!this.run) throw new Error('Cloak a folder first.');
     if (!this.review.complete) throw new Error('Nothing can be exported until the review is finished.');
+    if (only === 'chronology' && !this.chronology?.confirmed) throw new Error('Confirm the chronology first.');
     outDir = path.resolve(outDir);
     if (inside(this.dir, outDir) || inside(outDir, this.dir)) throw new Error('The cloaked copies must not go into the matter folder. The key must never sit with the cloaked files.');
     await assertNotSynced(outDir, 'The folder for the cloaked copies', { source: this.run.location });
     const files = this.run.files;
-    const allowed = (f) => f.status === 'cloaked' || (f.status === 'manual' && !!f.approved);
+    const allowed = (f) => only !== 'chronology' && (f.status === 'cloaked' || (f.status === 'manual' && !!f.approved));
+    const strict = this.matter.facts.on;
+    // The confirmed chronology is its own document, cloaked like any other file.
+    const extra = [];
+    if (this.chronology?.confirmed) {
+      const cf = this.chronology.asFile();
+      renderFile(this.matter, cf);
+      cf.out = '000-chronology.cloaked.txt';
+      extra.push(cf);
+    }
+    const toWrite = [...files.filter(allowed), ...extra];
+    // Strict: the context sheet for the AI goes with every export.
+    let sheet = null;
+    if (strict) {
+      sheet = { out: '000-context-sheet.cloaked.txt', cloaked: contextSheet(this.matter, toWrite.filter((f) => f.cloaked), { version: VERSION }), status: 'cloaked' };
+      extra.push(sheet);
+    }
+    // The key sweep: nothing the key holds may appear in anything that is written, the context sheet included.
+    if (strict) {
+      const findings = [];
+      for (const f of [...toWrite.filter((x) => x.cloaked), ...(sheet ? [sheet] : [])]) {
+        for (const h of keySweep(this.matter, f.cloaked)) findings.push({ file: f.out, paragraph: h.paragraph, kind: h.kind });
+      }
+      if (findings.length) throw Object.assign(new Error(`The key sweep found a real value still showing in ${findings.length} place(s): ${findings.slice(0, 5).map((x) => `${x.file} paragraph ${x.paragraph}`).join('; ')}. Nothing was exported.`), { code: 'SWEEP_FAILED', findings });
+    }
     const note = `Reviewed by ${this.review.complete.by} on ${formatDate(this.review.complete.when)}. NOT YET DOUBLE-CHECKED.`;
     const report = buildReport({ matter: this.matter, files, total: this.run.total, user: this.user, seconds: this.run.seconds, cached: this.run.cached, source: this.run.source.cloaked, review: note });
-    const written = await writeOutput(outDir, files, report, `Cloak ${VERSION}\n\n${note}\nThe double checker has not been run on these copies.\n`, 'REVIEWED-NOT-DOUBLE-CHECKED.txt', allowed);
-    await this.log('exported', { files_written: written.length, files_held_back: files.filter((f) => f.cloaked && !allowed(f)).length });
-    return { outDir, written, heldBack: files.filter((f) => !f.container && !allowed(f)).length };
+    report.level = this.matter.options.level;
+    if (strict) report.facts = { dates_version: this.matter.facts.datesVersion, un_blurred: this.matter.facts.unblurred.map((u) => ({ kind: u.kind, by: u.by, when: u.when })) };
+    const written = await writeOutput(outDir, [...files, ...extra], report, `Cloak ${VERSION}\n\n${note}\nThe double checker has not been run on these copies.\n`, 'REVIEWED-NOT-DOUBLE-CHECKED.txt', (f) => extra.includes(f) || allowed(f));
+    await this.log('exported', { only, files_written: written.length, files_held_back: only === 'chronology' ? 0 : files.filter((f) => f.cloaked && !allowed(f)).length });
+    return { outDir, written, heldBack: only === 'chronology' ? 0 : files.filter((f) => !f.container && !allowed(f)).length };
   }
 
   async changePassword(newPassword) {
@@ -328,7 +399,7 @@ export async function createMatter({ dir, name = '', password, options = {}, use
   await assertNotSynced(dir, 'The matter folder');
   await mkdir(dir, { recursive: true });
   if ((await readdir(dir)).includes(KEY_FILE_NAME)) throw new Error('This folder already holds a matter. Open it instead.');
-  const contents = { name, created: new Date().toISOString(), state: new Matter({ options }).state(), files: {}, nextNumber: 1 };
+  const contents = { name, created: new Date().toISOString(), state: new Matter({ options: { level: 'strict', ...options } }).state(), files: {}, nextNumber: 1 };
   const { recoveryCode, dataKey, matterId } = await createKeyFile(path.join(dir, KEY_FILE_NAME), { password, contents, ...(kdf ? { kdf } : {}) });
   await writeLog(dir, { by: user, action: 'matter-created', matter: matterId });
   await takeLock(dir, user);

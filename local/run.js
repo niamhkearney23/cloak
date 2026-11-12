@@ -156,6 +156,9 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   const tReg = Date.now();
   matter.register(candidates);
   for (const f of readable) matter.learnDefinitions(whole(f));
+  // Facts (dates, amounts, references) are numbered once the whole folder has been read.
+  matter.facts.finalize();
+  matter.facts.syncInto(matter.cloak);
   lap('merging_variants', tReg);
   const tApply = Date.now();
 

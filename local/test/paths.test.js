@@ -31,15 +31,15 @@ test('names inside file names and folder names are cloaked in every exported cop
 
   const names = (await readdir(out)).sort();
   const copies = names.filter((n) => n.endsWith('.cloaked.txt'));
-  assert.equal(copies.length, 4);
+  assert.equal(copies.length, 5);
   // The exported file names are numbers: nothing of the original names.
-  for (const n of copies) assert.match(n, /^\d{3}-txt\.cloaked\.txt$/);
+  for (const n of copies.filter((x) => !x.includes('context-sheet'))) assert.match(n, /^\d{3}-txt\.cloaked\.txt$/);
 
   const listing = [];
   for (const n of names) {
     const text = await readFile(path.join(out, n), 'utf8');
     for (const name of NAMES) assert.ok(!text.toLowerCase().includes(name.toLowerCase()), `${name} is in ${n}`);
-    if (n.endsWith('.cloaked.txt')) {
+    if (n.endsWith('.cloaked.txt') && !n.includes('context-sheet')) {
       const first = text.split('\n')[0];
       // The "File:" line shows the (cloaked) name of the original, with tags in place of the names.
       assert.match(first, /^File: .*\{\{[A-Z_]+\d+(?:\.[A-Z0-9]+)?\}\}.*\.txt$/, `File line of ${n}: ${first}`);
@@ -47,8 +47,9 @@ test('names inside file names and folder names are cloaked in every exported cop
     }
   }
   assert.equal(listing.length, 4);
+  assert.ok(names.includes('000-context-sheet.cloaked.txt'), 'a Strict export comes with the context sheet');
   // The first line is restorable: with the key it reads as the original name.
-  const first = (await readFile(path.join(out, copies[0]), 'utf8')).split('\n')[0].replace(/^File: /, '').replace(/\.txt$/, '');
+  const first = (await readFile(path.join(out, copies.find((x) => !x.includes('context-sheet'))), 'utf8')).split('\n')[0].replace(/^File: /, '').replace(/\.txt$/, '');
   assert.match(session.matter.cloak.uncloak(first).text, /Client Haziq bin Sulong|Affidavit Nurul|Maju Jaya|Annexes/);
   const report = JSON.parse(await readFile(path.join(out, 'cloak-report.json'), 'utf8'));
   for (const f of report.files) assert.doesNotMatch(f.name, /Haziq|Sulong|Zaleha|Musa|Kamal|Zainal|Maju|Nurul/);

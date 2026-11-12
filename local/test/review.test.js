@@ -184,7 +184,7 @@ test('once everything is decided the review can be signed off, and only then exp
   const out = path.join(root, 'cloaked');
   await assert.rejects(session.export({ outDir: path.join(dir, 'x') }), /must not go into the matter folder/);
   const result = await session.export({ outDir: out });
-  assert.equal(result.written.length, 4);
+  assert.equal(result.written.length, 5);
   assert.equal(result.heldBack, 1);
   const names = await readdir(out);
   assert.ok(names.includes('REVIEWED-NOT-DOUBLE-CHECKED.txt'));
@@ -220,7 +220,7 @@ test('review decisions are kept in the matter for the next lawyer, and logged wi
   assert.match(log, /"action":"review-change","change":"add"/);
   assert.match(log, /"action":"review-completed"/);
   assert.match(log, /"action":"file-checked-by-hand"/);
-  assert.match(log, /"action":"exported","files_written":4/);
+  assert.match(log, /"action":"exported","only":"all","files_written":5/);
   assert.doesNotMatch(log, /Bobby|Rahim|Osman|Along|Hong Seng|Tan Ah|Pavilion/);
   await again.close();
 });

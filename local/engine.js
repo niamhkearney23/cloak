@@ -13,6 +13,7 @@
 //   {{PERSON_1}} full name   {{PERSON_1.FIRST}}   {{PERSON_1.SURNAME}}
 //   {{PERSON_1.ALT2}} another spelling of the full name
 
+import { Facts } from './facts.js';
 import { createRequire } from 'node:module';
 import { CHINESE_SURNAMES, AMBIGUOUS, NAME_WORDS, GENERIC_PARTS, GENERIC_TITLES, HONOURS, NOT_NAMES } from './names.js';
 
@@ -432,7 +433,11 @@ export { Cloak, TOKEN_RE, norm, isStop };
 
 export class Matter {
   constructor({ options = {}, key = null } = {}) {
-    this.options = { dates: false, amounts: false, provisions: false, ...options };
+    // level: 'standard' hides identifiers only; 'strict' also blurs facts (dates,
+    // amounts, references). In strict the facts layer owns dates and amounts.
+    this.options = { dates: false, amounts: false, provisions: false, level: 'standard', percentages: false, ...options };
+    if (this.options.level === 'strict') this.options.dates = this.options.amounts = false;
+    this.facts = new Facts({ level: this.options.level, percentages: !!this.options.percentages });
     this.cloak = key ? Cloak.fromJSON(key) : new Cloak();
     this.people = new Map();     // personKey -> base tag
     this.companies = new Map();  // companyKey -> base tag
@@ -445,6 +450,7 @@ export class Matter {
     this.coWordIdx = null;       // the same for companies
     this.keep = [];              // values a reviewer said are not confidential
     this.safeWords = [];         // "not sure" words a reviewer marked as fine
+    this.roles = {};             // roles a reviewer wrote for the context sheet: tag -> { roles, relationships }
   }
 
   /** Known values replaced with tags, in one pass. */
@@ -660,6 +666,7 @@ export class Matter {
    * key (what is already known is blanked out), then the name rules.
    */
   learn(text) {
+    this.facts.learn(text);
     const { text: safe } = this.protect(String(text || '').replace(TOKEN_RE, ' '));
     let rest = safe;
     // Found values are blanked out so the name rules do not see them. All the
@@ -763,7 +770,7 @@ export class Matter {
     // An honour in front of a person's tag becomes part of the tag;
     // anywhere else it goes back as it was.
     out = out.replace(HONOUR_MARK_RE, (m, c, after, base) => (base ? `{{${this.titleFor(base, norm(honours[c.codePointAt(0) - 0x100000]))}}} ` : honours[c.codePointAt(0) - 0x100000]));
-    return restore(out);
+    return this.facts.apply(restore(out));
   }
 
   /** Words in cloaked text that still look like names. */
@@ -802,6 +809,8 @@ export class Matter {
       counters: [...this.cloak.counters],
       keep: this.keep,
       safeWords: this.safeWords,
+      facts: this.facts.state(),
+      roles: this.roles,
     };
   }
 
@@ -817,6 +826,8 @@ export class Matter {
     for (const [prefix, n] of state.counters || []) if (n > (m.cloak.counters.get(prefix) || 0)) m.cloak.counters.set(prefix, n);
     m.keep = state.keep || [];
     m.safeWords = state.safeWords || [];
+    if (state.facts) m.facts = Facts.fromState(state.facts);
+    m.roles = state.roles || {};
     return m;
   }
 }

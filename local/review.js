@@ -159,8 +159,10 @@ export function reviewData(matter, files) {
   }
 
   const terms = new Map();
+  const FACT_TYPES = new Set(['DATE', 'AMOUNT', 'PERCENT', 'REF']);
   for (const e of entries) {
     const base = baseOf(e.token);
+    if (matter.facts.on && FACT_TYPES.has(typeOf(base))) continue;
     if (!terms.has(base)) terms.set(base, { tag: base, type: typeOf(base), value: valueOf.get(base) ?? e.value, how: matter.kinds.get(base) || 'pattern rule', patternRule: !matter.kinds.has(base), forms: [], places: 0, files: inFiles.get(base) || 0 });
     const t = terms.get(base);
     const n = places.get(e.token) || 0;
@@ -196,6 +198,8 @@ export function reviewData(matter, files) {
     shortForms,
     kept: matter.keep,
     fine: matter.safeWords,
+    facts: matter.facts.on ? matter.facts.list(places) : [],
+    unblurred: matter.facts.unblurred,
   };
 }
 
