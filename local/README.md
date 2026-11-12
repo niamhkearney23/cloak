@@ -170,6 +170,56 @@ Limits to know about:
   long as they like. A long password is what protects it.
 - While a matter is open, the key is in the computer's memory.
 
+## Standard and Strict (fact blurring)
+
+A matter is **Standard** (identifiers only: names, ID numbers, accounts, phones, addresses) or **Strict**, which is the default and also blurs distinctive facts, so the cloaked text cannot be tied to a real dispute. Strict blurs:
+
+| What | Tag | Notes |
+| --- | --- | --- |
+| Dates | `{{DATE_n}}` | numbered in true time order across the whole matter; same date in different files = same tag |
+| Amounts of money | `{{AMOUNT_n}}` | same amount = same tag in any format; `RM4.3 million` is the same tag as `RM 4,317,250.00` when exactly one amount fits |
+| Contract, invoice, cheque, receipt, policy, claim numbers | `{{REF_n}}` | needs a cue word before the number |
+| Towns, districts, islands (a list of about 70) and places after a cue word (Mukim, Pulau, Bandar, Taman, Bukit...) | `{{PLACE_n}}` | roads, buildings and street addresses are already `ADDRESS` |
+| Project and development names ending in Residences, Heights, Towers, Park... | `{{PROJECT_n}}` | |
+| Job titles that point to one person (Branch Manager, Finance Director, harbour master, pengarah urusan...) | `{{JOB_n}}` | plain "director" or "manager" is left |
+| Court, judge and registry names | `{{COURT_n}}` | switch `courts` (on by default) |
+| Percentages and shareholdings | `{{PERCENT_n}}` | switch `percentages` (off by default) |
+| Property details | `{{LAND_n}}` | already hidden in Standard |
+
+**Different ways of writing one fact** get one number and a letter: `{{DATE_1}}` is `3 Mac 2023`, `{{DATE_1.B}}` is `3 March 2023`, `{{DATE_1.C}}` is `03/07/2025`. This is so a restored draft shows each fact exactly as it was written. The cost: a draft that uses `{{DATE_1}}` in an English document restores a Malay month. Totals Cloak works out itself are written in the format of the first amount.
+
+**Dates found**: `3 July 2025`, `3rd July 2025`, `July 3, 2025`, `21st day of July 2025`, `3hb Julai 2025`, `3 Mac 2025`, `03/07/2025`, `3-7-2025`, `3.7.25`, `2025-07-03`, `2025年7月3日`, `二零二五年七月三日`, `March 2024` and `Mac 2024` (month only, capital first letter), `5 June` (no year, numbered after all dated dates), and a year after a cue word (`in 2024`, `pada tahun 2024`). Numeric dates are read **day first**; when the month reading is also possible (03/07/2025) the date is flagged as ambiguous. **Not found**: a month with no year or day ("in March"), lowercase `mac 2024`, `mm/yyyy`, dates written in words ("the third of July"), Tamil, Arabic/Jawi and Thai dates, and a two-digit year with a hyphen.
+
+**Relative and vague dates** ("last Friday", "within 14 days", "dalam masa tiga bulan", "end of June") are listed, never turned into a date, and stay visible in the cloaked text. They can carry a clue.
+
+**Amounts found**: a currency sign or word with a number (`RM`, `MYR`, `S$`, `US$`, `$`, `€`, `£`, `ringgit`...), with `million`, `juta`, `ribu`, `k`; and bare numbers in a spreadsheet column called Amount, Paid, Balance, Total, Price, Jumlah, Harga... (taken as ringgit). **Not found**: amounts in words ("sixty thousand ringgit"), bare numbers in prose, and a bare number in a column with another name.
+
+**Dates are renumbered when the set of dates changes.** Adding a file with a new date can change the numbers of later dates. `datesVersion` goes up each time and is in the report: a draft made before that must not be restored with the new key without a warning.
+
+**What Strict still lets through.** Strict cannot see: places not on the list and without a cue word; products, brands and vessel names (not built); job titles other than the listed ones; unusual events and how something happened (free text, which is the lawyer's to judge: the highlight-and-tag tool on the review screen is not built yet); relative dates; amounts and dates written in words; anything in an image the OCR misread; names in Chinese, Tamil or Jawi script (flagged, or hidden whole as a passage); and the **shape** of the dispute: who sued whom for what and in what order, which a person who knows the case can recognise even with every value blurred. Strict lowers the chance of tying a text to a real dispute; it does not remove it.
+
+**The review screen** lists blurred facts separately from names, with counts. A single fact can be un-blurred (`unblurFact`); the matter records who did it and when, and the report lists it. The key sweep (below) reads every file again before export.
+
+## The context sheet
+
+Every Strict export comes with `000-context-sheet.cloaked.txt`: the rules for working with tags, a cast list (role and relationships only), a date table (time order and gaps in days, no real dates), an amount table (which is larger, which adds up to which), and what kind of thing each tag is (bank, court, property...). It is made from the cloaked text and checked by the key sweep like any other file.
+
+The cast list's roles are read from the wording next to each tag by rules (a direct description such as "TAG, the estate agent" or "the wife of the Plaintiff, TAG"). They are precise but incomplete: many people get no role. A reviewer can correct them (`matter.roles`). Job titles that Strict hides are not brought back in the sheet ("company officer").
+
+## The key sweep
+
+Before anything is exported the key is swept: every value the key holds (whole word, any letter case, names under four letters and honours like Tan Sri skipped) and every fact in **any format** is looked for in the cloaked text, with the paragraph number. Any hit stops the export. It cannot see inside a spreadsheet's amount column on its own (it needs the column name), and it does not replace the review.
+
+## The chronology table
+
+No AI. Every sentence that has a date, an amount or a named party becomes a row: date, text, people, source file and part. Sorted by date; undated rows come last. Rows about the same event are grouped (same day, and the same amount or mostly the same words, with a small English/Malay/Chinese list of event words: meeting, agreement, deposit, payment, letter...). Rows that read as the same event but give a different date or amount are flagged. A person can edit, merge, delete and add rows, then **confirm** the table; any change takes the confirmation away. The confirmed table is exported as its own cloaked document (`000-chronology.cloaked.txt`), saying it was confirmed by a named reviewer (the name and time are in the matter log, not in the file). "Send chronology only" is `export({ only: 'chronology' })`.
+
+What it will miss or split: events whose rows use different words, languages with no entry in the word list, events described without a date, dates in words, relative dates ("14 days after the letter" is never worked out), and events that happened on the same day and read alike (they are joined). A conflict is only flagged when two rows are alike enough in wording. Measured results are in the session notes, not here, because they depend on the matter.
+
+## Checks on a draft (feature 8, checks 1 to 3, in the desktop app)
+
+`draftcheck.js`, plain code, no AI, no network: **1 restore check** (no tag left, none invented or damaged, no real value written in), **2 source check** (every date, amount, reference and place found in the sources; every name too), **3 arithmetic and timeline** (day counts between two dates, totals and balances, dates running backwards). Each gives pass, warn or fail and the paragraph of each issue. A "TOTAL NEEDED: AMOUNT_1 - AMOUNT_2" note is worked out locally and given its own tag. **Check 4 (the offline AI read-through) and the internal server are not built.**
+
 ## What it will miss
 
 It is rules and word lists, not an AI model, and it is not perfect.

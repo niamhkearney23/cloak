@@ -110,8 +110,11 @@ function partRows(file, part, matter) {
       const cells = row.split('\t').map((c) => c.trim());
       if (cells.every((c) => !c)) continue;
       // A bare number in a column called Amount, Paid, Total... is an amount of money.
+      const isAmountCol = (i) => /(?:amount|\brm\b|myr|paid|balance|total|sum|jumlah|harga|bayaran|deposit)/i.test(columns[i] || '');
       const sums = cells.flatMap((c, i) => (/(?:amount|\brm\b|myr|paid|balance|total|sum|jumlah|harga|bayaran|deposit)/i.test(columns[i] || '') && /^\d[\d,]*(?:\.\d+)?$/.test(c) && Number(c.replace(/,/g, '')) > 0 ? [`RM${c}`] : []));
-      add('row', cells.map((c, i) => (c && columns[i] ? `${columns[i]}: ${c}` : c)).filter(Boolean).join('; '), { sums });
+      // In the table a bare amount is written with its currency, so it is found and blurred like any other amount.
+      const shown = (c, i) => (isAmountCol(i) && /^\d[\d,]*(?:\.\d+)?$/.test(c) && Number(c.replace(/,/g, '')) > 0 ? `RM${c}` : c);
+      add('row', cells.map((c, i) => (c && columns[i] ? `${columns[i]}: ${shown(c, i)}` : shown(c, i))).filter(Boolean).join('; '), { sums });
     }
     body = body.filter((l) => !tabbed.includes(l));
   }
@@ -235,7 +238,6 @@ export class Chronology {
     for (let i = 0; i < entries.length; i++) for (let j = i + 1; j < entries.length; j++) {
       const a = entries[i];
       const b = entries[j];
-      if (a.group && a.group === b.group) continue;
       // Documents' own dates, emails and spreadsheet rows repeat by nature; they are not compared.
       if (['dateline', 'email', 'row'].includes(a.kind) || ['dateline', 'email', 'row'].includes(b.kind)) continue;
       const similar = jaccard(a.words, b.words);
@@ -347,9 +349,10 @@ export class Chronology {
   }
 
   /** The confirmed chronology as one document. It is real text: it is cloaked like any other file. */
-  document({ undated = true } = {}) {
+  document({ undated = true, forExport = false } = {}) {
     const lines = ['CHRONOLOGY', ''];
-    lines.push(this.confirmed ? `Confirmed by ${this.confirmed.by} on ${formatDate(this.confirmed.when)}.` : 'NOT CONFIRMED. A person has not yet checked this chronology.');
+    // The exported copy goes to an AI tool: it says the table was confirmed, not by whom or when. Both are in the matter log.
+    lines.push(this.confirmed ? (forExport ? 'Confirmed by a named reviewer (recorded in the matter log).' : `Confirmed by ${this.confirmed.by} on ${formatDate(this.confirmed.when)}.`) : 'NOT CONFIRMED. A person has not yet checked this chronology.');
     lines.push('Dates are as written in the documents. Rows marked "possible conflict" read as the same event but give a different date or amount.', '');
     const body = (rows) => rows.forEach((r, i) => {
       const bits = [`${i + 1}.`, r.date ? r.date.text : '(no date)', '|', r.text];
@@ -366,7 +369,7 @@ export class Chronology {
 
   /** A stand-in for an extracted file, so the same cloaking and checks apply. */
   asFile() {
-    const text = this.document();
+    const text = this.document({ forExport: true });
     return { rel: 'Chronology (confirmed).txt', type: 'txt', status: 'ok', parts: [{ label: 'Text', text }], proof: { unit: 'parts', found: 1, read: 1, characters: text.length, ocr: [], unread: [], parts: [] }, disk: { rel: 'Chronology (confirmed).txt' }, reasons: [], index: 0 };
   }
 

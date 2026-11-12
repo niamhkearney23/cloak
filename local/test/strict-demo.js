@@ -17,6 +17,7 @@ const { session } = await createMatter({ dir: path.join(root, 'matter'), passwor
 await session.cloakFolder({ folder: docs });
 await finishReview(session);
 await session.buildChronology();
+await finishReview(session);
 await session.chronologyAction({ type: 'confirm' });
 const all = await session.export({ outDir: path.join(outRoot, 'strict-export') });
 const only = await session.export({ outDir: path.join(outRoot, 'chronology-only-export'), only: 'chronology' });

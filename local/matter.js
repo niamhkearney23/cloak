@@ -182,14 +182,28 @@ class Session {
   /** Re-cloak every file in memory after the name map changed. */
   reapply() {
     if (!this.run) return;
+    // Anything a person typed into the chronology (a new date, amount or name) is learned first, so it is hidden like everything else.
+    this.chronologyFile = null;
+    if (this.chronology) {
+      const text = this.chronology.document({ forExport: true });
+      this.matter.register(this.matter.learn(text));
+    }
+    this.matter.facts.finalize();
     this.matter.facts.syncInto(this.matter.cloak);
     for (const f of this.run.files) renderFile(this.matter, f);
+    if (this.chronology) {
+      const cf = this.chronology.asFile();
+      renderFile(this.matter, cf);
+      cf.out = '000-chronology.cloaked.txt';
+      this.chronologyFile = cf;
+    }
   }
 
   /** What the review screen shows. Real values: this never leaves the machine. */
   reviewData() {
     const files = this.run?.files || [];
-    const data = review.reviewData(this.matter, files);
+    // Words in the chronology that still look like names need a decision too.
+    const data = review.reviewData(this.matter, this.chronologyFile ? [...files, this.chronologyFile] : files);
     const waiting = files.filter((f) => f.status === 'manual' && !f.approved);
     const blockers = [];
     if (data.unsure.length) blockers.push(`${data.unsure.length} word(s) the tool is not sure about still need a decision.`);
@@ -255,6 +269,8 @@ class Session {
   async buildChronology() {
     if (!this.run) throw new Error('Cloak a folder first.');
     this.chronology = Chronology.build({ files: this.run.files, matter: this.matter });
+    this.review.complete = null;
+    this.reapply();
     await this.save();
     await this.log('chronology-built', { rows: this.chronology.active().length });
     return this.chronologyView();
@@ -280,6 +296,8 @@ class Session {
       add: () => c.add(action.row, by),
       confirm: () => c.confirm(by),
     }[action.type] || (() => { throw new Error('Unknown chronology action.'); }))();
+    if (action.type !== 'confirm') this.review.complete = null;
+    this.reapply();
     await this.save();
     await this.log(`chronology-${action.type}`);
     return this.chronologyView();
@@ -331,12 +349,7 @@ class Session {
     const strict = this.matter.facts.on;
     // The confirmed chronology is its own document, cloaked like any other file.
     const extra = [];
-    if (this.chronology?.confirmed) {
-      const cf = this.chronology.asFile();
-      renderFile(this.matter, cf);
-      cf.out = '000-chronology.cloaked.txt';
-      extra.push(cf);
-    }
+    if (this.chronology?.confirmed && this.chronologyFile) extra.push(this.chronologyFile);
     const toWrite = [...files.filter(allowed), ...extra];
     // Strict: the context sheet for the AI goes with every export.
     let sheet = null;

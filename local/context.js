@@ -57,19 +57,23 @@ export function castList(matter, files) {
         const prev = found[i - 1];
         const next = found[i + 1];
         // Words after this tag, up to the next person or company tag or the end of the sentence.
-        // Only words right beside the tag count: up to 60 characters after it, 25 before it, and never past a sentence end or a neighbouring tag.
-        let after = line.slice(end, next ? next.index : line.length).slice(0, 60);
-        after = after.split(/(?<=[.;])\s/)[0];
-        let before = line.slice(prev ? prev.index + prev[0].length : 0, m.index).slice(-25);
-        before = before.split(/(?<=[.;])\s/).pop();
-        // A company can be a party or a solicitor; "director" and "wife" are for people.
+        // Only a direct description counts: "TAG, the finance director" / "TAG (the Plaintiff)" / "TAG ... PLAINTIFF" after the tag,
+        // "the estate agent, Mr TAG" / "Defendan Kedua, Dato' Sri TAG" before it. Words that merely sit nearby ("told my husband") do not.
+        let after = line.slice(end, next ? next.index : line.length).slice(0, 70).split(/(?<=[.;])\s/)[0];
+        let before = line.slice(prev ? prev.index + prev[0].length : 0, m.index).slice(-45).split(/(?<=[.;])\s/).pop();
+        // "the wife of the Plaintiff, TAG": the person named is the Plaintiff, not the wife.
+        const appos = /(?:wife|husband|mother|father|friend|director|manager|agent|isteri|suami)\s+of\s+(?:the\s+(plaintiff|defendant|first defendant|second defendant)|\{\{[^}]*\}\})\s*,\s*(?:Mr\.?|Ms\.?|Mrs\.?|Dr\.?|Encik|Puan|Cik|Dato'?|Datuk)?\s*$/i.exec(before);
+        if (appos) { if (appos[1]) note(roles, tag, appos[1].toLowerCase().replace(/^(first|second) /, '')); before = ''; }
         const forCompany = new Set(['plaintiff', 'defendant', 'applicant', 'respondent', 'solicitor']);
+        const afterHead = /^\s*(?:[,(]|\.\.\.|\bis\b|\bwas\b|\bas\b|\bialah\b|\bsebagai\b)\s*(?:the |a |an |my |our |his |her )?[^,.;{}]{0,28}?(?=\b)/i.exec(after);
+        const afterText = afterHead ? after.slice(0, afterHead[0].length + 12) : '';
+        const beforeHead = /(?:[\p{L}]+\s+[\p{L}]+,\s*|the\s+|a\s+|an\s+|\bis\b\s+)?(?:[\p{L} ]{0,22})(?:Mr\.?|Ms\.?|Mrs\.?|Dr\.?|Encik|Puan|Cik|Dato'?|Datuk|Tan Sri|Dato' Sri|Datin)?\s*$/iu.exec(before);
+        const beforeText = beforeHead ? beforeHead[0] : '';
         for (const [role, re] of ROLE_WORDS) {
           if (!tag.startsWith('PERSON_') && !forCompany.has(role)) continue;
-          // "director of" something else describes the next tag, not this one.
-          if (re.test(after) || re.test(before)) note(roles, tag, role);
+          if (re.test(afterText) || re.test(beforeText)) note(roles, tag, role);
         }
-        const rel = REL.exec(after + ' ') || REL.exec(`${before} `);
+        const rel = REL.exec(`${afterText} `) || REL.exec(`${beforeText} `);
         if (rel) note(relations, tag, `${rel[1].toLowerCase()} of ${rel[2] ? `the ${rel[2].toLowerCase()}` : `{{${rel[3]}}}`}`);
       }
     }
