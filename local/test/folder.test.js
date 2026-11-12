@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readdir, readFile, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { makeMatter, REAL_VALUES, REAL_EXACT } from './matter.js';
 import { cloakFolder } from '../run.js';
 import { Matter } from '../engine.js';
@@ -213,7 +214,7 @@ test('speed: the 20-file matter finishes well inside 60 seconds', () => {
 });
 
 test('the desktop code makes no network calls', async () => {
-  const dir = path.dirname(new URL(import.meta.url).pathname);
+  const dir = path.dirname(fileURLToPath(import.meta.url));
   const sources = (await readdir(path.join(dir, '..'))).filter((f) => f.endsWith('.js'));
   assert.ok(sources.includes('engine.js'));
   for (const f of sources) {

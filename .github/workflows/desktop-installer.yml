@@ -33,7 +33,11 @@ jobs:
           cache-dependency-path: local/package-lock.json
       - run: npm ci
       # The same tests as on the development machine, on this system.
-      - run: npm test
+      - name: Tests
+        shell: bash
+        run: |
+          npm test > test.log 2>&1 || { echo "FAILED TESTS:"; grep -A40 '^not ok' test.log | grep -vE 'duration_ms|^\s+type:|^\s+---|^\s+\.\.\.' | head -150; tail -12 test.log; exit 1; }
+          tail -12 test.log
       - run: npx electron-builder --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
