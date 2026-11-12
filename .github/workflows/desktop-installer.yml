@@ -1,5 +1,6 @@
 # Builds the Cloak desktop installers (Windows .exe, Mac .dmg).
-# Run it by hand from the Actions tab, or push a tag like desktop-v0.1.0.
+# Runs when the desktop code changes. It can also be run by hand from the
+# Actions tab, or by pushing a tag like desktop-v0.1.0.
 # The installers appear under "Artifacts" on the run's page.
 name: Desktop installer
 
@@ -7,6 +8,8 @@ on:
   workflow_dispatch:
   push:
     tags: ['desktop-v*']
+    branches: ['claude/nice-volta-pqdwc3']
+    paths: ['local/**', 'public/cloak.js', '.github/workflows/desktop-installer.yml']
 
 permissions:
   contents: read
