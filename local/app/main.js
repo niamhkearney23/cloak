@@ -14,6 +14,8 @@ import { KEY_FILE_NAME } from '../keyfile.js';
 import { VERSION } from '../version.js';
 import { assertNotSynced, locate } from '../source.js';
 import { formatDate } from '../dates.js';
+import { checkDraft } from '../draftcheck.js';
+import { extractFile } from '../extract.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -39,6 +41,7 @@ async function loadProfile() {
 const who = () => (fullName ? `${fullName} (${login})` : login);
 // Tests cannot click the system's folder chooser: they supply the answers.
 const testPicks = process.env.CLOAK_TEST_PICKS ? JSON.parse(process.env.CLOAK_TEST_PICKS) : null;
+const testDraft = process.env.CLOAK_TEST_DRAFT || null;
 
 const rememberedFile = () => path.join(app.getPath('userData'), 'remembered.json');
 const dirId = (dir) => createHash('sha256').update(path.resolve(dir)).digest('hex');
@@ -93,8 +96,8 @@ const api = {
     return { exists, remembered: exists && !!(await remembered())[dirId(dir)] };
   },
 
-  createMatter: async ({ dir, name, password }) => {
-    const made = await createMatter({ dir, name, password, user: who() });
+  createMatter: async ({ dir, name, password, level }) => {
+    const made = await createMatter({ dir, name, password, user: who(), options: { level: level === 'standard' ? 'standard' : 'strict' } });
     matter = made.session;
     return { recoveryCode: made.recoveryCode, name: matter.name, createdText: formatDate(new Date()), who: who() };
   },
@@ -107,14 +110,16 @@ const api = {
     }
     matter = await openMatter({ dir, password, recoveryCode, takeOver, user: who() });
     if (rememberIt && password) await remember(dir, password);
-    return { name: matter.name, openedWith: matter.openedWith };
+    return { name: matter.name, openedWith: matter.openedWith, level: matter.matter.options.level, setup: matter.matter.setup, testMatter: matter.testMatter };
   },
 
   forgetPassword: async ({ dir }) => { await remember(dir, null); return {}; },
 
-  cloak: async ({ folder, options, manualSource }) => {
+  cloak: async ({ folder, options, manualSource, setup }) => {
     const m = needMatter();
     Object.assign(m.matter.options, options);
+    // Who the client and the other parties are, and whether this is a test matter: kept in the encrypted matter key.
+    if (setup) await m.setSetup(setup);
     const run = await m.cloakFolder({
       folder,
       manualSource: manualSource || null,
@@ -139,7 +144,44 @@ const api = {
     if (!f) throw new Error('That file is not in this run.');
     return { name: f.rel, text: f.cloaked || '', reasons: f.reasons };
   },
-  export: async ({ outDir }) => needMatter().export({ outDir }),
+  export: async ({ outDir, only }) => needMatter().export({ outDir, only: only === 'chronology' ? 'chronology' : 'all' }),
+
+  // The chronology table.
+  chronology: async ({ build, undated }) => {
+    const m = needMatter();
+    if (build) await m.buildChronology();
+    return m.chronologyView({ undated: !!undated });
+  },
+  chronologyAction: async ({ action, undated }) => {
+    const m = needMatter();
+    const view = await m.chronologyAction(action);
+    return { view: m.chronologyView({ undated: !!undated }) || view, review: m.reviewData() };
+  },
+
+  // Restore a draft: the matter must be open. Source files are only needed for the source check.
+  pickDraftFile: async () => {
+    if (testPicks) return { text: testDraft || '' };
+    const r = await dialog.showOpenDialog(win, { title: 'Choose the draft', properties: ['openFile'], filters: [{ name: 'Drafts', extensions: ['txt', 'md', 'docx'] }] });
+    if (r.canceled) return null;
+    const file = r.filePaths[0];
+    const parts = (await extractFile(file)).parts || [];
+    return { name: path.basename(file), text: parts.map((p) => p.text).join('\n\n') };
+  },
+  restoreDraft: async ({ draft, folder }) => {
+    const m = needMatter();
+    if (folder && !m.run) await m.cloakFolder({ folder, onCloudOnly: async () => false });
+    const sources = m.run ? m.run.files.flatMap((f) => (f.parts || []).map((p) => p.text)) : null;
+    const r = checkDraft({ matter: m.matter, draft, sources });
+    await m.log('draft-restored', { tags_restored: r.report.tagsRestored, result: r.result });
+    return r;
+  },
+  saveText: async ({ text, name }) => {
+    if (testPicks) { const p = testPicks.shift(); if (p) await writeFile(path.join(p, name || 'restored-draft.txt'), text, 'utf8'); return { saved: !!p }; }
+    const r = await dialog.showSaveDialog(win, { title: 'Save the restored draft', defaultPath: name || 'restored-draft.txt', filters: [{ name: 'Text', extensions: ['txt'] }] });
+    if (r.canceled) return { saved: false };
+    await writeFile(r.filePath, text, 'utf8');
+    return { saved: true };
+  },
   closeMatter: async () => { await matter?.close(); matter = null; return {}; },
 };
 

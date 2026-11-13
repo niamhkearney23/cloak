@@ -13,6 +13,7 @@
 import { findNames } from './engine.js';
 import { Facts, findAmounts, findDates, findRefs } from './facts.js';
 import { restoreDraft } from './restore.js';
+import { TOKEN_RE } from './engine.js';
 
 // Places are given as the affidavit's own paragraph number when there is one ("paragraph 12"), else the line.
 function paragraphsOf(text) {
@@ -118,11 +119,27 @@ export function arithmeticCheck(restoredDraft) {
   return { name: 'Arithmetic and timeline', result: verdict(issues), issues };
 }
 
-/** Checks 1 to 3 on one draft. */
+/**
+ * The counts the restore screen shows: how many tags were put back, which tags in the key are
+ * not in the draft, and which tag-like text in the draft is not in the key.
+ */
+export function restoreReport(matter, draft) {
+  const text = String(draft || '');
+  const used = new Map();
+  let placed = 0;
+  const unknown = new Set();
+  for (const m of text.matchAll(TOKEN_RE)) {
+    if (matter.cloak.byToken.has(m[1])) { placed++; used.set(m[1].split('.')[0], (used.get(m[1].split('.')[0]) || 0) + 1); } else unknown.add(m[0]);
+  }
+  const bases = matter.cloak.entries.filter((e) => !e.token.includes('.')).map((e) => e.token);
+  return { tagsRestored: placed, distinctTags: used.size, inKeyNotInDraft: bases.filter((t) => !used.has(t)), notInKey: [...unknown] };
+}
+
+/** Checks 1 to 3 on one draft. Without source files (`sources` null) the source check is not run, and says so. */
 export function checkDraft({ matter, draft, sources, required = [] }) {
   const restore = restoreCheck(matter, draft, { required });
-  const source = sourceCheck(matter, restore.restored, sources);
+  const source = sources ? sourceCheck(matter, restore.restored, sources) : { name: 'Source check', result: 'skipped', issues: [], note: 'Not run: no source files were given. Choose the documents folder to run it.' };
   const arithmetic = arithmeticCheck(restore.restored);
   const checks = [restore, source, arithmetic];
-  return { checks, result: verdict(checks.flatMap((c) => c.issues)), restored: restore.restored };
+  return { checks, result: verdict(checks.flatMap((c) => c.issues)), restored: restore.restored, report: restoreReport(matter, draft) };
 }

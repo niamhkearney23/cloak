@@ -116,6 +116,22 @@ class Session {
   };
 
   /**
+   * What the person typed at setup: who the client is, who the other parties are,
+   * and whether this matter holds made-up test documents only. The names are
+   * kept in the encrypted key, never in the log.
+   */
+  async setSetup({ client, others, testMatter } = {}) {
+    const m = this.matter;
+    const next = { client: String(client ?? m.setup.client ?? ''), others: String(others ?? m.setup.others ?? '') };
+    const changed = next.client !== m.setup.client || next.others !== m.setup.others;
+    m.setup = next;
+    if (testMatter !== undefined) this.testMatter = !!testMatter;
+    if (changed) this.review.complete = null;
+    await this.save();
+    await this.log('setup-changed', { client_set: !!next.client.trim(), other_parties: next.others.split('\n').filter((l) => l.trim()).length, test_matter: this.testMatter });
+  }
+
+  /**
    * Cloak a folder into this matter. New files reuse the existing key.
    * Nothing is written out: the cloaked text stays in memory until the review
    * is signed off and the copies are exported.

@@ -74,3 +74,23 @@ test('"Don\'t hide" belongs to one matter: another matter still hides the same w
   assert.ok(!/Maju Jaya/.test(runB.files[0].cloaked));
   await a.close(); await b.close();
 });
+
+test('setup is kept in the matter, is logged without the names, and export is limited to test matters', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-gate-'));
+  const docs = path.join(root, 'documents');
+  await mkdir(docs, { recursive: true });
+  await writeFile(path.join(docs, '01 Note.txt'), 'Encik Hashim bin Daud met Seri Kembara Logistics Sdn Bhd.');
+  const { session } = await createMatter({ dir: path.join(root, 'm'), password: 'a long test password', user: 'x', kdf: FAST });
+  await session.setSetup({ client: 'Seri Kembara Logistics Sdn Bhd', others: 'Bintang Timur' });
+  await session.cloakFolder({ folder: docs });
+  const { finishReview } = await import('./helpers.js');
+  await finishReview(session);
+  await assert.rejects(session.export({ outDir: path.join(root, 'out') }), (e) => e.code === 'TEST_MATTER_ONLY' && /limited to test matters/.test(e.message));
+  await session.setSetup({ testMatter: true });
+  await finishReview(session).catch(() => {});
+  assert.ok((await session.export({ outDir: path.join(root, 'out') })).written.length >= 1);
+  const log = await (await import('node:fs/promises')).readFile(path.join(root, 'm', 'log.jsonl'), 'utf8');
+  assert.match(log, /"action":"setup-changed"/);
+  assert.ok(!/Kembara|Bintang/.test(log), 'the names are not in the log');
+  await session.close();
+});

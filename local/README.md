@@ -220,6 +220,20 @@ What it will miss or split: events whose rows use different words, languages wit
 
 `draftcheck.js`, plain code, no AI, no network: **1 restore check** (no tag left, none invented or damaged, no real value written in), **2 source check** (every date, amount, reference and place found in the sources; every name too), **3 arithmetic and timeline** (day counts between two dates, totals and balances, dates running backwards). Each gives pass, warn or fail and the paragraph of each issue. A "TOTAL NEEDED: AMOUNT_1 - AMOUNT_2" note is worked out locally and given its own tag. **Check 4 (the offline AI read-through) and the internal server are not built.**
 
+## Setup: client, other parties, test matter
+
+The setup screen asks **Who is the client?** and **Who are the other parties?** (one party per line; several ways of writing one party separated by `;`; start a line with `person:` or `company:` to force the type). Every form typed is hidden everywhere, file and folder names included. Nothing is guessed from folder names. A company with no ending ("Seri Kembara") also gets its last distinctive word as a short form. Every company that is tagged also gets its short forms with each ending taken off, one at a time (Sdn Bhd, Berhad, (M), Enterprise, Trading, Holdings...). Words in file and folder names that are not ordinary document words go on the "not sure" list.
+
+**Test matters only.** Until the double checker is built, cloaked copies can be exported only from a matter ticked as "made-up test documents only". That tick is the person's own statement: Cloak cannot tell real documents from made-up ones.
+
+**"Don't hide"** is stored in the matter's key, so it applies to that matter only.
+
+## The restore screen and the chronology screen
+
+**Restore a draft** (home screen): open the matter, paste the draft (or choose a .txt, .md or .docx), optionally choose the documents folder for the source check, and press "Check and restore". The report gives tags put back, tags in the key that are not in the draft, tag-like text that is not in the key, the three checks with the paragraph of each issue, and the restored text to copy or save. Forms are put back in the language of their sentence (month names, job titles, court names), except inside a quotation. A bare spreadsheet number restores as an amount ("RM 0.00"). Drafting notes ("[FOR THE LAWYER", "to be confirmed by the lawyer") are flagged.
+
+**Chronology tab** (review screen): build, read the list of files not read or held back ("Events in these files are missing from this chronology"), edit, merge, delete and add rows, confirm. Rows with no date are hidden behind a count and a button. After the review is finished, "Export the chronology only (recommended)" or "Export all files".
+
 ## What it will miss
 
 It is rules and word lists, not an AI model, and it is not perfect.

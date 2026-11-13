@@ -23,12 +23,16 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
   const docs = path.join(root, 'documents');
   const matter = path.join(root, 'matter');
   const out = path.join(root, 'cloaked');
+  const out2 = path.join(root, 'chronology-only');
+  const out3 = path.join(root, 'saved-draft');
   await makeMatter(docs);
   await mkdir(matter);
+  await mkdir(out2);
+  await mkdir(out3);
   const app = await electron.launch({
     executablePath: require('electron'),
     args: [local, '--no-sandbox'],
-    env: { ...process.env, CLOAK_TEST_PICKS: JSON.stringify([docs, matter, out]), CLOAK_TEST_USER_DATA: path.join(root, 'userdata') },
+    env: { ...process.env, CLOAK_TEST_PICKS: JSON.stringify([docs, matter, out2, out, matter, out3]), CLOAK_TEST_USER_DATA: path.join(root, 'userdata') },
   });
   try {
     const page = await app.firstWindow();
@@ -73,6 +77,11 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     await page.check('#wrote');
     await page.click('#continue');
 
+    // Setup: who the client is, who the other parties are, and that these are made-up test documents.
+    assert.equal(await page.locator('#client-name').count(), 1);
+    await page.fill('#client-name', 'Maju Jaya Sdn Bhd; MJSB');
+    await page.fill('#other-parties', 'Hong Seng Trading');
+    await page.check('#test-matter');
     await page.click('#start');
     // Progress is shown per file while it runs.
     await page.waitForSelector('#progress tr');
@@ -98,6 +107,41 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     await page.selectOption('#add-kind', 'OTHER');
     await page.click('#add-go');
     await page.waitForSelector('#panel td b:text-is("Gombak")');
+
+    // The chronology screen: build it, read the warning about files not read, edit, merge, add, delete and confirm.
+    await page.click('[data-tab="chrono"]');
+    await page.click('#chrono-build');
+    await page.waitForSelector('#chrono-table');
+    assert.match(await page.textContent('#chrono-missing'), /Events in these files are missing from this chronology/);
+    const datedRows = await page.locator('#chrono-table tbody tr').count();
+    assert.ok(datedRows > 10);
+    assert.match(await page.textContent('#toggle-undated'), /Show the \d+ rows with no date/, 'rows with no date are hidden, with a count and a button');
+    await page.click('#toggle-undated');
+    await page.waitForFunction((n) => document.querySelectorAll('#chrono-table tbody tr').length > n, datedRows);
+    await page.click('#toggle-undated');
+    await page.waitForFunction((n) => document.querySelectorAll('#chrono-table tbody tr').length === n, datedRows);
+    await page.locator('[data-edit]').first().click();
+    await page.fill('#fd-text', 'Edited by the reviewer.');
+    await page.click('#fd-yes');
+    await page.waitForSelector('#chrono-table td:has-text("Edited by the reviewer.")');
+    await page.locator('[data-pick]').nth(1).check();
+    await page.locator('[data-pick]').nth(2).check();
+    await page.click('#chrono-merge');
+    await page.waitForFunction((n) => document.querySelectorAll('#chrono-table tbody tr').length === n - 1, datedRows);
+    await page.click('#chrono-add');
+    await page.fill('#fd-date', '20 January 2024');
+    await page.fill('#fd-text', 'Client telephoned the firm.');
+    await page.click('#fd-yes');
+    await page.waitForSelector('#chrono-table td:has-text("Client telephoned the firm.")');
+    await page.locator('[data-delete]').last().click();
+    await page.click('#yes');
+    await page.waitForFunction((n) => document.querySelectorAll('#chrono-table tbody tr').length === n - 1, datedRows);
+    await page.click('#chrono-confirm-go');
+    await page.waitForSelector('#chrono-confirm .chip.cloaked');
+
+    // The facts tab: blurred dates and amounts are listed apart from the names.
+    await page.click('[data-tab="facts"]');
+    assert.ok(await page.locator('#panel .tag', { hasText: /DATE_1/ }).count() > 0);
 
     // Decide everything that is waiting.
     await page.click('[data-tab="unsure"]');
@@ -126,15 +170,19 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     await page.waitForSelector('.dialog', { state: 'detached' });
 
     await page.click('#finish');
-    await page.waitForSelector('#export');
-    await page.click('#export');
+    await page.waitForSelector('#export-chrono');
+    // The recommended export: the confirmed chronology alone (with the context sheet).
+    await page.click('#export-chrono');
     await page.waitForSelector('#exported');
-    assert.match(await page.textContent('#exported'), /19 cloaked copies written/);
+    assert.match(await page.textContent('#exported'), /2 cloaked copies written/);
+    assert.deepEqual((await readdir(out2)).filter((n) => n.endsWith('.cloaked.txt')).sort(), ['000-chronology.cloaked.txt', '000-context-sheet.cloaked.txt']);
+    await page.click('#export');
+    await page.waitForFunction(() => /20 cloaked copies written/.test(document.getElementById('exported')?.textContent || ''));
     assert.match(await page.textContent('#exported'), /2 files were held back/);
 
     // What was exported holds no real value.
     const names = await readdir(out);
-    assert.equal(names.filter((n) => n.endsWith('.cloaked.txt')).length, 19);
+    assert.equal(names.filter((n) => n.endsWith('.cloaked.txt')).length, 20);
     for (const n of names) {
       const text = await readFile(path.join(out, n), 'utf8');
       for (const v of REAL_VALUES) assert.ok(!new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(v)}(?![\\p{L}\\p{N}])`, 'iu').test(text), `${v} in ${n}`);
@@ -144,6 +192,28 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     assert.match(JSON.parse(await readFile(path.join(out, 'cloak-report.json'), 'utf8')).review, /^Reviewed by /);
     assert.deepEqual(errors, []);
     assert.ok(await stat(path.join(matter, 'matter.lock')), 'the matter is locked while the window is open');
+
+    // Restore a draft: open the matter again, paste a draft with tags, see the report and the restored text.
+    await page.reload();
+    await page.waitForSelector('#go-restore');
+    await page.click('#go-restore');
+    await page.click('#pick-matter');
+    await page.fill('#m-secret', 'a long test password');
+    await page.click('#m-open');
+    await page.waitForSelector('#draft');
+    const person = (await readFile(path.join(out, '001-docx.cloaked.txt'), 'utf8')).match(/\{\{PERSON_\d+\}\}/)[0];
+    await page.fill('#draft', `1. ${person} signed.\n2. {{PERSON_999}} appeared.\n3. [FOR THE LAWYER: grounds to follow]`);
+    await page.click('#do-restore');
+    await page.waitForSelector('#restore-report');
+    assert.match(await page.textContent('#restore-overall'), /Failed/);
+    assert.match(await page.textContent('#restore-report'), /Tag-like text that is not in the key/);
+    assert.match(await page.textContent('#restore-report'), /drafting note left in the draft/);
+    const restored = await page.textContent('#restored-text');
+    assert.ok(!restored.includes(person), 'the tag was put back');
+    assert.ok(restored.includes('{{PERSON_999}}'), 'a tag that is not in the key is left as it is');
+    await page.click('#save-restored');
+    await new Promise((r) => setTimeout(r, 400));
+    assert.match(await readFile(path.join(out3, 'restored-draft.txt'), 'utf8'), /signed/);
   } finally {
     await app.close();
   }
