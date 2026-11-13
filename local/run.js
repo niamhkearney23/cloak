@@ -149,6 +149,8 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   const readable = files.filter((f) => f.parts.length);
   const whole = (f) => [nameText(f), ...f.parts.map((p) => p.text)].join('\n\n');
   const tLearn = Date.now();
+  // A folder called "X v Y" names the parties: learn both before anything is read.
+  matter.addPartiesFromFolderNames([...new Set([path.basename(folder), ...files.map((f) => f.rel.split('/')[0]).filter((seg, _, all) => all.length)])]);
   const candidates = [];
   for (const f of readable) candidates.push(...matter.learn(whole(f)));
   for (const f of files) if (!f.parts.length) candidates.push(...matter.learn(nameText(f)));

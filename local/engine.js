@@ -431,6 +431,20 @@ function replaceKnown(text, root) {
 
 export { Cloak, TOKEN_RE, norm, isStop };
 
+/**
+ * The parties named in a folder name written "X v Y" (also vs, versus, lwn, lawan).
+ * "Test matter - Seri Kembara v Bintang Timur (2025 suit)" -> ["Seri Kembara", "Bintang Timur"].
+ * A folder name with no "v" in it names no one: nothing is guessed from it.
+ */
+export function partiesInFolderName(segment) {
+  const text = String(segment || '').replace(/[_]+/g, ' ');
+  const split = text.split(/\s+(?:v|vs|vs\.|v\.|versus|lwn|lawan)\s+/i);
+  if (split.length !== 2) return [];
+  const left = split[0].split(/\s+[-\u2013:]\s+/).pop().replace(/^\s*(?:re|matter|case|in re)\b[:\s]*/i, '');
+  const right = split[1].split(/\s+[-\u2013:]\s+|\s*[([,]/)[0];
+  return [left, right].map((x) => x.replace(/\s*&\s*(?:anor|ors|another|others)\b.*$/i, '').trim()).filter((x) => x.length >= 3 && /^\p{Lu}/u.test(x) && !x.split(/\s+/).every((w) => isStop(w)));
+}
+
 export class Matter {
   constructor({ options = {}, key = null } = {}) {
     // level: 'standard' hides identifiers only; 'strict' also blurs facts (dates,
@@ -451,6 +465,21 @@ export class Matter {
     this.keep = [];              // values a reviewer said are not confidential
     this.safeWords = [];         // "not sure" words a reviewer marked as fine
     this.roles = {};             // roles a reviewer wrote for the context sheet: tag -> { roles, relationships }
+  }
+
+  /**
+   * Parties named in the names of the folders. A company is recognised by its
+   * wording (Sdn Bhd, Berhad, Holdings, Logistics...); anything else is a person.
+   * They are marked for the reviewer as "named in the folder name".
+   */
+  addPartiesFromFolderNames(names) {
+    const COMPANY = /\b(?:sdn|bhd|berhad|pte|ltd|llp|plc|inc|corp|holdings?|enterprise|trading|logistics|resources|industries|properties|development|services|bank|cold chain|group|capital|partners)\b|&/i;
+    const added = [];
+    for (const name of names) for (const party of partiesInFolderName(name)) {
+      const token = (COMPANY.test(party) ? this.addCompany(party) : this.addPerson(party, 'named in the folder name')) || null;
+      if (token) { this.kinds.set(token.split('.')[0], 'named in the folder name'); added.push(token.split('.')[0]); }
+    }
+    return added;
   }
 
   /** Known values replaced with tags, in one pass. */
