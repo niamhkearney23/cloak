@@ -40,8 +40,10 @@ export function restoreCheck(matter, draft, { required = [] } = {}) {
     ...r.dropped.map((t) => ({ level: 'fail', paragraph: null, what: `${t} was required and is missing` })),
     ...r.real.map((h) => ({ level: 'fail', paragraph: where(h.text), what: `"${h.text}" is a real ${h.kind} written into the draft` })),
     ...r.totals.map((t) => ({ level: 'warn', paragraph: where(t), what: `${t} could not be worked out` })),
+    ...r.notes.map((n) => ({ level: 'warn', paragraph: where(n.text.slice(0, 12)) ?? null, what: `drafting note left in the draft: ${n.text.slice(0, 80)}` })),
+    ...r.mixed.map((x) => ({ level: 'warn', paragraph: where(x.text), what: `"${x.text}" is in ${x.language === 'ms' ? 'Malay' : 'English'} inside a sentence in the other language` })),
   ];
-  return { name: 'Restore check', result: verdict(issues), issues, restored: r.text, worked: r.worked };
+  return { name: 'Restore check', result: verdict(issues), issues, restored: r.text, worked: r.worked, translated: r.translated, kept: r.kept };
 }
 
 /** Check 2. `sources` is the real text of every source file. */
@@ -97,6 +99,21 @@ export function arithmeticCheck(restoredDraft) {
       last = { n: p.n, date: first };
     }
     for (const r of findRefs(p.text)) void r;
+  }
+  // The date the document itself carries (affirmed, sworn, signed, dated) must not be earlier than a date it refers to.
+  const all = paragraphsOf(restoredDraft);
+  const SIGNED = /\b(?:affirmed|sworn|signed|dated|executed|made|diikrarkan|bertarikh|diikrar)\b/i;
+  for (let i = all.length - 1; i >= Math.max(0, all.length - 18); i--) {
+    const own = findDates(all[i].text).filter((d) => d.precision === 'day');
+    if (!own.length || !(SIGNED.test(all[i].text) || SIGNED.test(all[i - 1]?.text || '') || SIGNED.test(all[i - 2]?.text || ''))) continue;
+    const docDate = own[own.length - 1];
+    for (const p of all.slice(0, i)) {
+      if (SIGNED.test(p.text) && /^\s*\d+\./.test(p.text) === false && p.line > all[i].line - 4) continue;
+      for (const d of findDates(p.text).filter((x) => x.precision === 'day' && x.sort > docDate.sort)) {
+        issues.push({ level: 'fail', paragraph: p.n, what: `the document is dated "${docDate.text}", which is earlier than "${d.text}" in this paragraph` });
+      }
+    }
+    break;
   }
   return { name: 'Arithmetic and timeline', result: verdict(issues), issues };
 }

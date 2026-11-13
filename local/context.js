@@ -12,6 +12,7 @@
 // rules: they are a starting point, and a reviewer can correct each one.
 
 import { TOKEN_RE } from './engine.js';
+import { formLanguage, translateForm } from './translate.js';
 
 const baseOf = (t) => t.split('.')[0];
 const typeOf = (t) => baseOf(t).replace(/_\d+$/, '');
@@ -34,10 +35,17 @@ const ROLE_WORDS = [
   ['deponent', /\b(?:deponent|saya)\b(?=[^.]*\bberikrar|\bdo solemnly)/i],
 ];
 
+const PARTY = (word) => (/^plaintif|^claimant/i.test(word) ? 'plaintiff' : /^respondent|^responden/i.test(word) ? 'respondent' : /defendan[a-z]*-defendan|defendants|defendan[a-z]*s\b/i.test(word) ? 'defendants' : 'defendant');
+const SOLICITOR_FOR = /\b(?:peguamcara|peguam|solicitors?|advocates?|counsel)\b[^.\n{]{0,25}?\b(plaintif+f?s?|defendan(?:t|-defendan)?s?|defendants?|claimants?|respondents?|responden)\b/i;
+const ENTITY = /^(?:PERSON|COMPANY)_\d+$/;
+
 /**
- * Roles and relationships next to each person or company tag, read from the
- * cloaked text: the words between a tag and the tags on either side of it, on
- * the same line.
+ * Roles and relationships for each person and company, read from the cloaked
+ * text: a job title tag next to the name or on the line below it (a signature
+ * block), "solicitor for the plaintiff" lines, and a direct description such as
+ * "TAG, the estate agent" or "the wife of the Plaintiff, TAG". Words that merely
+ * sit nearby ("told my husband") do not count. Company numbers are not entities
+ * and are left out.
  */
 export function castList(matter, files) {
   const roles = new Map();
@@ -45,25 +53,49 @@ export function castList(matter, files) {
   const filesOf = new Map();
   const note = (map, tag, value) => map.set(tag, [...new Set([...(map.get(tag) || []), value])]);
   const REL = /\b(wife|husband|mother|father|friend|director|finance director|managing director|manager|agent|solicitor|employee|partner|isteri|suami)\s+(?:of|at|for|to|kepada)\s+(?:the (plaintiff|defendant|first defendant|second defendant)|\{\{((?:PERSON|COMPANY)_\d+))/i;
+  const jobText = (jobTag) => {
+    const v = String(matter.cloak.byToken.get(jobTag) || '').replace(/^the\s+/i, '');
+    const en = formLanguage('job', v) === 'ms' ? translateForm('job', v, 'en') : null;
+    return (en || v).toLowerCase();
+  };
+  const jobsIn = (str) => [...str.matchAll(/\{\{(JOB_\d+)(?:\.[A-Z0-9_]+)?\}\}/g)].map((x) => x[1]);
   for (const f of files) {
     if (!f.cloaked) continue;
     const seen = new Set();
-    for (const line of f.cloaked.split(/\n/)) {
-      const found = [...line.matchAll(TOKEN_RE)].filter((m) => /^(?:PERSON|COMPANY)_/.test(baseOf(m[1])));
+    const lines = f.cloaked.split(/\n/);
+    const bankHere = [...f.cloaked.matchAll(TOKEN_RE)].some((m) => /^COMPANY_\d+$/.test(baseOf(m[1])) && /\bbank\b|maybank|cimb|rhb|ambank|hong leong/i.test(matter.cloak.byToken.get(baseOf(m[1])) || ''));
+    lines.forEach((line, li) => {
+      const found = [...line.matchAll(TOKEN_RE)].filter((m) => ENTITY.test(baseOf(m[1])));
       for (const [i, m] of found.entries()) {
         const tag = baseOf(m[1]);
         if (!seen.has(tag)) { seen.add(tag); filesOf.set(tag, (filesOf.get(tag) || 0) + 1); }
         const end = m.index + m[0].length;
         const prev = found[i - 1];
         const next = found[i + 1];
-        // Words after this tag, up to the next person or company tag or the end of the sentence.
-        // Only a direct description counts: "TAG, the finance director" / "TAG (the Plaintiff)" / "TAG ... PLAINTIFF" after the tag,
-        // "the estate agent, Mr TAG" / "Defendan Kedua, Dato' Sri TAG" before it. Words that merely sit nearby ("told my husband") do not.
-        let after = line.slice(end, next ? next.index : line.length).slice(0, 70).split(/(?<=[.;])\s/)[0];
+        const afterRaw = line.slice(end, next ? next.index : line.length);
+        const after = afterRaw.slice(0, 70).split(/(?<=[.;])\s/)[0];
         let before = line.slice(prev ? prev.index + prev[0].length : 0, m.index).slice(-45).split(/(?<=[.;])\s/).pop();
-        // "the wife of the Plaintiff, TAG": the person named is the Plaintiff, not the wife.
+        // A job title tag next to the name: "TAG, JOB", "JOB TAG", or on the next line (a signature block).
+        const jobs = [...jobsIn(after.slice(0, 40)), ...jobsIn(before.slice(-40))];
+        if (!jobs.length && !afterRaw.replace(/[\s,.;:()-]/g, '') && !next) {
+          const below = (lines[li + 1] || '').slice(0, 60);
+          if (!/\{\{(?:PERSON|COMPANY)_/.test(below.split(/\{\{JOB_/)[0])) jobs.push(...jobsIn(below));
+        }
+        for (const j of jobs) {
+          let role = jobText(j);
+          if (/^branch manager$/.test(role) && bankHere) role = 'bank branch manager';
+          if (tag.startsWith('PERSON_')) note(roles, tag, role);
+        }
+        // "Solicitors for the plaintiff" on this line or the next two, or on the line above a name at the start of its line.
+        const near = [after, lines[li + 1] || '', lines[li + 2] || ''].join(' ');
+        const above = line.slice(0, m.index).trim() === '' ? (lines[li - 1] || '') : '';
+        const sol = SOLICITOR_FOR.exec(near) || SOLICITOR_FOR.exec(above);
+        if (sol && !/^(?:PLAINTIF|DEFENDAN)/.test(after.trim())) note(roles, tag, `solicitor for the ${PARTY(sol[1])}`);
+        // Only a direct description counts: "TAG, the finance director" / "TAG (the Plaintiff)" / "TAG ... PLAINTIFF" after the tag,
+        // "the estate agent, Mr TAG" / "Defendan Kedua, Dato' Sri TAG" before it.
         const appos = /(?:wife|husband|mother|father|friend|director|manager|agent|isteri|suami)\s+of\s+(?:the\s+(plaintiff|defendant|first defendant|second defendant)|\{\{[^}]*\}\})\s*,\s*(?:Mr\.?|Ms\.?|Mrs\.?|Dr\.?|Encik|Puan|Cik|Dato'?|Datuk)?\s*$/i.exec(before);
         if (appos) { if (appos[1]) note(roles, tag, appos[1].toLowerCase().replace(/^(first|second) /, '')); before = ''; }
+        if (/^\s*(?:Advocates?\s*(?:&|and)\s*Solicitors|Peguambela\s+dan\s+Peguamcara)/i.test(afterRaw)) note(roles, tag, 'solicitor');
         const forCompany = new Set(['plaintiff', 'defendant', 'applicant', 'respondent', 'solicitor']);
         const afterHead = /^\s*(?:[,(]|\.\.\.|\bis\b|\bwas\b|\bas\b|\bialah\b|\bsebagai\b)\s*(?:the |a |an |my |our |his |her )?[^,.;{}]{0,28}?(?=\b)/i.exec(after);
         const afterText = afterHead ? after.slice(0, afterHead[0].length + 12) : '';
@@ -76,18 +108,16 @@ export function castList(matter, files) {
         const rel = REL.exec(`${afterText} `) || REL.exec(`${beforeText} `);
         if (rel) note(relations, tag, `${rel[1].toLowerCase()} of ${rel[2] ? `the ${rel[2].toLowerCase()}` : `{{${rel[3]}}}`}`);
       }
-    }
+    });
   }
-  // Job titles that point to one person are hidden in the documents ({{JOB_n}}), so the sheet does not bring them back.
-  const generic = (r) => (['managing director', 'finance director', 'director', 'branch manager', 'sales manager', 'manager'].includes(r) ? 'company officer' : r);
   const override = matter.roles || {};
   const list = [];
-  for (const e of matter.cloak.entries.filter((x) => !x.token.includes('.') && /^(?:PERSON|COMPANY)_/.test(x.token))) {
+  for (const e of matter.cloak.entries.filter((x) => ENTITY.test(x.token))) {
     const tag = e.token;
-    // Specific roles replace the general ones that contain them (director inside managing director).
-    const mine = [...new Set((roles.get(tag) || []).map(generic))];
+    // A specific role replaces a general one that sits inside it (director inside managing director; solicitor inside solicitor for the plaintiff).
+    const mine = [...new Set(roles.get(tag) || [])];
     const clean = mine.filter((r) => !mine.some((o) => o !== r && o.includes(r)));
-    list.push({ tag, kind: typeOf(tag) === 'PERSON' ? 'person' : 'company', roles: override[tag]?.roles ?? clean, relationships: override[tag]?.relationships ?? (relations.get(tag) || []), files: filesOf.get(tag) || 0, edited: !!override[tag] });
+    list.push({ tag, kind: tag.startsWith('PERSON_') ? 'person' : 'company', roles: override[tag]?.roles ?? clean, relationships: override[tag]?.relationships ?? (relations.get(tag) || []), files: filesOf.get(tag) || 0, edited: !!override[tag] });
   }
   return list.sort((a, b) => a.kind.localeCompare(b.kind) || Number(a.tag.match(/\d+$/)[0]) - Number(b.tag.match(/\d+$/)[0]));
 }

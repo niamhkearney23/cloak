@@ -71,6 +71,7 @@ class Session {
     this.nextNumber = contents.nextNumber || 1;
     // Review state: who signed the review off, and files a person checked by hand.
     this.review = { complete: null, checked: {}, hideNonLatin: {}, ...contents.review };
+    this.testMatter = !!contents.testMatter; // the person says this matter holds made-up test documents only
     this.sources = contents.sources || []; // where documents came from, kept in the encrypted key
     this.chronology = contents.chronology ? Chronology.fromJSON(contents.chronology) : null; // real text: it lives only in the encrypted key
     this.run = null; // the files of the current run, held in memory only
@@ -80,7 +81,7 @@ class Session {
   }
 
   contents() {
-    return { name: this.name, created: this.created, state: this.matter.state(), files: this.files, nextNumber: this.nextNumber, review: this.review, sources: this.sources, chronology: this.chronology?.toJSON() };
+    return { name: this.name, created: this.created, state: this.matter.state(), files: this.files, nextNumber: this.nextNumber, review: this.review, sources: this.sources, testMatter: this.testMatter, chronology: this.chronology?.toJSON() };
   }
 
   log(action, details = {}) {
@@ -192,6 +193,7 @@ class Session {
     this.matter.facts.syncInto(this.matter.cloak);
     for (const f of this.run.files) renderFile(this.matter, f);
     if (this.chronology) {
+      this.chronology.setMissing(this.run.files);
       const cf = this.chronology.asFile();
       renderFile(this.matter, cf);
       cf.out = '000-chronology.cloaked.txt';
@@ -277,10 +279,10 @@ class Session {
   }
 
   /** The chronology as the screen shows it. Real text: it never leaves this machine. */
-  chronologyView({ undated = true } = {}) {
+  chronologyView({ undated = false } = {}) {
     const c = this.chronology;
     if (!c) return null;
-    return { rows: c.table({ undated }), confirmed: c.confirmed && { ...c.confirmed, whenText: formatDate(c.confirmed.when) }, dated: c.dated().length, undated: c.undated().length, conflicts: c.active().filter((r) => r.conflict).length, removed: c.rows.filter((r) => r.removed).length };
+    return { rows: c.table({ undated }), missing: c.missing, notUnderstood: c.notUnderstood().length, confirmed: c.confirmed && { ...c.confirmed, whenText: formatDate(c.confirmed.when) }, dated: c.dated().length, undated: c.undated().length, conflicts: c.active().filter((r) => r.conflict).length, removed: c.rows.filter((r) => r.removed).length };
   }
 
   /** One change to the chronology. The log records the kind of change and who made it, never the text. */
@@ -340,6 +342,8 @@ class Session {
   async export({ outDir, only = 'all' }) {
     if (!this.run) throw new Error('Cloak a folder first.');
     if (!this.review.complete) throw new Error('Nothing can be exported until the review is finished.');
+    // Until the double checker exists, only matters marked as made-up test documents can be exported.
+    if (!this.testMatter) throw Object.assign(new Error('Export is limited to test matters until the double checker is built. If this matter holds made-up test documents only, tick that box on the setup screen.'), { code: 'TEST_MATTER_ONLY' });
     if (only === 'chronology' && !this.chronology?.confirmed) throw new Error('Confirm the chronology first.');
     outDir = path.resolve(outDir);
     if (inside(this.dir, outDir) || inside(outDir, this.dir)) throw new Error('The cloaked copies must not go into the matter folder. The key must never sit with the cloaked files.');
@@ -361,7 +365,8 @@ class Session {
     if (strict) {
       const findings = [];
       for (const f of [...toWrite.filter((x) => x.cloaked), ...(sheet ? [sheet] : [])]) {
-        for (const h of keySweep(this.matter, f.cloaked)) findings.push({ file: f.out, paragraph: h.paragraph, kind: h.kind });
+        // The context sheet gives each person's role, job titles included, as the owner asked; nothing else may show one.
+        for (const h of keySweep(this.matter, f.cloaked, { allowKinds: f === sheet ? ['job'] : [] })) findings.push({ file: f.out, paragraph: h.paragraph, kind: h.kind });
       }
       if (findings.length) throw Object.assign(new Error(`The key sweep found a real value still showing in ${findings.length} place(s): ${findings.slice(0, 5).map((x) => `${x.file} paragraph ${x.paragraph}`).join('; ')}. Nothing was exported.`), { code: 'SWEEP_FAILED', findings });
     }
@@ -406,13 +411,15 @@ class Session {
  * Start a new matter. Returns the open session and the recovery code, which
  * is shown once: print it and keep it with the matter file or in the safe.
  */
-export async function createMatter({ dir, name = '', password, options = {}, user = os.userInfo().username, kdf }) {
+export async function createMatter({ dir, name = '', password, options = {}, user = os.userInfo().username, kdf, testMatter = false, client = '', others = '' }) {
   dir = path.resolve(dir);
   // The key must never be saved where a sync app would upload it.
   await assertNotSynced(dir, 'The matter folder');
   await mkdir(dir, { recursive: true });
   if ((await readdir(dir)).includes(KEY_FILE_NAME)) throw new Error('This folder already holds a matter. Open it instead.');
-  const contents = { name, created: new Date().toISOString(), state: new Matter({ options: { level: 'strict', ...options } }).state(), files: {}, nextNumber: 1 };
+  const first = new Matter({ options: { level: 'strict', ...options } });
+  first.setup = { client, others };
+  const contents = { name, created: new Date().toISOString(), state: first.state(), files: {}, nextNumber: 1, testMatter: !!testMatter };
   const { recoveryCode, dataKey, matterId } = await createKeyFile(path.join(dir, KEY_FILE_NAME), { password, contents, ...(kdf ? { kdf } : {}) });
   await writeLog(dir, { by: user, action: 'matter-created', matter: matterId });
   await takeLock(dir, user);

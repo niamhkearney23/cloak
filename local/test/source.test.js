@@ -77,7 +77,7 @@ test('nothing of the matter may be saved inside a synced location', async () => 
 test('a matter folder inside a synced folder cannot be created or opened', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-sync-'));
   const inSync = path.join(root, 'OneDrive - Kearney Law', 'matter');
-  await assert.rejects(createMatter({ dir: inSync, password: 'a long enough password' }), /OneDrive.*Choose a folder outside OneDrive/s);
+  await assert.rejects(createMatter({ testMatter: true, dir: inSync, password: 'a long enough password' }), /OneDrive.*Choose a folder outside OneDrive/s);
   await assert.rejects(openMatter({ dir: path.join(root, 'iManage Drive', 'old matter'), password: 'a long enough password' }), /iManage Drive/);
   await assert.rejects(stat0(inSync), 'nothing was created there');
 });
@@ -125,8 +125,8 @@ test('an iManage Drive folder is only read: nothing in it changes, and the repor
   const FAST = { N: 2 ** 12, r: 8, p: 1 };
 
   // The key may not be made inside the drive.
-  await assert.rejects(createMatter({ dir: path.join(drive, 'matter'), password: 'a long enough password', kdf: FAST }), /Choose a folder outside iManage Drive/);
-  const { session } = await createMatter({ dir: path.join(root, 'work', 'matter'), password: 'a long enough password', name: 'Made-up matter', user: 'Siti Aminah (siti.a)', kdf: FAST });
+  await assert.rejects(createMatter({ testMatter: true, dir: path.join(drive, 'matter'), password: 'a long enough password', kdf: FAST }), /Choose a folder outside iManage Drive/);
+  const { session } = await createMatter({ testMatter: true, dir: path.join(root, 'work', 'matter'), password: 'a long enough password', name: 'Made-up matter', user: 'Siti Aminah (siti.a)', kdf: FAST });
 
   // Two files are stand-ins for "not downloaded yet". They must be listed, asked about, and never opened.
   const stubNames = ['01 Writ and Statement of Claim.docx', '02 Affidavit Ahmad bin Ismail.txt'];

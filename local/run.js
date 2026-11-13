@@ -149,8 +149,8 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   const readable = files.filter((f) => f.parts.length);
   const whole = (f) => [nameText(f), ...f.parts.map((p) => p.text)].join('\n\n');
   const tLearn = Date.now();
-  // A folder called "X v Y" names the parties: learn both before anything is read.
-  matter.addPartiesFromFolderNames([...new Set([path.basename(folder), ...files.map((f) => f.rel.split('/')[0]).filter((seg, _, all) => all.length)])]);
+  // The client and the other parties typed at setup are hidden in every form before anything is read.
+  matter.addSetupParties();
   const candidates = [];
   for (const f of readable) candidates.push(...matter.learn(whole(f)));
   for (const f of files) if (!f.parts.length) candidates.push(...matter.learn(nameText(f)));
@@ -208,6 +208,8 @@ export function renderFile(matter, f, safeWords = []) {
   const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${matter.apply(p.label)}]\n`) + matter.apply(prepare(p.text))).join('\n\n');
   f.cloaked = `File: ${f.name}.${f.type}\n\n${body}\n`;
   f.unsure = matter.unsure(f.cloaked, safeWords);
+  // Words in file and folder names go on the "not sure" list too.
+  for (const u of matter.unsureFromNames(f.name, safeWords)) if (!f.unsure.some((x) => x.text.toLowerCase() === u.text.toLowerCase())) f.unsure.push(u);
   f.tags = {};
   for (const m of f.cloaked.matchAll(TAG)) f.tags[`${m[1]}_${m[2]}`] = (f.tags[`${m[1]}_${m[2]}`] || 0) + 1;
 }

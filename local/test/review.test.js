@@ -29,7 +29,7 @@ before(async () => {
   dir = path.join(root, 'matter');
   await mkdir(src, { recursive: true });
   for (const [name, text] of Object.entries(FILES)) await writeFile(path.join(src, name), text);
-  ({ session } = await createMatter({ dir, password: PASSWORD, user: 'reviewer-one', kdf: FAST }));
+  ({ session } = await createMatter({ testMatter: true, dir, password: PASSWORD, user: 'reviewer-one', kdf: FAST }));
   await session.cloakFolder({ folder: src });
 });
 
@@ -230,7 +230,7 @@ test('pattern-rule items (numbers and IDs) need two confirmations before they st
   const src2 = path.join(root, 'documents2');
   await mkdir(src2, { recursive: true });
   await writeFile(path.join(src2, 'note.txt'), 'Call the court registry on 03-2161 8899. The client, Encik Ahmad bin Ismail, holds NRIC 800505-14-5521.\n');
-  const { session: s2 } = await createMatter({ dir: dir2, password: PASSWORD, user: 'reviewer-one', kdf: FAST });
+  const { session: s2 } = await createMatter({ testMatter: true, dir: dir2, password: PASSWORD, user: 'reviewer-one', kdf: FAST });
   await s2.cloakFolder({ folder: src2 });
   const phone = s2.reviewData().terms.find((t) => t.type === 'PHONE');
   const person = s2.reviewData().terms.find((t) => t.type === 'PERSON');
@@ -253,7 +253,7 @@ test('joined forms that differ only in punctuation or spacing can be confirmed a
     'Kota Barang Sdn Bhd supplied the goods. Kota Barang Sdn. Bhd. sent the invoice. KOTA BARANG SDN BHD. was paid.',
     'Bina Jaya (M) Sdn Bhd is named on the receipt, and Bina Jaya Sdn Bhd on the delivery order. Bina Jaya Berhad is a third entity.',
     'Mr Tan Ah Kow and Mr Tan Ah Kaw both signed.', ''].join('\n'));
-  const { session: s3 } = await createMatter({ dir: dir3, password: PASSWORD, user: 'reviewer-one', kdf: FAST });
+  const { session: s3 } = await createMatter({ testMatter: true, dir: dir3, password: PASSWORD, user: 'reviewer-one', kdf: FAST });
   await s3.cloakFolder({ folder: src3 });
   let data = s3.reviewData();
   const kota = data.terms.find((t) => /^Kota Barang/i.test(t.value)).tag;

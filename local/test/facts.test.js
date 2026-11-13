@@ -129,7 +129,10 @@ test('places, projects, job titles and courts are found; ordinary words are not'
   assert.deepEqual(findJobs('signed by the Branch Manager; the harbour master; a director and a manager').map((x) => x.text), ['the Branch Manager', 'the harbour master']);
   assert.deepEqual(findCourts('IN THE HIGH COURT OF MALAYA AT SHAH ALAM before MARLINA SULONG JC').map((x) => x.text.trim()).sort(), ['IN THE HIGH COURT OF MALAYA AT SHAH ALAM', 'MARLINA SULONG JC']);
   // A bare number is an amount only in a column that says so.
-  assert.deepEqual(findSheetAmounts('Date\tAmount (RM)\tNote\n3 March\t60000\tx\n1 June\t0\ty\nInvoice\tnone\t12345').map((x) => x.text), ['60000']);
+  assert.deepEqual(findSheetAmounts('Date\tAmount (RM)\tNote\n3 March\t60000\tx\n1 June\t0\ty\nInvoice\tnone\t12345').map((x) => x.text), ['60000', '0'], 'zero is an amount too');
+  // Two tables on one sheet: each is read with its own header row.
+  const two = 'Sheet name: S\nDate\tPayee\tNote\n3 March\tX\ty\nInvoice\tNote\tPaid (RM)\nINV1\tok\t250.50\nINV2\tok\t75\n';
+  assert.deepEqual(findSheetAmounts(two).map((x) => x.text), ['250.50', '75']);
 });
 
 test('a number in a spreadsheet amount column is the same fact as the amount written with RM elsewhere', () => {

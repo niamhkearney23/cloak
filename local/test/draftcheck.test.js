@@ -54,3 +54,16 @@ test('all three checks together, with a total Cloak worked out itself', () => {
   assert.equal(r.result, 'pass', JSON.stringify(r.checks.map((c) => c.issues)));
   assert.match(r.restored, /balance is RM540,000\.00/);
 });
+
+test('check 3: a document dated before a date it refers to is flagged', () => {
+  const r = arithmeticCheck('1. The Defence is dated 20 February 2024.\n2. The letter was sent on 5 December 2023.\n\nAFFIRMED at Kuala Lumpur\non 20 January 2024\nBefore me,');
+  assert.equal(r.result, 'fail');
+  assert.match(r.issues.find((i) => /document is dated/.test(i.what)).what, /20 January 2024.*20 February 2024/);
+  assert.equal(arithmeticCheck('1. The letter was sent on 5 December 2023.\n\nAFFIRMED on 20 January 2024.').result, 'pass');
+});
+
+test('check 1 also reports drafting notes and a date in the wrong language', () => {
+  const m = matterWith(SOURCE);
+  const r = restoreCheck(m, '1. Paid on {{DATE_1}}.\n2. [FOR THE LAWYER: grounds to follow]');
+  assert.ok(r.issues.some((i) => /drafting note/.test(i.what)));
+});

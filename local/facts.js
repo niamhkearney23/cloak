@@ -11,6 +11,8 @@
 // What it finds is listed in README.md ("Dates and amounts"). Anything not
 // listed there is not found.
 
+import { formLanguage } from './translate.js';
+
 // ---------------------------------------------------------------- months
 
 const MONTH_NUMBER = {
@@ -62,6 +64,10 @@ const DATE_RULES = [
 const MONTH_YEAR = new RegExp(`${NOT_BEFORE}(\\p{Lu}[\\p{L}]*)\\.?,?\\s+(\\d{4})(?!\\d)`, 'gu');
 // A day and a month with no year: "5 June", "5hb Jun".
 const DAY_MONTH = new RegExp(`${NOT_BEFORE}(\\d{1,2})(?:\\s?(?:st|nd|rd|th|hb\\.?))?\\s+(${MONTH})${NOT_AFTER}(?!\\.?,?\\s+\\d{4})`, 'giu');
+const RANGE_JOIN = String.raw`\s*(?:and|to|-|–|—|dan|hingga|sehingga|till|until|&)\s*`;
+const RANGE_SAME_MONTH = new RegExp(`${NOT_BEFORE}(\\d{1,2})(?:st|nd|rd|th|\\s?hb\\.?)?${RANGE_JOIN}(\\d{1,2})(?:st|nd|rd|th|\\s?hb\\.?)?\\s+(${MONTH})\\.?,?\\s+(\\d{4})(?!\\d)`, 'giu');
+const RANGE_TWO_MONTHS = new RegExp(`${NOT_BEFORE}(\\d{1,2})(?:st|nd|rd|th|\\s?hb\\.?)?\\s+(${MONTH})${RANGE_JOIN}(\\d{1,2})(?:st|nd|rd|th|\\s?hb\\.?)?\\s+(${MONTH})\\.?,?\\s+(\\d{4})(?!\\d)`, 'giu');
+const DAY_MONTH_NUMERIC = new RegExp(`((?<![\\p{L}])(?:on|pada|pd|by|before|after|since|sehingga|menjelang)\\s+)?(?<![\\p{L}\\p{N}/.\\-])(\\d{1,2})/(\\d{1,2})(?![\\d/\\-]|\\.\\d|\\p{L})`, 'giu');
 // A year on its own, only when a word says it is a year: "in 2024", "pada tahun 2024".
 const YEAR_ONLY = /(?<![\p{L}\p{N}])(?:in|during|since|until|by|before|after|pada tahun|tahun|year|sejak|menjelang)\s+(?:the year\s+)?((?:19|20)\d{2})(?![\d/.\-])/giu;
 
@@ -92,6 +98,24 @@ export function findDates(text) {
     if (!mo || +m[1] < 1 || +m[1] > 31) continue;
     add(m, 'dm', `--${pad(mo)}-${pad(+m[1])}`, 1e6 + mo * 40 + +m[1], 'day-month');
   }
+  // 2 and 3 March 2025 / 2-3 March 2025 / 30 June to 2 July 2025: a range of days.
+  for (const m of text.matchAll(RANGE_SAME_MONTH)) {
+    const mo = monthOf(m[3]);
+    if (mo && valid(+m[4], mo, +m[1]) && valid(+m[4], mo, +m[2])) add(m, 'range', `${m[4]}-${pad(mo)}-${pad(+m[1])}/${m[4]}-${pad(mo)}-${pad(+m[2])}`, day(+m[4], mo, +m[1]), 'range');
+  }
+  for (const m of text.matchAll(RANGE_TWO_MONTHS)) {
+    const a = monthOf(m[2]);
+    const b = monthOf(m[4]);
+    if (a && b && valid(+m[5], a, +m[1]) && valid(+m[5], b, +m[3])) add(m, 'range', `${m[5]}-${pad(a)}-${pad(+m[1])}/${m[5]}-${pad(b)}-${pad(+m[3])}`, day(+m[5], a, +m[1]), 'range');
+  }
+  // 28/5 : a day and a month with no year. Taken as a date only when the first number can only be a day (13 to 31), or a word such as "on" or "pada" comes first.
+  for (const m of text.matchAll(DAY_MONTH_NUMERIC)) {
+    const d = +m[2];
+    const mo = +m[3];
+    if (mo < 1 || mo > 12 || d < 1 || d > 31 || !(d > 12 || m[1])) continue;
+    const from = m.index + m[0].length - `${m[2]}/${m[3]}`.length;
+    add(m, 'dm', `--${pad(mo)}-${pad(d)}`, 1e6 + mo * 40 + d, 'day-month-numeric', false, from, `${m[2]}/${m[3]}`.length);
+  }
   for (const m of text.matchAll(YEAR_ONLY)) {
     const from = m.index + m[0].lastIndexOf(m[1]);
     add(m, 'year', m[1], day(+m[1], 1, 1), 'year-only', false, from, 4);
@@ -101,7 +125,7 @@ export function findDates(text) {
 
 /** Longest first; of two overlapping finds keep the one that says more. */
 function nonOverlapping(list) {
-  const rank = { day: 3, month: 2, dm: 2, year: 1 };
+  const rank = { range: 4, day: 3, month: 2, dm: 2, year: 1 };
   const sorted = list.slice().sort((a, b) => (a.start - b.start) || ((b.end - b.start) - (a.end - a.start)) || ((rank[b.precision] || 0) - (rank[a.precision] || 0)));
   const out = [];
   for (const f of sorted) {
@@ -206,29 +230,53 @@ const AMOUNT_HEADER = /(?:amount|\brm\b|myr|\bsgd\b|paid|balance|total|sum|price
 const NUMBER_CELL = /^(\d[\d,]*(?:\.\d+)?)(\s*\[formula:[^\]]*\])?$/;
 
 /**
+ * The data rows of every table in a sheet's text, each with ITS OWN header row.
+ * A sheet can hold several tables one below the other: a header row is a row of
+ * words (no numbers) that is followed by a row with a number in it. A new sheet
+ * (a "[Sheet" or "Sheet name:" line) starts again. Returns
+ * [{ start, line, cells, header }] where start is the offset of the line in the text.
+ */
+export function sheetRows(text) {
+  const lines = [];
+  let at = 0;
+  for (const line of String(text).split('\n')) {
+    lines.push({ line, start: at, cells: (line.match(/\t/g) || []).length >= 2 ? line.split('\t') : null, newSheet: /^\s*(?:\[Sheet|Sheet name:)/.test(line) });
+    at += line.length + 1;
+  }
+  const numeric = (c) => NUMBER_CELL.test(c.trim());
+  const out = [];
+  let header = null;
+  for (let i = 0; i < lines.length; i++) {
+    const L = lines[i];
+    if (L.newSheet) header = null;
+    if (!L.cells) continue;
+    const filled = L.cells.filter((c) => c.trim());
+    const allWords = filled.length >= 2 && filled.every((c) => !numeric(c));
+    let next = null;
+    for (let j = i + 1; j < lines.length && !lines[j].newSheet; j++) if (lines[j].cells) { next = lines[j]; break; }
+    // A header is a row of words followed by a row with a number or a date in it.
+    if (allWords && next && (next.cells.some(numeric) || findDates(next.cells.join(' ')).length)) { header = L.cells.map((c) => c.trim()); continue; }
+    if (header) out.push({ start: L.start, line: L.line, cells: L.cells, header });
+  }
+  return out;
+}
+
+/**
  * Bare numbers in a spreadsheet column called Amount, Paid, Balance, Total...
- * are amounts of money (taken as ringgit unless the column says another currency).
- * Works on the whole text of a sheet, because the column names are in another line.
+ * are amounts of money (taken as ringgit unless the column says another currency),
+ * zero included. Each table in a sheet is read with its own header row.
  */
 export function findSheetAmounts(text) {
   const out = [];
-  let header = null;
-  let at = 0;
-  for (const line of String(text).split('\n')) {
-    const lineStart = at;
-    at += line.length + 1;
-    if ((line.match(/\t/g) || []).length < 2) { header = (line.trim() === '') ? header : header; continue; }
-    const cells = line.split('\t');
-    const numeric = cells.filter((c) => NUMBER_CELL.test(c.trim())).length;
-    if (!header || (numeric === 0 && cells.some((c) => /\p{L}/u.test(c)))) { if (numeric === 0) { header = cells.map((c) => c.trim()); continue; } }
-    let pos = lineStart;
-    cells.forEach((cell, i) => {
+  for (const row of sheetRows(text)) {
+    let pos = row.start;
+    row.cells.forEach((cell, i) => {
       const trimmed = cell.trim();
       const m = NUMBER_CELL.exec(trimmed);
-      if (m && header && AMOUNT_HEADER.test(header[i] || '') && Number(m[1].replace(/,/g, '')) > 0) {
+      if (m && AMOUNT_HEADER.test(row.header[i] || '')) {
         const lead = cell.length - cell.trimStart().length;
         const value = m[1];
-        const currency = /\bsgd\b/i.test(header[i]) ? 'SGD' : 'MYR';
+        const currency = /\bsgd\b/i.test(row.header[i]) ? 'SGD' : 'MYR';
         const cents = Math.round(Number(value.replace(/,/g, '')) * 100);
         out.push({ start: pos + lead, end: pos + lead + value.length, text: value, currency, cents, rounded: false, step: 0, key: `${currency}|${cents}`, sheet: true });
       }
@@ -298,13 +346,17 @@ export class Facts {
     const id = `${f.kind}|${f.key}`;
     let item = this.items.get(id);
     if (!item) {
-      item = { kind: f.kind, key: f.key, sort: f.sort ?? 0, precision: f.precision, cents: f.cents, currency: f.currency, forms: [], first: this.order++, rounded: [] };
+      item = { kind: f.kind, key: f.key, sort: f.sort ?? 0, precision: f.precision, cents: f.cents, currency: f.currency, forms: [], langs: {}, first: this.order++, rounded: [] };
       this.items.set(id, item);
     }
     if (f.rounded) {
       if (!item.rounded.some((r) => r.surface === surface)) item.rounded.push({ surface, cents: f.cents, step: f.step, currency: f.currency });
     }
     if (!item.forms.includes(surface)) item.forms.push(surface);
+    // The language of each way of writing it is kept with the key, so a restore can use the form that fits the sentence.
+    item.langs = item.langs || {};
+    item.langs[surface] = formLanguage(item.kind, surface);
+    if (item.kind === 'amount' && /^\d[\d,]*(?:\.\d+)?$/.test(surface)) (item.bare = item.bare || []).includes(surface) || item.bare.push(surface);
   }
 
   segments(text) {
@@ -394,7 +446,7 @@ export class Facts {
     const out = [];
     for (const item of this.items.values()) {
       if (this.isUnblurred(item.kind, item.key)) continue;
-      item.forms.forEach((surface) => out.push({ token: this.tokenFor(item, surface), value: surface, kind: item.kind, key: item.key }));
+      item.forms.forEach((surface) => out.push({ token: this.tokenFor(item, surface), value: surface, kind: item.kind, key: item.key, lang: (item.langs || {})[surface] ?? formLanguage(item.kind, surface), bare: !!(item.bare || []).includes(surface), currency: item.currency }));
     }
     for (const t of this.computed) out.push({ token: `AMOUNT_${t.n}`, value: t.text, kind: 'amount', key: `computed|${t.n}` });
     return out;
@@ -463,7 +515,8 @@ export class Facts {
       const tag = `DATE_${this.numbers.get(`date|${d.key}`)}`;
       const exact = d.precision === 'day';
       const row = { tag, precision: d.precision, gap_days: null, note: '' };
-      if (d.precision === 'dm') row.note = 'year not stated; cannot be placed in time';
+      if (d.precision === 'range') row.note = 'a range of days: the gap is counted from the first day';
+      else if (d.precision === 'dm') row.note = 'year not stated; cannot be placed in time';
       else if (d.precision === 'month') row.note = 'month only: the day is not stated';
       else if (d.precision === 'year') row.note = 'year only';
       if (d.precision !== 'dm') {
@@ -512,15 +565,16 @@ export class Facts {
 /** A total written the way the first amount was written: RM60,000.00 -> RM540,000.00; RM 600,000 -> RM 540,000. */
 function formatLike(surface, cents, currency) {
   const m = /^(\D*?)(\s?)(\d{1,3}(?:,\d{3})+|\d+)(\.\d+)?$/.exec(surface || '');
+  const bare = m && !m[1];
   const sign = cents < 0 ? '-' : '';
   const abs = Math.abs(cents) / 100;
-  if (!m) return `${sign}${currency === 'MYR' ? 'RM' : currency} ${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (!m || bare) return `${sign}${currency === 'MYR' ? 'RM' : currency} ${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const decimals = m[4] ? m[4].length - 1 : 0;
   const number = abs.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: m[3].includes(',') });
   return `${sign}${m[1]}${m[2]}${number}`;
 }
 
-const precisionRank = (i) => ({ year: 0, month: 1, day: 2, dm: 3 }[i.precision] ?? 2);
+const precisionRank = (i) => ({ year: 0, month: 1, day: 2, range: 2, dm: 3 }[i.precision] ?? 2);
 
 /**
  * The key sweep for facts. Reads a cloaked text again and looks for any fact

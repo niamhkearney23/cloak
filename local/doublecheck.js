@@ -12,7 +12,7 @@ import { sweepFacts } from './facts.js';
 const TITLE_WORDS = new Set(['tan', 'sri', 'seri', 'dato', 'datuk', 'datin', 'tun', 'haji', 'hajah', 'raja', 'tengku', 'syed', 'sharifah', 'encik', 'puan', 'cik', 'bin', 'binti', 'anak']);
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-export function keySweep(matter, text) {
+export function keySweep(matter, text, { allowKinds = [] } = {}) {
   const hits = [];
   const paragraphs = String(text).split(/\n\s*\n|\n/);
   const factTokens = new Set(['DATE', 'AMOUNT', 'REF', 'PERCENT']);
@@ -29,7 +29,7 @@ export function keySweep(matter, text) {
       const re = new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRe(v).replace(/\s+/g, '\\s+')}(?![\\p{L}\\p{N}_])`, 'iu');
       if (re.test(plain)) hits.push({ kind: 'key', paragraph: n, excerpt: p.slice(0, 80).replace(/\s+/g, ' ') });
     }
-    if (matter.facts.on) for (const h of sweepFacts(matter.facts, plain)) hits.push({ kind: h.kind, paragraph: n, approximate: !!h.approximate, excerpt: p.slice(0, 80).replace(/\s+/g, ' ') });
+    if (matter.facts.on) for (const h of sweepFacts(matter.facts, plain).filter((x) => !allowKinds.includes(x.kind))) hits.push({ kind: h.kind, paragraph: n, approximate: !!h.approximate, excerpt: p.slice(0, 80).replace(/\s+/g, ' ') });
   }
   return hits;
 }

@@ -22,7 +22,7 @@ test('names inside file names and folder names are cloaked in every exported cop
   await put('Maju Jaya Sdn Bhd - Dispute/Meeting notes.txt', 'Notes of the meeting. Nothing else was said.\n');
   await put('Affidavit_Nurul_Huda_binti_Zainal.txt', 'Sworn in the usual form.\n');
 
-  const { session } = await createMatter({ dir: path.join(root, 'matter'), password: 'a long enough password', kdf: FAST });
+  const { session } = await createMatter({ testMatter: true, dir: path.join(root, 'matter'), password: 'a long enough password', kdf: FAST });
   await session.cloakFolder({ folder: docs });
   await finishReview(session);
   const out = path.join(root, 'cloaked');

@@ -12,7 +12,7 @@
 // What it does not do is in README.md ("The chronology table").
 
 import path from 'node:path';
-import { findAmounts, findDates, findRelative } from './facts.js';
+import { findAmounts, findDates, findRelative, sheetRows } from './facts.js';
 import { formatDate } from './dates.js';
 
 const ABBREVIATION = /(?:^|[\s(\[])(?:Mr|Mrs|Ms|Dr|Dato|Datuk|Datin|Sdn|Bhd|No|Nos|Bt|Bte|Bin|Hj|Hjh|En|Pn|Cik|St|Jln|Co|Ltd|Inc|Hon|Prof|vs|v|Sri|Ex|Exh|Vol|cl|Cl|Sec|para|paras|approx|ca|etc|Rd|Ave|Mohd|Muhd|Md|Ir|Bhg|Yg|Tn|Y)\.$/i;
@@ -25,6 +25,8 @@ export function sentences(text) {
   for (const raw of String(text).split(/\r?\n/)) {
     const line = raw.trim();
     if (!line) continue;
+    // A chat message ("[03/03/2025, 06:12] Apis: ...") is one row, however many full stops it has.
+    if (/^\[?\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4},?\s+\d{1,2}[:.]\d{2}/.test(line)) { out.push(line); continue; }
     let start = 0;
     const re = /[.!?](\s+)(?=["“(\[]?[\p{Lu}\d])|[。！？]/gu;
     for (const m of line.matchAll(re)) {
@@ -102,21 +104,23 @@ function partRows(file, part, matter) {
     body = lines.slice(bodyFrom);
   }
 
-  // A spreadsheet: each row read with its column names.
-  const tabbed = body.filter((l) => (l.match(/\t/g) || []).length >= 2);
-  if (tabbed.length >= 2 && /^Sheet/i.test(part.label || '')) {
-    const columns = tabbed[0].split('\t').map((c) => c.trim());
-    for (const row of tabbed.slice(1)) {
-      const cells = row.split('\t').map((c) => c.trim());
+  // A spreadsheet: each row read with the column names of ITS table (a sheet can hold several).
+  const tableRows = /^Sheet/i.test(part.label || '') ? sheetRows(body.join('\n')) : [];
+  if (tableRows.length) {
+    const isAmountCol = (columns, i) => /(?:amount|\brm\b|myr|paid|balance|total|sum|jumlah|harga|bayaran|deposit)/i.test(columns[i] || '');
+    const used = new Set();
+    for (const row of tableRows) {
+      const cells = row.cells.map((c) => c.trim());
       if (cells.every((c) => !c)) continue;
-      // A bare number in a column called Amount, Paid, Total... is an amount of money.
-      const isAmountCol = (i) => /(?:amount|\brm\b|myr|paid|balance|total|sum|jumlah|harga|bayaran|deposit)/i.test(columns[i] || '');
-      const sums = cells.flatMap((c, i) => (/(?:amount|\brm\b|myr|paid|balance|total|sum|jumlah|harga|bayaran|deposit)/i.test(columns[i] || '') && /^\d[\d,]*(?:\.\d+)?$/.test(c) && Number(c.replace(/,/g, '')) > 0 ? [`RM${c}`] : []));
+      used.add(row.line);
       // In the table a bare amount is written with its currency, so it is found and blurred like any other amount.
-      const shown = (c, i) => (isAmountCol(i) && /^\d[\d,]*(?:\.\d+)?$/.test(c) && Number(c.replace(/,/g, '')) > 0 ? `RM${c}` : c);
-      add('row', cells.map((c, i) => (c && columns[i] ? `${columns[i]}: ${shown(c, i)}` : shown(c, i))).filter(Boolean).join('; '), { sums });
+      const shown = (c, i) => (isAmountCol(row.header, i) && /^\d[\d,]*(?:\.\d+)?$/.test(c) ? `RM${c}` : c);
+      const sums = cells.flatMap((c, i) => (isAmountCol(row.header, i) && /^\d[\d,]*(?:\.\d+)?$/.test(c) && Number(c.replace(/,/g, '')) > 0 ? [`RM${c}`] : []));
+      add('row', cells.map((c, i) => (c && row.header[i] ? `${row.header[i]}: ${shown(c, i)}` : shown(c, i))).filter(Boolean).join('; '), { sums });
     }
-    body = body.filter((l) => !tabbed.includes(l));
+    // The header rows go with them; the other lines are read as sentences.
+    const headers = new Set(tableRows.map((r) => r.header.join('\t')));
+    body = body.filter((l) => !used.has(l) && !((l.match(/\t/g) || []).length >= 2 && headers.has(l.split('\t').map((c) => c.trim()).join('\t'))));
   }
 
   for (const s of sentences(body.join('\n'))) add('sentence', s);
@@ -127,13 +131,15 @@ function partRows(file, part, matter) {
     const dates = findDates(searchIn);
     const amounts = findAmounts(r.text + (r.sums?.length ? ` ; ${r.sums.join(' ; ')}` : ''));
     const people = matter ? peopleIn(matter, r.text) : [];
-    if (!dates.length && !amounts.length && !people.length) continue;
+    // Tamil, Jawi and similar scripts: a sentence with a number in it and no date Cloak understood is listed, not dropped.
+    const notUnderstood = !dates.length && /[\p{Script=Tamil}\p{Script=Arabic}\p{Script=Devanagari}\p{Script=Thai}]/u.test(r.text) && /[\d\u0660-\u0669\u0be6-\u0bef]/.test(r.text);
+    if (!dates.length && !amounts.length && !people.length && !notUnderstood) continue;
     // A line that is only a date is the date of the document.
     if (r.kind === 'sentence' && dates.length === 1 && stripFacts(r.text).replace(/[\p{P}\s]|\b(?:date|dated|bertarikh|tarikh)\b/giu, '').length < 3) {
       out.push({ ...r, kind: 'dateline', text: `Document "${titleOf(file.rel)}" is dated ${dates[0].text}`, dates, amounts: [], people: [], relative: [], title: contentWords(titleOf(file.rel).replace(/^\d+\s*/, '')) });
       continue;
     }
-    out.push({ ...r, dates, amounts, people, relative: findRelative(r.text) });
+    out.push({ ...r, dates, amounts, people, relative: findRelative(r.text), notUnderstood });
   }
   return out;
 }
@@ -152,8 +158,9 @@ const dateOf = (d) => (d ? { key: d.key, precision: d.precision, text: d.text, s
 const sameText = (a, b) => a.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '') === b.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 
 export class Chronology {
-  constructor({ rows = [], confirmed = null, history = [], built = null, version = 0 } = {}) {
+  constructor({ rows = [], confirmed = null, history = [], built = null, version = 0, missing = [] } = {}) {
     this.rows = rows;
+    this.missing = missing;       // [{ file, why }] files that were not read or are held back
     this.confirmed = confirmed;   // { by, when }
     this.history = history;       // [{ when, by, action, row }] - never the text
     this.built = built;
@@ -165,7 +172,7 @@ export class Chronology {
   static build({ files, matter }) {
     const raw = [];
     for (const f of files) {
-      if (!f.parts?.length) continue;
+      if (!f.parts?.length || !Chronology.allowed(f)) continue;
       for (const p of f.parts) raw.push(...partRows(f, p, matter));
     }
     // The same sentence twice in one file (a header and a footer) is one row.
@@ -177,6 +184,7 @@ export class Chronology {
       return true;
     });
     const c = new Chronology({ built: new Date().toISOString() });
+    c.setMissing(files);
     const entries = unique.map((r) => ({
       id: `R${++c.counter}`,
       kind: r.kind,
@@ -193,6 +201,7 @@ export class Chronology {
       conflict: null,
       words: contentWords(stripFacts(r.text)),
       title: r.title || null,
+      dateNote: r.notUnderstood ? 'date not understood' : null,
     }));
     c.group(entries);
     c.flagConflicts(entries);
@@ -201,7 +210,14 @@ export class Chronology {
     return c;
   }
 
-  /** Rows about one event: same day, and either the same amount or mostly the same words. */
+  /**
+   * Rows about one event. Never on the date alone: the rows must be the same day,
+   * the same KIND of event (a shared event word: meeting, payment, letter...) and
+   * share a person or an amount (or be the same words, or be a document's own date
+   * line and a sentence naming that kind of document). Rows on the same day and of
+   * the same kind that give different amounts are not grouped: they are flagged as a
+   * possible conflict.
+   */
   group(entries) {
     const parent = entries.map((_, i) => i);
     const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
@@ -211,11 +227,13 @@ export class Chronology {
       for (let j = i + 1; j < entries.length; j++) {
         const b = entries[j];
         if (!b.date || b.date.key !== a.date.key) continue;
-        const sharedAmount = a.amounts.some((x) => b.amounts.some((y) => x.key === y.key));
-        // A document's own date line and a later sentence that names that kind of document on the same day.
         const names = (d, o) => d.kind === 'dateline' && d.title && [...d.title].some((w) => o.words.has(w));
-        const concepts = [...a.words].filter((w) => w.startsWith('~') && b.words.has(w)).length;
-        if (sharedAmount || jaccard(a.words, b.words) >= 0.3 || sameText(a.text, b.text) || names(a, b) || names(b, a) || concepts >= 1) parent[find(j)] = find(i);
+        const kind = [...a.words].some((w) => w.startsWith('~') && b.words.has(w)) || names(a, b) || names(b, a);
+        const sharedAmount = a.amounts.some((x) => b.amounts.some((y) => x.key === y.key));
+        const sharedPerson = a.people.some((p) => b.people.includes(p));
+        const differentAmount = a.amounts.length === 1 && b.amounts.length === 1 && a.amounts[0].key !== b.amounts[0].key;
+        if (differentAmount) continue;
+        if ((kind && (sharedAmount || sharedPerson)) || sameText(a.text, b.text) || names(a, b) || names(b, a)) parent[find(j)] = find(i);
       }
     }
     const groups = new Map();
@@ -241,7 +259,9 @@ export class Chronology {
       // Documents' own dates, emails and spreadsheet rows repeat by nature; they are not compared.
       if (['dateline', 'email', 'row'].includes(a.kind) || ['dateline', 'email', 'row'].includes(b.kind)) continue;
       const similar = jaccard(a.words, b.words);
-      if (similar < 0.5) continue;
+      const sameKind = [...a.words].some((w) => w.startsWith('~') && b.words.has(w));
+      const sameDay = a.date?.key && a.date.key === b.date?.key;
+      if (similar < 0.5 && !(sameDay && sameKind)) continue;
       if (a.date?.precision === 'day' && b.date?.precision === 'day' && a.date.key !== b.date.key) flag(a, b, 'the same event is given different dates');
       else if (a.date?.key && a.date.key === b.date?.key && a.amounts.length === 1 && b.amounts.length === 1 && a.amounts[0].key !== b.amounts[0].key) flag(a, b, 'the same event is given different amounts');
     }
@@ -253,6 +273,16 @@ export class Chronology {
       const kb = b.date ? b.date.sort : Infinity;
       return (ka - kb) || (a.group || '').localeCompare(b.group || '') || (Number(a.id.slice(1)) - Number(b.id.slice(1)));
     });
+  }
+
+  /** A file whose text may be used: cloaked, an opened archive, or one a person has checked by hand. */
+  static allowed(f) {
+    return f.status === 'cloaked' || f.status === 'container' || f.status === 'ok' || (f.status === 'manual' && !!f.approved);
+  }
+
+  /** Files that were not read or are held back. Their events are missing from the chronology. */
+  setMissing(files) {
+    this.missing = files.filter((f) => !f.container && !Chronology.allowed(f)).map((f) => ({ file: f.rel, why: (f.reasons && f.reasons[0]) || { manual: 'needs a manual check', partial: 'only partly read', unreadable: 'could not be read' }[f.status] || f.status }));
   }
 
   // ---------------------------------------------------------------- editing
@@ -337,25 +367,34 @@ export class Chronology {
   }
 
   active() { return this.rows.filter((r) => !r.removed); }
-  dated() { return this.active().filter((r) => r.date); }
-  undated() { return this.active().filter((r) => !r.date); }
+  // Rows from a file that is held back are not used, so they are not listed or exported.
+  usable(r) { const held = new Set(this.missing.map((m) => m.file)); return !r.sources.every((x) => held.has(x.file)); }
+  dated() { return this.active().filter((r) => r.date && this.usable(r)); }
+  notUnderstood() { return this.active().filter((r) => !r.date && r.dateNote && this.usable(r)); }
+  undated() { return this.active().filter((r) => !r.date && !r.dateNote && this.usable(r)); }
 
   // ---------------------------------------------------------------- output
 
   /** The table as people see it on screen. */
   table({ undated = false } = {}) {
-    const list = undated ? this.active() : this.dated();
-    return list.map((r) => ({ id: r.id, date: r.date ? r.date.text : '', precision: r.date?.precision || null, event: r.text, people: r.people, source: r.sources.map((s) => (s.part ? `${titleOf(s.file)}, ${s.part}` : titleOf(s.file))), group: r.group, conflict: r.conflict, relative: r.relative, status: r.status }));
+    const list = undated ? [...this.dated(), ...this.notUnderstood(), ...this.undated()] : [...this.dated(), ...this.notUnderstood()];
+    return list.map((r) => ({ id: r.id, date: r.date ? r.date.text : (r.dateNote || ''), dateNote: r.dateNote || null, precision: r.date?.precision || null, event: r.text, people: r.people, source: r.sources.map((s) => (s.part ? `${titleOf(s.file)}, ${s.part}` : titleOf(s.file))), group: r.group, conflict: r.conflict, relative: r.relative, status: r.status }));
   }
 
   /** The confirmed chronology as one document. It is real text: it is cloaked like any other file. */
-  document({ undated = true, forExport = false } = {}) {
+  document({ undated = false, forExport = false } = {}) {
     const lines = ['CHRONOLOGY', ''];
     // The exported copy goes to an AI tool: it says the table was confirmed, not by whom or when. Both are in the matter log.
     lines.push(this.confirmed ? (forExport ? 'Confirmed by a named reviewer (recorded in the matter log).' : `Confirmed by ${this.confirmed.by} on ${formatDate(this.confirmed.when)}.`) : 'NOT CONFIRMED. A person has not yet checked this chronology.');
+    // Files that were not read or are held back come first, so nobody mistakes a gap for a quiet period.
+    if (this.missing.length) {
+      lines.push('FILES NOT READ OR HELD BACK:');
+      for (const m of this.missing) lines.push(`- ${m.file} (${m.why})`);
+      lines.push('Events in these files are missing from this chronology.', '');
+    }
     lines.push('Dates are as written in the documents. Rows marked "possible conflict" read as the same event but give a different date or amount.', '');
     const body = (rows) => rows.forEach((r, i) => {
-      const bits = [`${i + 1}.`, r.date ? r.date.text : '(no date)', '|', r.text];
+      const bits = [`${i + 1}.`, r.date ? r.date.text : (r.dateNote ? `(${r.dateNote})` : '(no date)'), '|', r.text];
       if (r.people.length) bits.push('|', `People: ${r.people.join('; ')}`);
       bits.push('|', `Source: ${r.sources.map((s) => (s.part ? `${titleOf(s.file)}, ${s.part}` : titleOf(s.file))).join('; ')}`);
       if (r.conflict) bits.push('|', `POSSIBLE CONFLICT (${r.conflict.why.join('; ')})`);
@@ -363,7 +402,9 @@ export class Chronology {
       lines.push(bits.join(' '));
     });
     body(this.dated());
+    if (this.notUnderstood().length) { lines.push('', 'DATE NOT UNDERSTOOD (read these by hand)', ''); body(this.notUnderstood()); }
     if (undated && this.undated().length) { lines.push('', 'NOT DATED', ''); body(this.undated()); }
+    else if (this.undated().length) lines.push('', `${this.undated().length} more rows have no date and are not listed here.`);
     return `${lines.join('\n')}\n`;
   }
 
@@ -374,7 +415,7 @@ export class Chronology {
   }
 
   toJSON() {
-    return { rows: this.rows, confirmed: this.confirmed, history: this.history, built: this.built, version: this.version };
+    return { rows: this.rows, confirmed: this.confirmed, history: this.history, built: this.built, version: this.version, missing: this.missing };
   }
   static fromJSON(data) {
     return new Chronology(data);

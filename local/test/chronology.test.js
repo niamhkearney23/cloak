@@ -42,18 +42,26 @@ test('rows are sorted by date, whatever order the files come in', () => {
   assert.deepEqual(chrono.dated().map((r) => r.date.key), ['2023-03-03', '2023-12-05', '2025-09-09']);
 });
 
-test('rows about the same event are grouped, across English, Malay and Chinese wording', () => {
+test('rows are grouped only when they are the same day, the same kind of event, and share a person or an amount', () => {
   const { chrono } = build([
-    file('01 En.txt', 'I was present at the meeting on 3 March 2023.'),
-    file('02 Ms.txt', 'Pada 3 Mac 2023 saya bertemu dengan Encik Hashim.'),
-    file('03 Cn.txt', '二零二三年三月三日会议在吉隆坡举行。'),
-    file('04 Other.txt', 'The cheque was dishonoured on 3 March 2023.'),
+    file('01 En.txt', 'Encik Hashim bin Daud attended the meeting on 3 March 2023.'),
+    file('02 Ms.txt', 'Pada 3 Mac 2023 saya bertemu dengan Encik Hashim bin Daud.'),
+    file('03 Other.txt', 'Encik Hashim bin Daud paid the rent on 3 March 2023.'),
+    file('04 Same day only.txt', 'The roof was inspected on 3 March 2023.'),
   ]);
-  const groups = new Map();
-  for (const r of chrono.dated()) groups.set(r.sources[0].file, r.group);
-  assert.equal(groups.get('01 En.txt'), groups.get('02 Ms.txt'));
-  assert.equal(groups.get('01 En.txt'), groups.get('03 Cn.txt'));
-  assert.notEqual(groups.get('01 En.txt'), groups.get('04 Other.txt'));
+  const g = new Map(chrono.dated().map((r) => [r.sources[0].file, r.group]));
+  assert.ok(g.get('01 En.txt') && g.get('01 En.txt') === g.get('02 Ms.txt'), 'same day, same kind (meeting), same person');
+  assert.equal(g.get('03 Other.txt'), null, 'same day and person but a different kind of event (payment)');
+  assert.equal(g.get('04 Same day only.txt'), null, 'never on the date alone');
+});
+
+test('the same day and kind with different amounts is a possible conflict, not a group', () => {
+  const { chrono } = build([
+    file('01 A.txt', 'Encik Hashim bin Daud paid the deposit of RM 5,000.00 on 1 June 2025.'),
+    file('02 B.txt', 'Encik Hashim bin Daud paid the deposit of RM 6,000.00 on 1 June 2025.'),
+  ]);
+  const rows = chrono.dated();
+  assert.ok(rows.every((r) => !r.group && r.conflict && /different amounts/.test(r.conflict.why.join())));
 });
 
 test('two rows that read as the same event but give a different date or amount are flagged', () => {
@@ -108,7 +116,7 @@ test('in a matter: build, confirm, and export the chronology alone; it is cloake
   const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-chrono-'));
   const docs = path.join(root, 'documents');
   await makeMatter(docs);
-  const { session } = await createMatter({ dir: path.join(root, 'matter'), password: 'a long test password', user: 'lawyer', kdf: FAST });
+  const { session } = await createMatter({ testMatter: true, dir: path.join(root, 'matter'), password: 'a long test password', user: 'lawyer', kdf: FAST });
   await session.cloakFolder({ folder: docs });
   await finishReview(session);
   await assert.rejects(session.export({ outDir: path.join(root, 'o0'), only: 'chronology' }), /Confirm the chronology first/);
@@ -136,4 +144,50 @@ test('in a matter: build, confirm, and export the chronology alone; it is cloake
   assert.match(log, /"action":"chronology-built"/);
   assert.match(log, /"action":"chronology-confirm"/);
   await session.close();
+});
+
+test('a chat message is one row, however many full stops it has', () => {
+  const { chrono } = build([file('08 Chat.txt', '[03/03/2025, 06:12] Apis: Kak Sya, chiller 3 alarm since 7pm. temp -6. call dan.\n[03/03/2025, 06:13] Raji: ok.')]);
+  assert.deepEqual(chrono.dated().map((r) => r.text), ['[03/03/2025, 06:12] Apis: Kak Sya, chiller 3 alarm since 7pm. temp -6. call dan.', '[03/03/2025, 06:13] Raji: ok.']);
+});
+
+test('dates with no year, date ranges and dates Cloak cannot read in Tamil or Jawi are all listed', () => {
+  const { chrono } = build([file('01 A.txt', 'The cheque was returned by 28/5.\nThe inspection was on 2 and 3 March 2025.\nதிருமதி ராஜேஸ்வரி 2025 மே 23 அன்று உறுதிப்படுத்தினார்.\nڤوان نور عائشة تله مڠهانتر سورت ڤد 2 جون 2025.')]);
+  const dated = chrono.dated();
+  assert.ok(dated.some((r) => r.date.precision === 'dm' && r.date.text === '28/5'));
+  assert.ok(dated.some((r) => r.date.precision === 'range' && /2 and 3 March 2025/.test(r.date.text)));
+  const lost = chrono.notUnderstood();
+  assert.equal(lost.length, 2);
+  assert.ok(lost.every((r) => r.dateNote === 'date not understood'));
+  assert.match(chrono.document(), /DATE NOT UNDERSTOOD \(read these by hand\)/);
+});
+
+test('files that were not read or are held back are listed at the top, with the warning, and their events are not used', () => {
+  const ok = file('01 Read.txt', 'Signed on 3 March 2023.');
+  const blocked = { rel: '02 Scan.pdf', type: 'pdf', status: 'unreadable', parts: [], reasons: ['Password protected.'] };
+  const held = { ...file('03 Notice.txt', 'Dihantar pada 4 Mac 2023.'), status: 'manual', reasons: ['Needs a manual check.'] };
+  const { chrono } = build([ok, blocked, held]);
+  assert.deepEqual(chrono.missing.map((m) => m.file).sort(), ['02 Scan.pdf', '03 Notice.txt']);
+  const text = chrono.document();
+  assert.ok(text.indexOf('FILES NOT READ OR HELD BACK') < text.indexOf('Signed on'));
+  assert.match(text, /Events in these files are missing from this chronology\./);
+  assert.ok(!/Dihantar/.test(text), 'a held-back file contributes no rows');
+  assert.equal(chrono.dated().length, 1);
+});
+
+test('rows with no date are hidden by default; the count says how many', () => {
+  const { chrono } = build([file('01 A.txt', 'Signed on 3 March 2023.\nEncik Hashim bin Daud called.\nEncik Hashim bin Daud wrote.')]);
+  assert.equal(chrono.table().length, 1);
+  assert.equal(chrono.table({ undated: true }).length, 3);
+  assert.match(chrono.document(), /2 more rows have no date and are not listed here\./);
+  assert.ok(!/called/.test(chrono.document()));
+  assert.match(chrono.document({ undated: true }), /called/);
+});
+
+test('a sheet with two tables is read with each table\'s own header', () => {
+  const sheet = 'Sheet name: S\nDate\tPayee\tNote\n3 March 2023\tX\ty\nInvoice\tNote\tPaid (RM)\nINV1\tok\t250.50\n';
+  const { chrono } = build([file('11 Sheet.xlsx', sheet, 'Sheet: S')]);
+  const rows = chrono.active().map((r) => r.text);
+  assert.ok(rows.some((r) => /Payee: X/.test(r)));
+  assert.ok(rows.some((r) => /Paid \(RM\): RM250\.50/.test(r)));
 });

@@ -100,10 +100,16 @@ function findAddresses(text) {
       const body = piece[1].trim();
       const addressy = ADDRESS_WORD.test(body) || /^[A-Z]?-?\d+[A-Z]?(?:[-/]\d+[A-Z]?)*$/.test(body) || /^\d+[A-Z]?\s/.test(body);
       if (!addressy) break;
-      // "…yang beralamat di No. 12" : keep only the part from the address word.
-      const cut = /\b(?:at|di|of|alamat|address(?:ed)?|beralamat di|residing at|located at|situated at|:)\s+(?=\S)/gi;
-      let from = 0;
-      for (const c of body.matchAll(cut)) from = c.index + c[0].length;
+      // Words before a dash, a closing bracket or a colon are not the address:
+      // "Aminah binti Yusof (mother of the Plaintiff) - Taman Desa Jaya".
+      let base0 = 0;
+      for (const sep of body.matchAll(/\)\s*(?:[-\u2013\u2014]\s+)?|\s[-\u2013\u2014]\s+|:\s*/g)) base0 = sep.index + sep[0].length;
+      const sub = body.slice(base0);
+      // "…yang beralamat di No. 12" : keep only the part from the address word, when what follows really is an address.
+      const cut = /\b(?:at|di|of|alamat|address(?:ed)?|beralamat di|residing at|located at|situated at)\s+(?=\S)/gi;
+      const ADDRESS_START = /^(?:No\b|Unit\b|Lot\b|Blok\b|Block\b|Level\b|Tingkat\b|Suite\b|\d|[A-Z]-?\d|(?:Jalan|Jln|Lorong|Lrg|Persiaran|Lebuh|Lebuhraya|Taman|Tmn|Kampung|Kg|Bandar|Bukit|Menara|Wisma|Bangunan)\b)/i;
+      let from = base0;
+      for (const c of sub.matchAll(cut)) if (ADDRESS_START.test(sub.slice(c.index + c[0].length))) from = base0 + c.index + c[0].length;
       start = start - before.length + before.lastIndexOf(piece[1]) + piece[1].indexOf(body) + from;
       pieces++;
       if (from > 0) break;
@@ -112,7 +118,12 @@ function findAddresses(text) {
   }
   // Streets mentioned without a postcode: "at Jalan Tun Razak".
   const street = new RegExp(String.raw`\b(?:Jalan|Jln\.?|Lorong|Lrg\.?|Persiaran|Lebuh|Lebuhraya|Taman|Tmn\.?|Kampung|Kg\.?)\s+${W}(?:\s+${W}){0,3}(?:\s+\d+[A-Z]?(?:\/\d+[A-Z]?)?)?`, 'gu');
-  for (const m of text.matchAll(street)) spans.push({ type: 'ADDRESS', start: m.index, end: m.index + m[0].length });
+  // A house or unit number just before the street, even on the line above ("Unit 3-2,", "No. 12,", "27,"), belongs to the address.
+  const LEAD = /(?:(?:No\.?|Unit|Lot|Blok|Block|Tingkat|Level|Lvl|Suite)\s*[\w\/-]+|\d+[A-Z]?(?:[-\/]\d+[A-Z]?)*)\s*,\s*$/i;
+  for (const m of text.matchAll(street)) {
+    const lead = LEAD.exec(text.slice(Math.max(0, m.index - 30), m.index));
+    spans.push({ type: 'ADDRESS', start: m.index - (lead ? lead[0].length : 0), end: m.index + m[0].length });
+  }
   return spans;
 }
 
@@ -431,20 +442,6 @@ function replaceKnown(text, root) {
 
 export { Cloak, TOKEN_RE, norm, isStop };
 
-/**
- * The parties named in a folder name written "X v Y" (also vs, versus, lwn, lawan).
- * "Test matter - Seri Kembara v Bintang Timur (2025 suit)" -> ["Seri Kembara", "Bintang Timur"].
- * A folder name with no "v" in it names no one: nothing is guessed from it.
- */
-export function partiesInFolderName(segment) {
-  const text = String(segment || '').replace(/[_]+/g, ' ');
-  const split = text.split(/\s+(?:v|vs|vs\.|v\.|versus|lwn|lawan)\s+/i);
-  if (split.length !== 2) return [];
-  const left = split[0].split(/\s+[-\u2013:]\s+/).pop().replace(/^\s*(?:re|matter|case|in re)\b[:\s]*/i, '');
-  const right = split[1].split(/\s+[-\u2013:]\s+|\s*[([,]/)[0];
-  return [left, right].map((x) => x.replace(/\s*&\s*(?:anor|ors|another|others)\b.*$/i, '').trim()).filter((x) => x.length >= 3 && /^\p{Lu}/u.test(x) && !x.split(/\s+/).every((w) => isStop(w)));
-}
-
 export class Matter {
   constructor({ options = {}, key = null } = {}) {
     // level: 'standard' hides identifiers only; 'strict' also blurs facts (dates,
@@ -464,20 +461,41 @@ export class Matter {
     this.coWordIdx = null;       // the same for companies
     this.keep = [];              // values a reviewer said are not confidential
     this.safeWords = [];         // "not sure" words a reviewer marked as fine
+    this.setup = { client: '', others: '' }; // typed at setup
     this.roles = {};             // roles a reviewer wrote for the context sheet: tag -> { roles, relationships }
   }
 
   /**
-   * Parties named in the names of the folders. A company is recognised by its
-   * wording (Sdn Bhd, Berhad, Holdings, Logistics...); anything else is a person.
-   * They are marked for the reviewer as "named in the folder name".
+   * The parties the person typed at setup: "Who is the client?" and "Who are
+   * the other parties?". One party per line; forms of the same party are
+   * separated by ";" ("Seri Kembara Logistics Sdn Bhd; Seri Kembara; Kembara").
+   * Start a line with "person:" or "company:" to say which it is. Every form is
+   * hidden everywhere, and the short forms of a company are added by the
+   * company rules. Nothing is guessed from folder names.
    */
-  addPartiesFromFolderNames(names) {
-    const COMPANY = /\b(?:sdn|bhd|berhad|pte|ltd|llp|plc|inc|corp|holdings?|enterprise|trading|logistics|resources|industries|properties|development|services|bank|cold chain|group|capital|partners)\b|&/i;
+  addSetupParties(setup = this.setup) {
+    const COMPANY = /\b(?:sdn|bhd|berhad|pte|ltd|llp|plc|inc|corp|plt|holdings?|enterprises?|trading|logistics|resources|industries|properties|development|services|bank|group|capital|partners|associates)\b|&/i;
+    const PERSON = /\b(?:bin|binti|bt|bte|ibni|a\/l|a\/p|s\/o|d\/o|anak)\b|^(?:mr|mrs|ms|dr|encik|puan|cik|dato|datuk|datin|tan sri|tun|prof)\b/i;
+    const lines = (text) => String(text || '').split(/\n/).map((l) => l.trim()).filter(Boolean);
     const added = [];
-    for (const name of names) for (const party of partiesInFolderName(name)) {
-      const token = (COMPANY.test(party) ? this.addCompany(party) : this.addPerson(party, 'named in the folder name')) || null;
-      if (token) { this.kinds.set(token.split('.')[0], 'named in the folder name'); added.push(token.split('.')[0]); }
+    for (const [text, why] of [[setup?.client, 'the client (typed at setup)'], [setup?.others, 'another party (typed at setup)']]) {
+      for (const line of lines(text)) {
+        const forced = /^(person|company)\s*:\s*(.*)$/i.exec(line);
+        const forms = (forced ? forced[2] : line).split(';').map((f) => norm(f)).filter(Boolean);
+        if (!forms.length) continue;
+        const main = forms[0];
+        const company = forced ? forced[1].toLowerCase() === 'company' : COMPANY.test(main) || (!PERSON.test(main) && !/\p{Script=Han}/u.test(main));
+        let base = company ? this.addCompany(main) : this.addPerson(main, why);
+        if (!base) continue;
+        base = base.split('.')[0];
+        for (const f of forms.slice(1)) if (!this.cloak.byValue.has(f.toLowerCase())) this.variant(base, f, 'ALT');
+        // A company with no ending ("Seri Kembara") is often written by its last distinctive word alone ("Kembara").
+        const words = main.split(/\s+/);
+        const last = words[words.length - 1];
+        if (company && words.length >= 2 && !COMPANY.test(main) && last.length >= 5 && !isStop(last) && !NOT_NAMES.has(last.toLowerCase()) && !this.cloak.byValue.has(last.toLowerCase())) this.shortForm(base, last, 'SHORT');
+        this.kinds.set(base, why);
+        added.push(base);
+      }
     }
     return added;
   }
@@ -652,9 +670,16 @@ export class Matter {
     this.cloak.register(base, name);
     this.setCompany(key, base);
     this.kinds.set(base, 'company rule');
-    // The name without "Sdn Bhd": matched as written, e.g. "Maju Jaya".
-    const short = norm(name.replace(new RegExp(`[\\s,]+(?:\\((?:M|Malaysia|Asia)\\)\\s*)?${CO_END}\\.?$`, 'u'), '').replace(/\s*\((?:M|Malaysia|Asia)\)\s*$/i, ''));
-    if (short && short.length >= 4 && short.toLowerCase() !== name.toLowerCase() && !short.split(' ').every((w) => isStop(w))) this.shortForm(base, short, 'SHORT');
+    // The name without its endings, one ending at a time: "Maju Jaya Enterprise Sdn Bhd" gives
+    // "Maju Jaya Enterprise" and "Maju Jaya". Each is matched as written, in text, file names and folder names.
+    const ending = new RegExp(`[\\s,]+(?:\\((?:M|Malaysia|Asia)\\)\\s*)?${CO_END}\\.?$`, 'u');
+    let current = name;
+    for (let i = 0; i < 3; i++) {
+      const next = norm(current.replace(ending, '').replace(/\s*\((?:M|Malaysia|Asia)\)\s*$/i, ''));
+      if (!next || next.toLowerCase() === current.toLowerCase()) break;
+      current = next;
+      if (current.length >= 4 && !current.split(' ').every((w) => isStop(w))) this.shortForm(base, current, i === 0 ? 'SHORT' : `SHORT${i + 1}`);
+    }
     return base;
   }
 
@@ -802,6 +827,22 @@ export class Matter {
     return this.facts.apply(restore(out));
   }
 
+  /**
+   * Words in a cloaked file or folder name. Every one that is not an ordinary
+   * document word goes on the "not sure" list, because names often sit in them.
+   */
+  unsureFromNames(cloakedName, safeWords = []) {
+    const DOC_WORDS = new Set('writ statement claim affidavit affirmation letter demand reply reminder email note notes bundle documents document agreement sale purchase defence counterclaim defense notice judgment judgement search company profile board resolution memo schedule payment invoice receipt statement bank confirmation witness exhibit exhibits annex annexes scanned photo copy draft final version page pages file files folder client docs correspondence pleadings court order orders submission submissions written chronology internal test matter chat export slip transfer aging summary prepared guarantee guarantor demand attendance telephone call cheque'.split(' '));
+    const safe = new Set([...safeWords, ...this.safeWords, ...this.keep].map((w) => w.toLowerCase()));
+    const out = [];
+    for (const w of String(cloakedName).replace(TOKEN_RE, ' ').match(/\p{L}[\p{L}'-]{2,}/gu) || []) {
+      const low = w.toLowerCase();
+      if (safe.has(low) || DOC_WORDS.has(low) || isStop(w) || NOT_NAMES.has(low) || out.some((o) => o.text === w)) continue;
+      out.push({ text: w, count: 1, fromName: true });
+    }
+    return out;
+  }
+
   /** Words in cloaked text that still look like names. */
   unsure(cloaked, safeWords = []) {
     const safe = new Set([...safeWords, ...this.safeWords].map((w) => w.toLowerCase()));
@@ -840,6 +881,7 @@ export class Matter {
       safeWords: this.safeWords,
       facts: this.facts.state(),
       roles: this.roles,
+      setup: this.setup,
     };
   }
 
@@ -857,6 +899,7 @@ export class Matter {
     m.safeWords = state.safeWords || [];
     if (state.facts) m.facts = Facts.fromState(state.facts);
     m.roles = state.roles || {};
+    m.setup = state.setup || { client: '', others: '' };
     return m;
   }
 }

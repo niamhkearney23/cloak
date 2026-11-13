@@ -34,7 +34,7 @@ before(async () => {
   out = path.join(root, 'cloaked');
   dir = path.join(root, 'matter');
   await makeMatter(src);
-  const made = await createMatter({ dir, name: 'Ahmad bin Ismail v Maju Jaya', password: PASSWORD, user: 'lawyer-one', kdf: FAST });
+  const made = await createMatter({ testMatter: true, dir, name: 'Ahmad bin Ismail v Maju Jaya', password: PASSWORD, user: 'lawyer-one', kdf: FAST });
   recoveryCode = made.recoveryCode;
   firstRun = await made.session.cloakFolder({ folder: src });
   firstKey = made.session.matter.key().entries;
@@ -88,7 +88,7 @@ test('with neither the password nor the recovery code there is no way in', async
 });
 
 test('short passwords are refused', async () => {
-  await assert.rejects(createMatter({ dir: path.join(root, 'other'), password: 'short', kdf: FAST }), /at least 10 characters/);
+  await assert.rejects(createMatter({ testMatter: true, dir: path.join(root, 'other'), password: 'short', kdf: FAST }), /at least 10 characters/);
 });
 
 test('a key file that has been changed, even slightly, will not open', async () => {
@@ -197,7 +197,7 @@ test('the key can never sit with the documents or the cloaked copies', async () 
 test('with the real key-stretching settings a matter still opens in a few seconds', async () => {
   const d = path.join(root, 'slow');
   const started = Date.now();
-  const { session } = await createMatter({ dir: d, password: 'a long enough password' });
+  const { session } = await createMatter({ testMatter: true, dir: d, password: 'a long enough password' });
   await session.close();
   const s = await openMatter({ dir: d, password: 'a long enough password' });
   await s.close();
