@@ -6,7 +6,10 @@
 // Node (fetch, http, https, http2, TCP or TLS sockets, UDP, DNS, WebSocket) is
 // written to the file named in CLOAK_NET_TRIPWIRE and refused.
 // Local pipes (a socket with a path rather than a port) are not the network
-// and are let through.
+// and are let through. A port written as a string ('80', '0x50') is a port.
+// It also puts itself into NODE_OPTIONS so a Node child process (and any
+// worker) loads it too. Programs that are not Node (powershell.exe, cmd.exe)
+// are not covered: this file cannot see inside them.
 'use strict';
 const fs = require('node:fs');
 const { threadId } = require('node:worker_threads');
@@ -29,7 +32,7 @@ if (logFile) {
   net.Socket.prototype.connect = function (...args) {
     // Node passes [options, callback] arrays internally.
     const first = Array.isArray(args[0]) ? args[0][0] : args[0];
-    const pipe = (typeof first === 'string' && !/^\d+$/.test(first)) || (first && typeof first === 'object' && first.path != null && first.port == null);
+    const pipe = (typeof first === 'string' && !(Number(first) >= 0)) || (first && typeof first === 'object' && first.path != null && first.port == null);
     if (!pipe) trip('socket connect', describe(first));
     return connect.apply(this, args);
   };
@@ -45,6 +48,16 @@ if (logFile) {
     dns[fn] = (...args) => trip(`dns.${fn}`, describe(args[0]));
     if (dns.promises[fn]) dns.promises[fn] = (...args) => trip(`dns.promises.${fn}`, describe(args[0]));
   }
+  // dns.Resolver sends its own queries and does not go through dns.resolve*.
+  for (const [label, proto] of [['dns.Resolver', dns.Resolver.prototype], ['dns.promises.Resolver', dns.promises.Resolver.prototype]]) {
+    for (const fn of Object.getOwnPropertyNames(proto)) {
+      if (typeof proto[fn] !== 'function' || fn === 'constructor' || /^(?:get|set|cancel)/.test(fn)) continue;
+      proto[fn] = (...args) => trip(`${label}.${fn}`, describe(args[0]));
+    }
+  }
+  // Node children inherit the tripwire through NODE_OPTIONS.
+  const own = `--require ${JSON.stringify(__filename)}`;
+  if (!(process.env.NODE_OPTIONS || '').includes(own)) process.env.NODE_OPTIONS = `${process.env.NODE_OPTIONS || ''} ${own}`.trim();
   globalThis.fetch = (...args) => trip('fetch', describe(args[0]));
   if (globalThis.WebSocket) globalThis.WebSocket = function WebSocket(url) { trip('WebSocket', describe(url)); };
 }

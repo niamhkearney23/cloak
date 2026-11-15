@@ -65,4 +65,5 @@ test('the check after building finds a package missing from the notices and a fi
   const problems = checkBuilt(dist);
   assert.ok(problems.some((p) => /surprise 0\.0\.1 is in the app but not in its THIRD-PARTY-NOTICES/.test(p)), problems.join('\n'));
   assert.ok(problems.some((p) => /LiberationSans-\*\.ttf should have been left out/.test(p)), problems.join('\n'));
+  assert.ok(problems.some((p) => /pdfjs-dist\/wasm\/\*\.wasm is missing/.test(p)) && problems.some((p) => /pdfjs-dist\/cmaps\/\*\.bcmap is missing/.test(p)), 'a build without the pdf.js decoders and character maps is refused');
 });

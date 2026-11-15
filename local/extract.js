@@ -28,8 +28,11 @@ const require = createRequire(import.meta.url);
 // Raise this whenever a change makes Cloak read a file differently (more text,
 // or a part it used to miss). A matter's cache then reads each file again
 // instead of keeping the old reading. 2: fax, JBIG2 and JPEG 2000 pictures and
-// standard-CMap Chinese in PDFs, which version 1 read as empty pages.
-export const READER_VERSION = 2;
+// standard-CMap Chinese in PDFs, which version 1 read as empty pages. 3: PDF
+// pages whose pictures are 1-bit masks or faint grey are now read, a PDF page
+// that came out empty is flagged instead of counted as read, and a picture the
+// OCR engine cannot open fails its own file with a reason.
+export const READER_VERSION = 3;
 
 const TEXT_TYPES = new Set(['.txt', '.md', '.csv', '.tsv', '.log', '.json', '.xml', '.ics', '.vcf']);
 const HTML_TYPES = new Set(['.html', '.htm']);
@@ -116,7 +119,10 @@ async function langDir() {
 async function ocrWorker(langs) {
   const { createWorker } = require('tesseract.js');
   const dir = await langDir();
-  return createWorker(langs, 1, { langPath: dir, cachePath: dir, gzip: true });
+  // Without an errorHandler tesseract.js throws from inside its message
+  // handler when it cannot open a picture, which kills the whole reader
+  // thread. With one, the failure comes back as a rejected recognize().
+  return createWorker(langs, 1, { langPath: dir, cachePath: dir, gzip: true, errorHandler: () => {} });
 }
 
 // A pool of OCR workers. It starts with one and only adds another when a
@@ -131,6 +137,9 @@ function makePool(langs) {
       if (!slot) {
         if (slots.length >= OCR_THREADS) return;
         slot = { busy: false, worker: ocrWorker(langs) };
+        // A worker that could not start (empty language file) is dropped, so
+        // the next page tries a fresh one instead of failing for ever.
+        slot.worker.catch(() => { const i = slots.indexOf(slot); if (i >= 0) slots.splice(i, 1); });
         slots.push(slot);
       }
       const job = waiting.shift();
@@ -155,7 +164,12 @@ const pool = (name, langs) => (pools[name] ||= makePool(langs));
  * own confidence so unclear marks can be told apart from clear print.
  */
 export async function ocrImage(image) {
-  const first = (await pool('latin', ['eng', 'msa']).run(image, { blocks: true })).data;
+  let first;
+  try {
+    first = (await pool('latin', ['eng', 'msa']).run(image, { blocks: true })).data;
+  } catch (err) {
+    throw new Error(`the text reader could not open this picture: ${String(err?.message || err).replace(/^Error:\s*/, '')}`);
+  }
   let text = first.text || '';
   let confidence = first.confidence ?? 0;
   let script = nonLatinCount(text) >= 5 ? 'non-latin' : 'latin';
@@ -179,15 +193,19 @@ export async function closeOcr() {
   for (const k of Object.keys(pools)) delete pools[k];
 }
 
-/** Share of dark pixels on a canvas: is there anything drawn on the page? */
-function inkRatio(canvas) {
+/**
+ * Share of dark pixels on a canvas: is there anything drawn on the page?
+ * `below` is the brightness a pixel must be under to count (140 is dark ink;
+ * 225 also counts faint grey print, a faded fax or pencil).
+ */
+function inkRatio(canvas, below = 140) {
   const { width, height } = canvas;
   const data = canvas.getContext('2d').getImageData(0, 0, width, height).data;
   let dark = 0;
   let seen = 0;
   for (let i = 0; i < data.length; i += 16) { // every 4th pixel
     seen++;
-    if (data[i + 3] > 40 && data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11 < 140) dark++;
+    if (data[i + 3] > 40 && data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11 < below) dark++;
   }
   return seen ? dark / seen : 0;
 }
@@ -461,6 +479,8 @@ async function extractXlsx(buf, result) {
 // ------------------------------------------------------------------- .pdf
 
 let pdfjsReady = null;
+let TEXT_OPS = null; // every operation that draws text
+let PICTURE_OPS = null; // every operation that paints a picture, 1-bit stencils included
 // pdf.js decodes fax (CCITT), JBIG2 and JPEG 2000 pictures, formats many
 // scanners use, only with its own decoders, and reads Chinese, Japanese and
 // Korean text written with Adobe's standard character maps only with those
@@ -471,6 +491,8 @@ const pdfjsFolder = (sub) => `${path.join(path.dirname(require.resolve('pdfjs-di
 async function extractPdf(buf, result) {
   pdfjsReady ||= import('pdfjs-dist/legacy/build/pdf.mjs');
   const pdfjs = await pdfjsReady;
+  PICTURE_OPS ||= new Set(['paintImageXObject', 'paintImageXObjectRepeat', 'paintInlineImageXObject', 'paintInlineImageXObjectGroup', 'paintImageMaskXObject', 'paintImageMaskXObjectGroup', 'paintImageMaskXObjectRepeat', 'paintSolidColorImageMask'].map((k) => pdfjs.OPS[k]).filter((x) => x !== undefined));
+  TEXT_OPS ||= new Set(['showText', 'showSpacedText', 'nextLineShowText', 'nextLineSetSpacingShowText'].map((k) => pdfjs.OPS[k]).filter((x) => x !== undefined));
   const { createCanvas } = require('@napi-rs/canvas');
   let doc;
   const task = pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true, isEvalSupported: false, verbosity: 0, wasmUrl: pdfjsFolder('wasm'), cMapUrl: pdfjsFolder('cmaps') });
@@ -495,7 +517,8 @@ async function extractPdf(buf, result) {
     const content = await page.getTextContent();
     const text = content.items.map((it) => it.str + (it.hasEOL ? '\n' : '')).join('').trim();
     const ops = await page.getOperatorList();
-    const hasPicture = ops.fnArray.some((f) => f === pdfjs.OPS.paintImageXObject || f === pdfjs.OPS.paintInlineImageXObject);
+    const hasPicture = ops.fnArray.some((f) => PICTURE_OPS.has(f));
+    const hasDrawnText = ops.fnArray.some((f) => TEXT_OPS.has(f));
     const sparse = chars(text) < SPARSE_PAGE_CHARS;
 
     // The page is also read as a picture when it has pictures on it or
@@ -514,7 +537,9 @@ async function extractPdf(buf, result) {
       };
       const canvas = await draw(2);
       ink = inkRatio(canvas);
-      if (ink > 0.0005) {
+      // A page with a picture is always read by OCR: a faint scan has no
+      // dark pixels at all but still has words on it.
+      if (hasPicture || ink > 0.0005 || inkRatio(canvas, 225) > 0.0005) {
         ocr = await ocrImage(canvas.toBuffer('image/png'));
         // A page that came out uncertain is read again at a higher
         // resolution, and the better reading is kept.
@@ -563,7 +588,14 @@ async function extractPdf(buf, result) {
       }
     }
     if (notes.length) add(local, `Page ${n} notes and form fields`, [...new Set(notes)].join('\n'));
-    local.proof.read++;
+    // A page that shows a picture or drawn text but gave almost nothing is
+    // not "read": pdf.js leaves a page white when it cannot decode its
+    // picture or load a font's character map, and says nothing.
+    if ((hasPicture || hasDrawnText) && !local.reasons.length && chars(text) + (ocr ? chars(ocr.text) : 0) < ALMOST_NO_TEXT) {
+      const reason = `Page ${n} has a picture or drawn text but almost nothing could be read from it (a picture or font that could not be decoded, or a blank or stamped page). Needs a manual check.`;
+      flag(local, 'manual', reason);
+      local.proof.unread.push(reason);
+    } else local.proof.read++;
   } catch (err) {
     flag(local, 'partial', `Page ${n} could not be read (${err.message}).`);
   } finally {
