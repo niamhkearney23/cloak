@@ -8,9 +8,15 @@
 
   async function call(name, args) {
     const r = await window.cloak.call(name, args);
-    if (r.error) throw Object.assign(new Error(r.error), { code: r.code });
+    if (r.error) throw Object.assign(new Error(withNextStep(r.error, r.code)), { code: r.code });
     return r.ok;
   }
+  // What to do next, for errors whose message only says what happened. Keyed by the error's code.
+  const NEXT_STEP = {
+    WRONG_SECRET: (m) => (/recovery code/i.test(m) ? 'Check the code on the printed sheet and type it again. Spaces, dashes and capital letters do not matter.' : 'Check that Caps Lock is off and type it again. If the password is lost, use the recovery code instead.'),
+    SWEEP_FAILED: () => 'Open the Files tab, view the cloaked text of each file named, and find that paragraph. If a real name or number is showing, type it in the box at the top and hide it. If an ordinary word is showing because Cloak hid it as a name somewhere else, press "Don\'t hide" on that word in Everything replaced. Then finish the review and export again.',
+  };
+  const withNextStep = (text, code) => (NEXT_STEP[code] ? `${text} ${NEXT_STEP[code](text)}` : text);
 
   const state = { info: null, folder: null, matterDir: null, matter: null, options: { dates: false, amounts: false, provisions: false }, progress: new Map(), review: null, tab: 'unsure', filter: '', busy: false, exported: null, manualSource: '', location: null, recovery: null, showAll: false, client: '', others: '', testMatter: false, level: 'strict', afterOpen: null, showUndated: false, chrono: null, draft: '', docsFolder: null, restoreResult: null };
 
@@ -162,7 +168,7 @@
         <button class="btn primary" id="m-create">Create matter</button>`;
       on('#m-create', 'click', async () => {
         const pw = document.getElementById('m-pw').value;
-        if (pw !== document.getElementById('m-pw2').value) return matterForm('The two passwords do not match.');
+        if (pw !== document.getElementById('m-pw2').value) return matterForm('The two passwords do not match. Type the same password in both boxes.');
         try {
           state.level = document.getElementById('m-level').value;
           const made = await call('createMatter', { dir: state.matterDir, name: document.getElementById('m-name').value.trim(), password: pw, level: state.level });
@@ -596,7 +602,7 @@
     });
     on('#do-restore', 'click', async () => {
       state.draft = document.getElementById('draft').value;
-      if (!state.draft.trim()) return restoreScreen('Paste or choose a draft first.');
+      if (!state.draft.trim()) return restoreScreen('There is no draft to check yet. Paste the draft into the box, or choose a file.');
       document.getElementById('restore-result').innerHTML = '<p><span class="spinner"></span> Checking…</p>';
       try { state.restoreResult = await call('restoreDraft', { draft: state.draft, folder: state.docsFolder }); restoreScreen(); } catch (err) { restoreScreen(err.message); }
     });
@@ -855,13 +861,28 @@
     }
   }
 
-  // The Help button in the top bar, and the clicks every screen shares.
-  document.querySelector('.bar-right')?.insertAdjacentHTML('afterbegin', '<button class="bar-link" id="bar-help" data-help="how">Help</button>');
+  // A way back to the home screen from any screen (the review screen has no Back button).
+  async function goHome() {
+    if (document.getElementById('progress')) return; // cloaking is running: wait until it has finished
+    closeHelp?.();
+    if (!state.info?.fullName) return nameScreen();
+    if (state.matter) {
+      const yes = await confirmDialog({ title: 'Go to the home screen?', body: 'This closes the matter. Everything you decided is saved in it. Cloaked copies you have not exported are not kept: to export them later, open the matter and cloak the folder again.', yes: 'Close the matter' });
+      if (!yes) return;
+      await call('closeMatter').catch(() => {});
+      Object.assign(state, { matter: null, afterOpen: null, review: null, chrono: null, exported: null, restoreResult: null, draft: '' });
+    }
+    home();
+  }
+
+  // Home and Help in the top bar, and the clicks every screen shares.
+  document.querySelector('.bar-right')?.insertAdjacentHTML('afterbegin', '<button class="bar-link" id="bar-home" data-go-home>Home</button><button class="bar-link" id="bar-help" data-help="how">Help</button>');
   document.addEventListener('click', (e) => {
-    const t = e.target.closest('[data-tip-close], [data-help], [data-go-sample]');
+    const t = e.target.closest('[data-tip-close], [data-help], [data-go-sample], [data-go-home]');
     if (!t) return;
     if (t.dataset.tipClose) closeTip(t.dataset.tipClose);
     else if (t.dataset.help) helpScreen(t.dataset.help);
+    else if (t.hasAttribute('data-go-home')) goHome();
     else sampleScreen();
   });
 
