@@ -182,15 +182,19 @@ export async function closeOcr() {
   for (const k of Object.keys(pools)) delete pools[k];
 }
 
-/** Share of dark pixels on a canvas: is there anything drawn on the page? */
-function inkRatio(canvas) {
+/**
+ * Share of dark pixels on a canvas: is there anything drawn on the page?
+ * `below` is the brightness a pixel must be under to count (140 is dark ink;
+ * 225 also counts faint grey print, a faded fax or pencil).
+ */
+function inkRatio(canvas, below = 140) {
   const { width, height } = canvas;
   const data = canvas.getContext('2d').getImageData(0, 0, width, height).data;
   let dark = 0;
   let seen = 0;
   for (let i = 0; i < data.length; i += 16) { // every 4th pixel
     seen++;
-    if (data[i + 3] > 40 && data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11 < 140) dark++;
+    if (data[i + 3] > 40 && data[i] * 0.3 + data[i + 1] * 0.59 + data[i + 2] * 0.11 < below) dark++;
   }
   return seen ? dark / seen : 0;
 }
@@ -519,7 +523,9 @@ async function extractPdf(buf, result) {
       };
       const canvas = await draw(2);
       ink = inkRatio(canvas);
-      if (ink > 0.0005) {
+      // A page with a picture is always read by OCR: a faint scan has no
+      // dark pixels at all but still has words on it.
+      if (hasPicture || ink > 0.0005 || inkRatio(canvas, 225) > 0.0005) {
         ocr = await ocrImage(canvas.toBuffer('image/png'));
         // A page that came out uncertain is read again at a higher
         // resolution, and the better reading is kept.
