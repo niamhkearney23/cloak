@@ -6,8 +6,12 @@
   const tags = (s) => esc(s).replace(/\{\{[^}]+\}\}/g, (m) => `<span class="tag">${m}</span>`);
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
+  // How many calls to the app are still running. Closing the matter waits until it is zero.
+  let pending = 0;
   async function call(name, args) {
-    const r = await window.cloak.call(name, args);
+    pending++;
+    let r;
+    try { r = await window.cloak.call(name, args); } finally { pending--; }
     if (r.error) throw Object.assign(new Error(withNextStep(r.error, r.code)), { code: r.code });
     return r.ok;
   }
@@ -701,7 +705,7 @@
       <div id="restore-result">${r ? restoreResultHtml(r) : ''}</div>
     </div>`);
     on('#draft', 'input', (e) => { state.draft = e.target.value; });
-    on('#restore-back', 'click', async () => { await call('closeMatter').catch(() => {}); state.matter = null; state.afterOpen = null; state.restoreResult = null; state.draft = ''; home(); });
+    on('#restore-back', 'click', async () => { if (pending) return; await call('closeMatter').catch(() => {}); state.matter = null; state.afterOpen = null; state.restoreResult = null; state.draft = ''; home(); });
     on('#pick-draft', 'click', async () => {
       try { const f = await call('pickDraftFile'); if (f) { state.draft = f.text; restoreScreen(); } } catch (err) { restoreScreen(err.message); }
     });
@@ -972,7 +976,7 @@
 
   // A way back to the home screen from any screen (the review screen has no Back button).
   async function goHome() {
-    if (document.getElementById('progress')) return; // cloaking is running: wait until it has finished
+    if (document.getElementById('progress') || pending) return; // cloaking or a save is running: wait until it has finished
     closeHelp?.();
     if (!state.info?.fullName) return nameScreen();
     if (state.matter) {

@@ -122,6 +122,8 @@ class Session {
   }
 
   async save() {
+    // Once the matter is closed its key is zeroed: sealing the file with it would make the matter unreadable.
+    if (!this.open) throw new Error('The matter is closed, so nothing more can be saved in it.');
     await saveKeyFile(this.keyFile, this.dataKey, this.contents());
   }
 
@@ -664,11 +666,18 @@ class Session {
 
   async close() {
     if (!this.open) return;
-    this.open = false;
-    await this.save();
-    await this.log('closed');
-    await rm(path.join(this.dir, LOCK_NAME), { force: true });
-    this.dataKey.fill(0);
+    this.closing ??= (async () => {
+      try {
+        await this.save();
+        await this.log('closed');
+      } finally {
+        // Even if the last save fails: let go of the lock and wipe the key.
+        this.open = false;
+        await rm(path.join(this.dir, LOCK_NAME), { force: true }).catch(() => {});
+        this.dataKey.fill(0);
+      }
+    })();
+    return this.closing;
   }
 }
 
