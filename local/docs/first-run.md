@@ -179,5 +179,5 @@ changing that function), and messages from `keyfile.js`, `source.js`,
   title, are not hidden automatically (both go on Not sure).
 - Over-hiding: a company (`Bina Kukuh Services`) hidden as a person, a
   spreadsheet amount (`45000`) as a postcode, comment initials (`FA`) as a person.
-- The README's "What it will miss" says email attachments are not opened.
-  They are (the completeness section says so too); the line is out of date.
+- The README's "What it will miss" said email attachments are not opened.
+  They are (the completeness section says so too). Fixed: the line now says so.
