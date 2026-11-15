@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloak a folder &middot; Cloak</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.2c0-.9.7-1.7 1.7-1.7h4l2 2h7.6c.9 0 1.7.8 1.7 1.7v8.6c0 .9-.8 1.7-1.7 1.7H5.2c-1 0-1.7-.8-1.7-1.7z"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="3.8"/><path d="M10.8 12.7 19 4.5M16.2 7.3l2.6 2.6M13.9 9.6l1.9 1.9"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .6-8 5.5 5.5 0 0 0-10.7 1.2A3.4 3.4 0 0 0 7 18.5z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="1.6"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.75"/><path d="M12 11v5.5"/><path d="M12 7.9v.1"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.4 4.6 2.9 17.6a1.8 1.8 0 0 0 1.6 2.7h15a1.8 1.8 0 0 0 1.6-2.7L13.6 4.6a1.8 1.8 0 0 0-3.2 0z"/><path d="M12 9.5v4.5"/><path d="M12 17.2v.1"/></symbol>
+  <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19.5 12h-15M10.5 6l-6 6 6 6"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4.5 12h15M13.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-computer" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="1.6"/><path d="M8.5 20h7M12 16.5V20"/><path d="M9.2 10.6l2 2 3.8-3.8"/></symbol>
+</svg>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="home.html" aria-label="Cloak by Lawgistics, home">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="mark__tablet" x="1" y="1" width="30" height="30" rx="7.5"/><rect class="mark__bar" x="7" y="13.6" width="14" height="5" rx=".8"/></svg>
+    <span class="wordmark">Cloak</span>
+    <span class="brand__by">by Lawgistics</span>
+  </a>
+  <div class="topbar__right">
+    <span class="offline"><svg class="i i--sm" aria-hidden="true"><use href="#i-computer"/></svg><span class="offline__text">On this computer only</span></span>
+    <span class="topbar__sep" aria-hidden="true"></span>
+    <span class="licence"><span class="licence__label">Licensed to</span><span class="licence__firm">Tetuan Adnan Ooi &amp; Raman</span></span>
+  </div>
+</header>
+
+<main id="main">
+  <div class="page page--form">
+    <header class="pagehead">
+      <ol class="steps" aria-label="Progress">
+        <li class="step step--now" aria-current="step"><span class="step__n">1</span>Set up</li>
+        <li class="step"><span class="step__n">2</span>Read</li>
+        <li class="step"><span class="step__n">3</span>Review</li>
+        <li class="step"><span class="step__n">4</span>Double check</li>
+        <li class="step"><span class="step__n">5</span>Export</li>
+      </ol>
+      <h1 class="h1">Cloak a folder</h1>
+      <p class="lead">Choose the documents, create or open the matter that holds the key, and say who the people are. Nothing is read until you press Start.</p>
+    </header>
+
+    <section class="part" aria-labelledby="p1">
+      <div class="part__margin">
+        <span class="part__n" aria-hidden="true">1</span>
+        <h2 class="part__title" id="p1">The documents</h2>
+        <p class="part__help">The folder is only read. Nothing in it is changed, renamed or moved.</p>
+        <p class="part__status"><svg class="i i--sm" aria-hidden="true"><use href="#i-check"/></svg>Chosen</p>
+      </div>
+      <div class="part__body">
+        <div class="row">
+          <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg>Choose folder&hellip;</button>
+          <div class="pathbox">
+            <svg class="i i--md" aria-hidden="true"><use href="#i-cloud"/></svg>
+            <div class="pathbox__text">
+              <div class="path">C:\Users\aina\OneDrive - Tetuan Adnan Ooi &amp; Raman\Matters\2026\Teratai Kenanga v Bina Jaya</div>
+              <div class="pathbox__meta">214 files in 6 folders</div>
+            </div>
+          </div>
+        </div>
+        <div class="note note--info" role="note">
+          <svg class="i" aria-hidden="true"><use href="#i-info"/></svg>
+          <div class="note__body">
+            <p class="note__title">This folder is in OneDrive</p>
+            <p>Cloak only reads it. It will never create, rename, move or change anything there, and nothing of the matter (key, cache or cloaked copies) will be saved there.</p>
+            <p class="muted">Recognised from the OneDrive folder path.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="src">Where is this folder?</label>
+          <select class="select" id="src">
+            <option>Work it out automatically</option>
+            <option>It is on iManage Drive</option>
+            <option>It is in OneDrive</option>
+            <option>It is in Google Drive</option>
+          </select>
+          <span class="field__hint">Choose one only if Cloak did not recognise the folder as synced.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" aria-labelledby="p2">
+      <div class="part__margin">
+        <span class="part__n" aria-hidden="true">2</span>
+        <h2 class="part__title" id="p2">The matter</h2>
+        <p class="part__help">Each matter has its own folder holding its encrypted key. Keep it on the firm&rsquo;s shared drive, never inside the documents folder.</p>
+        <p class="part__status part__status--todo"><svg class="i i--sm" aria-hidden="true"><use href="#i-key"/></svg>Not created yet</p>
+      </div>
+      <div class="part__body">
+        <div class="subhead">
+          <div class="toggle" role="group" aria-label="New or existing matter">
+            <button class="toggle__btn" type="button" aria-pressed="true">New matter</button>
+            <button class="toggle__btn" type="button" aria-pressed="false">Existing matter</button>
+          </div>
+          <p class="small muted">Existing matters open with the password, the recovery code, or a password remembered on this computer.</p>
+        </div>
+        <div class="row">
+          <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg>Choose matter folder&hellip;</button>
+          <div class="pathbox">
+            <svg class="i i--md" aria-hidden="true"><use href="#i-key"/></svg>
+            <div class="pathbox__text">
+              <div class="path">S:\Cloak matters\2026\Teratai Kenanga v Bina Jaya</div>
+              <div class="pathbox__meta">Empty folder on the firm&rsquo;s shared drive</div>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="mname">Matter name <span class="field__opt">(optional)</span></label>
+          <input class="input" id="mname" type="text" value="Teratai Kenanga v Bina Jaya" autocomplete="off">
+        </div>
+        <fieldset class="field">
+          <legend class="field__label">How much to hide</legend>
+          <div class="choices">
+            <label class="choice choice--on">
+              <input class="rb" type="radio" name="level" checked>
+              <span>
+                <span class="choice__title">Strict <span class="stamp stamp--ink">Recommended</span></span>
+                <span class="choice__desc">Names and numbers, and the facts that could tie the text to this dispute.</span>
+                <span class="facts-list"><span>Dates</span><span>Amounts</span><span>References</span><span>Places</span><span>Projects</span><span>Job titles</span><span>Courts</span></span>
+              </span>
+            </label>
+            <label class="choice">
+              <input class="rb" type="radio" name="level">
+              <span>
+                <span class="choice__title">Standard</span>
+                <span class="choice__desc">Names and numbers only: people, companies, NRIC and passport numbers, addresses, phones, accounts. Dates, amounts and legal provisions are kept unless you tick them.</span>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="fields-2">
+          <div class="field">
+            <label class="field__label" for="pw1">Matter password</label>
+            <input class="input input--password" id="pw1" type="password" value="kenanga-bina-2026" autocomplete="new-password">
+          </div>
+          <div class="field">
+            <label class="field__label" for="pw2">Type the password again</label>
+            <input class="input input--password" id="pw2" type="password" value="kenanga-bina-2026" autocomplete="new-password">
+          </div>
+        </div>
+        <p class="pwrule"><span class="is-ok"><svg class="i i--sm" aria-hidden="true"><use href="#i-check"/></svg>10 characters or more</span><span class="is-ok"><svg class="i i--sm" aria-hidden="true"><use href="#i-check"/></svg>The two passwords match</span><span><svg class="i i--sm" aria-hidden="true"><use href="#i-lock"/></svg>Never written to disk, never sent anywhere</span></p>
+        <div class="row">
+          <button class="btn btn--primary" type="button"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Create matter</button>
+          <span class="small muted">Next, Cloak shows the recovery code once. Print it or write it down.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="part" aria-labelledby="p3">
+      <div class="part__margin">
+        <span class="part__n" aria-hidden="true">3</span>
+        <h2 class="part__title" id="p3">The people</h2>
+        <p class="part__help">Every form you type is hidden everywhere, in the text and in file and folder names. Nothing is guessed from folder names.</p>
+      </div>
+      <div class="part__body">
+        <div class="field">
+          <label class="field__label" for="client">Who is the client?</label>
+          <textarea class="textarea" id="client" rows="2">Teratai Kenanga Development Sdn Bhd; Teratai Kenanga; TKD</textarea>
+          <span class="field__hint">Every way it is written, separated by a semicolon. Short forms without Sdn Bhd, Berhad or (M) are added for you.</span>
+        </div>
+        <div class="field">
+          <label class="field__label" for="others">Who are the other parties?</label>
+          <textarea class="textarea" id="others" rows="5">company: Bina Jaya Construction Sdn Bhd; Bina Jaya; BJC
+person: Mohd Faizal bin Ismail; Faizal
+Lee Chee Keong; Lee C.K.
+Priya a/p Raghavan</textarea>
+          <span class="field__hint">One party per line, forms of the same party separated by a semicolon. Start a line with <b>person:</b> or <b>company:</b> to say which it is.</span>
+        </div>
+        <label class="check">
+          <input class="cb" type="checkbox">
+          <span class="check__text">This matter holds made-up test documents only<span class="check__hint">Your own statement: Cloak cannot tell real documents from made-up ones.</span></span>
+        </label>
+      </div>
+    </section>
+  </div>
+
+  <div class="actionbar">
+    <div class="actionbar__inner">
+      <p class="actionbar__note"><svg class="i" aria-hidden="true"><use href="#i-key"/></svg>Create the matter to continue.</p>
+      <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-arrow-left"/></svg>Back</button>
+      <button class="btn btn--primary btn--lg" type="button" disabled>Start cloaking<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+    </div>
+  </div>
+</main>
+</body>
+</html>
