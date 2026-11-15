@@ -468,6 +468,7 @@ async function extractXlsx(buf, result) {
 // ------------------------------------------------------------------- .pdf
 
 let pdfjsReady = null;
+let TEXT_OPS = null; // every operation that draws text
 let PICTURE_OPS = null; // every operation that paints a picture, 1-bit stencils included
 // pdf.js decodes fax (CCITT), JBIG2 and JPEG 2000 pictures, formats many
 // scanners use, only with its own decoders, and reads Chinese, Japanese and
@@ -480,6 +481,7 @@ async function extractPdf(buf, result) {
   pdfjsReady ||= import('pdfjs-dist/legacy/build/pdf.mjs');
   const pdfjs = await pdfjsReady;
   PICTURE_OPS ||= new Set(['paintImageXObject', 'paintImageXObjectRepeat', 'paintInlineImageXObject', 'paintInlineImageXObjectGroup', 'paintImageMaskXObject', 'paintImageMaskXObjectGroup', 'paintImageMaskXObjectRepeat', 'paintSolidColorImageMask'].map((k) => pdfjs.OPS[k]).filter((x) => x !== undefined));
+  TEXT_OPS ||= new Set(['showText', 'showSpacedText', 'nextLineShowText', 'nextLineSetSpacingShowText'].map((k) => pdfjs.OPS[k]).filter((x) => x !== undefined));
   const { createCanvas } = require('@napi-rs/canvas');
   let doc;
   const task = pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true, isEvalSupported: false, verbosity: 0, wasmUrl: pdfjsFolder('wasm'), cMapUrl: pdfjsFolder('cmaps') });
@@ -505,6 +507,7 @@ async function extractPdf(buf, result) {
     const text = content.items.map((it) => it.str + (it.hasEOL ? '\n' : '')).join('').trim();
     const ops = await page.getOperatorList();
     const hasPicture = ops.fnArray.some((f) => PICTURE_OPS.has(f));
+    const hasDrawnText = ops.fnArray.some((f) => TEXT_OPS.has(f));
     const sparse = chars(text) < SPARSE_PAGE_CHARS;
 
     // The page is also read as a picture when it has pictures on it or
@@ -574,7 +577,14 @@ async function extractPdf(buf, result) {
       }
     }
     if (notes.length) add(local, `Page ${n} notes and form fields`, [...new Set(notes)].join('\n'));
-    local.proof.read++;
+    // A page that shows a picture or drawn text but gave almost nothing is
+    // not "read": pdf.js leaves a page white when it cannot decode its
+    // picture or load a font's character map, and says nothing.
+    if ((hasPicture || hasDrawnText) && !local.reasons.length && chars(text) + (ocr ? chars(ocr.text) : 0) < ALMOST_NO_TEXT) {
+      const reason = `Page ${n} has a picture or drawn text but almost nothing could be read from it (a picture or font that could not be decoded, or a blank or stamped page). Needs a manual check.`;
+      flag(local, 'manual', reason);
+      local.proof.unread.push(reason);
+    } else local.proof.read++;
   } catch (err) {
     flag(local, 'partial', `Page ${n} could not be read (${err.message}).`);
   } finally {

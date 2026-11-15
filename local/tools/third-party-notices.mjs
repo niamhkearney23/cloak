@@ -414,6 +414,11 @@ export function checkBuilt(distDir) {
       }
     };
     walk(modules);
+    // pdf.js reads fax, JBIG2 and JPEG 2000 pictures and Chinese character maps from these folders; without them such pages come out empty.
+    for (const [sub, ext] of [['wasm', '.wasm'], ['cmaps', '.bcmap']]) {
+      const dir = path.join(modules, 'pdfjs-dist', sub);
+      if (!existsSync(dir) || !readdirSync(dir).some((f) => f.endsWith(ext))) problems.push(`pdfjs-dist/${sub}/*${ext} is missing from the app, so some scanned or Chinese PDF pages could not be read.`);
+    }
     for (const x of NOT_SHIPPED) {
       const dir = path.join(modules, x.pkg, path.dirname(x.pattern));
       const hit = existsSync(dir) && readdirSync(dir).some((f) => globRe(path.basename(x.pattern)).test(f));
