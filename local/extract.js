@@ -28,8 +28,11 @@ const require = createRequire(import.meta.url);
 // Raise this whenever a change makes Cloak read a file differently (more text,
 // or a part it used to miss). A matter's cache then reads each file again
 // instead of keeping the old reading. 2: fax, JBIG2 and JPEG 2000 pictures and
-// standard-CMap Chinese in PDFs, which version 1 read as empty pages.
-export const READER_VERSION = 2;
+// standard-CMap Chinese in PDFs, which version 1 read as empty pages. 3: PDF
+// pages whose pictures are 1-bit masks or faint grey are now read, a PDF page
+// that came out empty is flagged instead of counted as read, and a picture the
+// OCR engine cannot open fails its own file with a reason.
+export const READER_VERSION = 3;
 
 const TEXT_TYPES = new Set(['.txt', '.md', '.csv', '.tsv', '.log', '.json', '.xml', '.ics', '.vcf']);
 const HTML_TYPES = new Set(['.html', '.htm']);
@@ -461,6 +464,7 @@ async function extractXlsx(buf, result) {
 // ------------------------------------------------------------------- .pdf
 
 let pdfjsReady = null;
+let PICTURE_OPS = null; // every operation that paints a picture, 1-bit stencils included
 // pdf.js decodes fax (CCITT), JBIG2 and JPEG 2000 pictures, formats many
 // scanners use, only with its own decoders, and reads Chinese, Japanese and
 // Korean text written with Adobe's standard character maps only with those
@@ -471,6 +475,7 @@ const pdfjsFolder = (sub) => `${path.join(path.dirname(require.resolve('pdfjs-di
 async function extractPdf(buf, result) {
   pdfjsReady ||= import('pdfjs-dist/legacy/build/pdf.mjs');
   const pdfjs = await pdfjsReady;
+  PICTURE_OPS ||= new Set(['paintImageXObject', 'paintImageXObjectRepeat', 'paintInlineImageXObject', 'paintInlineImageXObjectGroup', 'paintImageMaskXObject', 'paintImageMaskXObjectGroup', 'paintImageMaskXObjectRepeat', 'paintSolidColorImageMask'].map((k) => pdfjs.OPS[k]).filter((x) => x !== undefined));
   const { createCanvas } = require('@napi-rs/canvas');
   let doc;
   const task = pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true, isEvalSupported: false, verbosity: 0, wasmUrl: pdfjsFolder('wasm'), cMapUrl: pdfjsFolder('cmaps') });
@@ -495,7 +500,7 @@ async function extractPdf(buf, result) {
     const content = await page.getTextContent();
     const text = content.items.map((it) => it.str + (it.hasEOL ? '\n' : '')).join('').trim();
     const ops = await page.getOperatorList();
-    const hasPicture = ops.fnArray.some((f) => f === pdfjs.OPS.paintImageXObject || f === pdfjs.OPS.paintInlineImageXObject);
+    const hasPicture = ops.fnArray.some((f) => PICTURE_OPS.has(f));
     const sparse = chars(text) < SPARSE_PAGE_CHARS;
 
     // The page is also read as a picture when it has pictures on it or
