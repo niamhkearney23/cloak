@@ -19,10 +19,10 @@
 // the key and when issuing licences.
 
 import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkLicence, dayOf, issueLicence, keyFingerprint, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
+import { checkLicence, dayOf, issueLicence, keyFingerprint, licenceFileText, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PRIVATE_NAME = 'cloak-licence-private.pem';
@@ -52,6 +52,11 @@ function gitRoot(dir) {
   }
 }
 
+// Where `dir` really is, after links, junctions and substituted drives are followed.
+function realPath(dir) {
+  try { return realpathSync.native(dir); } catch { try { return realpathSync(dir); } catch { return path.resolve(dir); } }
+}
+
 function readPrivateKey(file) {
   const pem = readFileSync(file, 'utf8');
   try {
@@ -65,8 +70,8 @@ const commands = {
   keygen(o) {
     const dir = o._[0] || fail('say which folder the keys go in: keygen <folder>');
     if (!existsSync(dir)) fail(`${dir} does not exist.`);
-    const repo = gitRoot(dir);
-    if (repo) fail(`${path.resolve(dir)} is inside the git repository ${repo}. The private key must never go into a repository. Choose a folder outside it (an encrypted drive or a password manager is best).`);
+    const repo = gitRoot(dir) || gitRoot(realPath(dir)); // the path as typed, and where it really is: a link into a repository counts
+    if (repo) fail(`${path.resolve(dir)}${path.resolve(dir) === realPath(dir) ? '' : ` (really ${realPath(dir)})`} is inside the git repository ${repo}. The private key must never go into a repository. Choose a folder outside it (an encrypted drive or a password manager is best).`);
     const priv = path.join(dir, PRIVATE_NAME);
     const pub = path.join(dir, PUBLIC_NAME);
     for (const f of [priv, pub]) if (existsSync(f)) fail(`${f} already exists. Nothing was changed.`);
@@ -116,7 +121,7 @@ export const LICENCE_PUBLIC_KEY = \`${clean}\`;
 
   check(o) {
     const file = o._[0] || fail('say which licence file to check: check <file>');
-    const r = checkLicence(readFileSync(file, 'utf8'), o.key ? { publicKey: readFileSync(o.key, 'utf8') } : {});
+    const r = checkLicence(licenceFileText(readFileSync(file)), o.key ? { publicKey: readFileSync(o.key, 'utf8') } : {});
     if (r.licence) console.log(`Licensed to: ${r.licence.firm}\nSeats: ${r.licence.seats}\nIssued: ${r.licence.issued}\nEnds: ${r.licence.expires}\nLicence ID: ${r.licence.id}\nSigned with key: ${r.licence.key}`);
     console.log(`Result: ${r.status}${r.reason ? ` - ${r.reason}` : ''}`);
     process.exit(r.status === 'valid' ? 0 : 1);

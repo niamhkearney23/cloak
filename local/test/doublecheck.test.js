@@ -385,3 +385,24 @@ test('a copy is split into its parts for the locations, using the labels in the 
   const u = documentUnit(f);
   assert.deepEqual(u.parts.map((p) => [p.line, p.label]), [[1, 'File name'], [3, 'Body'], [6, 'Header'], [9, 'Sheet: {{PERSON_1}} payments']]);
 });
+
+// The licensee is named in the report on purpose. When the licensee is also a party (an in-house team) the name is in
+// the key, and even a one-word key value on that line must give a finding (it can be marked fine, not hidden).
+test('the licensee line in the report is checked against one-word key values too', async () => {
+  const lic = (firm) => checkLicence(issueLicence({ privateKey: vendor.privateKey, firm, seats: 5, issued: '2026-01-01', expires: '2099-12-31' }), { publicKey: vendor.publicKey });
+  const files = { '01 Memo.txt': 'Kembaraco Berhad has kept the delivery orders. Kembaraco Berhad will reply.' };
+  for (const firm of ['Kembaraco', 'KEMBARACO', 'Kembaraco Berhad']) {
+    const { s, root } = await session(files);
+    s.licence = lic(firm);
+    const view = await s.doubleCheck();
+    assert.ok(places(view).some((p) => p.unit === 'cloak-report.json'), `licensed to ${firm}: a finding in the report`);
+    assert.equal(view.passed, false, firm);
+    await assert.rejects(s.export({ outDir: path.join(root, 'out') }), (e) => e.code === 'DOUBLE_CHECK');
+    await s.close();
+  }
+  // A one-word key value on the reviewer's line is still left alone (reviewers are "Siti", "Tan").
+  const { s } = await session(files, { user: 'Kembaraco' });
+  const view = await s.doubleCheck();
+  assert.equal(places(view).filter((p) => p.unit === 'cloak-report.json' && p.value === 'Kembaraco').length, 0);
+  await s.close();
+});

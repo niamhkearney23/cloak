@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { assertLicenceAllowsExport, checkLicence, findLicence, issueLicence, keyFingerprint, licenceBlock, licenceForReport, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
+import { assertLicenceAllowsExport, checkLicence, findLicence, issueLicence, keyFingerprint, licenceBlock, licenceFileText, licenceForReport, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
 import { LICENCE_PUBLIC_KEY } from '../licence-key.js';
 import { createMatter } from '../matter.js';
 import { checkDraft } from '../draftcheck.js';
@@ -270,4 +270,144 @@ test('the licence tool can keep the private key encrypted', async () => {
   const withIt = run(args, { CLOAK_LICENCE_PASSPHRASE: 'made-up passphrase for the test' });
   assert.equal(withIt.status, 0, withIt.stderr);
   assert.match(withIt.stdout, /BEGIN CLOAK LICENCE/);
+});
+
+// An installed copy never honours the CLOAK_TEST_* licence settings, however its program file is named.
+test('test licence settings are honoured only for the source folder run by Electron, never for an installed copy', async () => {
+  const { testHooksAllowed } = await import('../app/testhooks.js');
+  const source = { isPackaged: false, defaultApp: true, appPath: local, resourcesPath: path.join(local, 'node_modules', 'electron', 'dist', 'resources'), release: false };
+  assert.equal(testHooksAllowed(source), true, 'electron <source folder>, as the tests start it');
+  // The installed program (resources/app inside the install folder), under its own name.
+  const installed = { isPackaged: true, defaultApp: undefined, appPath: '/opt/Cloak/resources/app', resourcesPath: '/opt/Cloak/resources', release: true };
+  assert.equal(testHooksAllowed(installed), false);
+  // The same program file renamed to electron.exe: Electron then says isPackaged is false.
+  assert.equal(testHooksAllowed({ ...installed, isPackaged: false }), false, 'renamed program file');
+  // Stock Electron started on the installed app folder: defaultApp is true, isPackaged false.
+  const stock = { isPackaged: false, defaultApp: true, appPath: '/opt/Cloak/resources/app', resourcesPath: '/opt/Cloak/resources', release: true };
+  assert.equal(testHooksAllowed(stock), false, 'release mark in package.json');
+  assert.equal(testHooksAllowed({ ...stock, release: false }), false, 'app folder inside the resources folder');
+  assert.equal(testHooksAllowed({ ...source, release: undefined }), false, 'package.json unreadable');
+  assert.equal(testHooksAllowed({ ...source, defaultApp: false }), false);
+  // The build writes the mark; the source tree does not carry it.
+  const pkg = JSON.parse(await readFile(path.join(local, 'package.json'), 'utf8'));
+  assert.equal(pkg.build.extraMetadata.cloakRelease, true);
+  assert.equal(pkg.cloakRelease, undefined);
+});
+
+test('a licence inside a long email thread (over 16 KB) still checks; only the licence block itself is limited', () => {
+  const thread = (n) => `${'On Mon, a colleague wrote: > Please keep this message confidential. This email is for the named reader only.\n'.repeat(n)}`;
+  const text = `${thread(100)}\n> ${issue().trim().split('\n').join('\n> ')}\n\n${thread(100)}`;
+  assert.ok(text.length > 16 * 1024 && text.length < 64 * 1024);
+  assert.equal(check(text).status, 'valid');
+  assert.equal(check(text.replace(/\n/g, '\r\n')).status, 'valid');
+  const block = licenceBlock(text);
+  assert.ok(block.length < 2000);
+  assert.equal(check(block).status, 'valid');
+  // Far beyond anything an email holds: still refused, with the usual message.
+  assert.equal(check(`${text}\n${'x'.repeat(1024 * 1024)}`).code, 'NOT_A_LICENCE');
+});
+
+test('a licence file saved as UTF-16 (Windows PowerShell Out-File) is read; a damaged one is refused without throwing', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'cloak-utf16-'));
+  const text = issue().replace(/\n/g, '\r\n');
+  const le = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
+  const be = Buffer.concat([Buffer.from([0xfe, 0xff]), Buffer.from(text, 'utf16le').swap16()]);
+  const bom8 = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(text, 'utf8')]);
+  const find = async (name, buf) => {
+    const file = path.join(dir, name);
+    await writeFile(file, buf);
+    return findLicence({ files: [{ file, where: 'computer' }], publicKey: vendor.publicKey, today: NOW });
+  };
+  for (const [name, buf] of [['le.txt', le], ['be.txt', be], ['utf8.txt', Buffer.from(text, 'utf8')], ['bom8.txt', bom8]]) {
+    const r = await find(name, buf);
+    assert.equal(r.code, 'VALID', name);
+    assert.equal(licenceFileText(buf).includes('BEGIN CLOAK LICENCE'), true, name);
+  }
+  for (const [name, buf] of [['odd-be.txt', be.subarray(0, be.length - 1)], ['odd-le.txt', le.subarray(0, le.length - 1)], ['bom-only.txt', Buffer.from([0xfe, 0xff, 0])], ['empty.txt', Buffer.alloc(0)]]) {
+    const r = await find(name, buf);
+    assert.ok(['VALID', 'NOT_A_LICENCE', 'CHANGED'].includes(r.code), `${name}: ${r.code}`); // a cut-off last byte (the newline) is harmless
+  }
+});
+
+// A long firm name is wrapped by plain-text email at 76 columns (less when quoted): the wrapped line carries on the line above.
+test('a licence whose long "Licensed to" line was wrapped by email still checks, and a changed second half is still refused', () => {
+  const firm = 'Tetuan Contoh Abdullah, Lim, Ramasamy & Rakan-Rakan, Peguambela dan Peguamcara';
+  const text = issue({ firm, id: 'CL-TEST-' + 'WRAPPED'.repeat(6) });
+  const wrapAt = (s, n) => s.split('\n').flatMap((l) => (l.length <= n || !/\s/.test(l.replace(/^>\s*/, '')) ? [l] : l.match(new RegExp(`.{1,${n}}(?:\\s|$)`, 'g')).map((x) => x.trimEnd()))).join('\n');
+  const quote = (s) => s.split('\n').map((l) => `> ${l}`).join('\n');
+  assert.ok(text.split('\n').some((l) => l.length > 76));
+  const wrapped = wrapAt(text, 76);
+  assert.notEqual(wrapped, text);
+  assert.equal(check(wrapped).status, 'valid');
+  assert.equal(check(quote(wrapAt(quote(text), 72))).status, 'valid');
+  assert.equal(check(wrapAt(quote(text), 60).replace(/\n/g, '\r\n')).status, 'valid');
+  assert.equal(check(wrapped).licence.firm, firm);
+  // A break right after a hyphen.
+  assert.equal(check(text.replace('Rakan-Rakan', 'Rakan-\nRakan')).status, 'valid');
+  // Changing the second half, or any other line, is still refused.
+  assert.equal(check(wrapped.replace('Peguamcara', 'Peguamcari')).code, 'CHANGED');
+  assert.equal(check(wrapped.replace('Seats: 10', 'Seats: 100')).code, 'CHANGED');
+  // Text added after a line is part of that line, so it is refused.
+  assert.equal(check(text.replace('Seats: 10', 'Seats: 10\n(unlimited)')).code, 'CHANGED');
+});
+
+// What is shown must be what was signed: every readable line is checked, and the saved file is written from the signed details.
+test('readable lines with look-alike, unknown, duplicate or stray labels are refused, and the saved file shows only what was signed', () => {
+  const text = issue();
+  const edits = {
+    'Cyrillic look-alike labels': text.replace('Licensed to: Made-up Advocates & Solicitors', 'Licensed tо: Big Other Firm Sdn Bhd').replace('Seats: 10', 'Seаts: 500'),
+    'other label words': text.replace('Licensed to:', 'Licenced to:').replace('Seats: 10', 'No. of seats: 500').replace('Expires: 14 Nov 2027', 'Expiry: 31 Dec 2099'),
+    'false lines above the real ones': text.replace('Product: Cloak\n', 'Product: Cloak\nLicensed to: Big Other Firm Sdn Bhd\nSeats: 500\n'),
+    'a false line first': text.replace('Product: Cloak\n', 'Licensed to: Big Other Firm Sdn Bhd\nProduct: Cloak\n'),
+    'a duplicate label': text.replace('Seats: 10\n', 'Seats: 10\nSeats: 500\n'),
+    'a line after a blank line': text.replace('\nData:', '\nSeats: 500\n\nData:'),
+    'stray text': text.replace('Product: Cloak\n', 'Product: Cloak\n\nBig Other Firm Sdn Bhd\n'),
+    'a label with two kinds of quoting': text.replace('Licensed to: Made-up', '>  > Licensed to: Big Other Firm Sdn Bhd\nMade-up'),
+  };
+  for (const [what, edited] of Object.entries(edits)) {
+    assert.notEqual(edited, text, what);
+    const r = check(edited);
+    assert.equal(r.code, 'CHANGED', what);
+    assert.equal(licenceBlock(edited) === null || check(licenceBlock(edited)).status === 'valid', true, what);
+  }
+  // Spacing and case in a label are not changes; neither is a tab before the colon.
+  assert.equal(check(text.replace('Licensed to:', 'LICENSED  TO :').replace('Seats:', 'Seats\t:')).status, 'valid');
+  // Only the Data and the Signature are needed; the readable lines may be left out.
+  const lines = text.trim().split('\n');
+  const bare = [lines[0], ...lines.slice(lines.indexOf('Data:'))].join('\n');
+  assert.equal(check(bare).status, 'valid');
+  // What is saved always shows exactly what was signed, and checks again when read back.
+  const saved = licenceBlock(text.replace('Seats: 10', 'Seats:   10').replace('Made-up Advocates', 'Made-up  Advocates'));
+  assert.equal(saved, text);
+  assert.equal(licenceBlock(bare), text);
+  assert.equal(check(saved).status, 'valid');
+  assert.equal(licenceBlock('not a licence'), null);
+  assert.equal(licenceBlock(editDetails(text, (d) => { d.seats = 0; })), null);
+});
+
+test('the licence tool refuses a private key folder that is a link (symlink or junction) into a git repository', async () => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'cloak-link-'));
+  const repo = path.join(base, 'made-up-repo');
+  await mkdir(path.join(repo, '.git'), { recursive: true });
+  await mkdir(path.join(repo, 'secrets'));
+  const outside = path.join(base, 'outside');
+  await mkdir(outside);
+  const link = path.join(outside, 'vendor-keys');
+  await symlink(path.join(repo, 'secrets'), link, 'junction');
+  const twice = path.join(outside, 'second-link');
+  await symlink(link, twice, 'junction');
+  for (const dir of [link, twice, path.join(repo, 'secrets')]) {
+    const r = run(['keygen', dir]);
+    assert.notEqual(r.status, 0, dir);
+    assert.match(r.stderr, /inside the git repository/);
+  }
+  // A link inside the repository that points out of it is refused too (the repository's copy would carry the key).
+  const elsewhere = path.join(base, 'elsewhere');
+  await mkdir(elsewhere);
+  await symlink(elsewhere, path.join(repo, 'keys'), 'junction');
+  assert.notEqual(run(['keygen', path.join(repo, 'keys')]).status, 0);
+  assert.deepEqual(await readdir(path.join(repo, 'secrets')), []);
+  assert.deepEqual(await readdir(elsewhere), []);
+  // A real folder outside any repository is still fine.
+  assert.equal(run(['keygen', elsewhere]).status, 0);
 });

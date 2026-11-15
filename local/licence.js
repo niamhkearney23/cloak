@@ -28,7 +28,8 @@ const BEGIN = '-----BEGIN CLOAK LICENCE-----';
 const END = '-----END CLOAK LICENCE-----';
 // Signed together with the details, so a signature made for a licence means nothing anywhere else.
 const CONTEXT = Buffer.from('cloak-licence-v1\n');
-const MAX_TEXT = 16 * 1024;
+const MAX_TEXT = 16 * 1024; // the licence block itself
+const MAX_LOOKED_AT = 1024 * 1024; // all the text it is looked for in
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const NO_LICENCE = 'There is no licence on this computer.';
 
@@ -36,7 +37,9 @@ const b64url = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').
 const unb64 = (s) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
 const wrap = (s) => s.match(/.{1,64}/g).join('\n');
 const pad = (n) => String(n).padStart(2, '0');
-const same = (a, b) => String(a).normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase() === String(b).normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
+// Whitespace does not count: an email program may break a line at a space, or right after a hyphen.
+const squash = (a) => String(a).normalize('NFC').replace(/\s+/g, '').toLowerCase();
+const same = (a, b) => squash(a) === squash(b);
 
 /** A calendar date as YYYY-MM-DD, in this computer's time zone. */
 export const dayOf = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -105,17 +108,25 @@ export function issueLicence({ privateKey, firm, seats, issued = dayOf(), expire
 // The lines of the licence block, with email quoting ("> ") and stray spaces taken off.
 function blockLines(text) {
   const t = String(text ?? '');
-  if (t.length > MAX_TEXT) return null;
+  if (t.length > MAX_LOOKED_AT) return null; // a generous bound on the text looked through at all (a long email thread)
   const lines = t.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n').map((l) => l.replace(/^\s*(?:>\s?)+/, '').trim());
   const a = lines.indexOf(BEGIN);
   const b = a < 0 ? -1 : lines.indexOf(END, a + 1);
-  return a < 0 || b < 0 ? null : lines.slice(a, b + 1);
+  if (a < 0 || b < 0) return null;
+  const block = lines.slice(a, b + 1);
+  return block.join('\n').length > MAX_TEXT ? null : block; // the 16 KB limit is for the licence itself
 }
 
-/** The licence block on its own, tidied, for saving. */
+/**
+ * The licence block for saving. The readable lines are written again from the signed details, so the saved file
+ * always says exactly what was signed, whatever was pasted. Null when there is no licence in the text.
+ */
 export function licenceBlock(text) {
-  const lines = blockLines(text);
-  return lines ? `${lines.join('\n')}\n` : null;
+  const p = parse(text);
+  let d = null;
+  try { d = p && JSON.parse(p.payload.toString('utf8')); } catch { d = null; }
+  if (!d || checkDetails(d)) return null;
+  return [BEGIN, ...SUMMARY.map(([, label, value]) => `${label}: ${value(d)}`), '', 'Data:', wrap(b64url(p.payload)), 'Signature:', wrap(b64url(p.signature)), END, ''].join('\n');
 }
 
 function parse(text) {
@@ -125,16 +136,23 @@ function parse(text) {
   const di = body.indexOf('Data:');
   const si = body.indexOf('Signature:');
   if (di < 0 || si < di) return null;
-  const summary = {};
+  // The readable lines. Each is one of the six known labels (compared as written by NFKC, ignoring spacing and case),
+  // or carries on from the line above it (an email program wrapped it). Nothing else may stand there: a line that
+  // is not a known label becomes part of the line above, where it fails the comparison with the signed details.
+  const summary = [];
+  let unknown = false;
+  let cur = null;
   for (const l of body.slice(0, di)) {
-    const m = l.match(/^([A-Za-z ]+):\s*(.*)$/);
-    if (m) summary[m[1].trim().toLowerCase()] = m[2];
+    if (!l) { cur = null; continue; }
+    const m = l.match(/^([^:]*):\s*(.*)$/);
+    const key = m && m[1].normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (m && SUMMARY.some(([k]) => k === key)) { cur = [key, m[2]]; summary.push(cur); } else if (cur) cur[1] += ` ${l}`; else unknown = true;
   }
   const joined = (ls) => ls.join('').replace(/\s+/g, '').replace(/=+$/, '');
   const data = joined(body.slice(di + 1, si));
   const sig = joined(body.slice(si + 1));
   if (!/^[A-Za-z0-9_+/-]+$/.test(data) || !/^[A-Za-z0-9_+/-]+$/.test(sig)) return null;
-  return { payload: unb64(data), signature: unb64(sig), summary };
+  return { payload: unb64(data), signature: unb64(sig), summary, unknown };
 }
 
 /** Is the licence still running today? Works on the details of a licence that has been checked. */
@@ -176,11 +194,20 @@ export function checkLicence(text, { publicKey = LICENCE_PUBLIC_KEY, today = new
   if (problem) return fail('BAD_DETAILS', `This licence cannot be used: ${problem}`);
   if (details.key !== fingerprint) return otherKey();
   // The readable lines at the top must say the same as the signed details.
-  for (const [key, label, value] of SUMMARY) {
-    if (key in p.summary && !same(p.summary[key], value(details))) return fail('CHANGED', `The "${label}" line of this licence has been changed since it was issued, so it cannot be used. Ask the supplier for a fresh copy of the licence file.`);
+  if (p.unknown) return fail('CHANGED', 'The readable lines at the top of this licence have been changed since it was issued, so it cannot be used. Ask the supplier for a fresh copy of the licence file.');
+  for (const [key, got] of p.summary) {
+    const [, label, value] = SUMMARY.find(([k]) => k === key);
+    if (!same(got, value(details))) return fail('CHANGED', `The "${label}" line of this licence has been changed since it was issued, so it cannot be used. Ask the supplier for a fresh copy of the licence file.`);
   }
   const licence = { id: details.id, firm: details.firm, seats: details.seats, issued: details.issued, expires: details.expires, key: fingerprint };
   return { ...licenceState(licence, today), licence };
+}
+
+/** A licence file's text: UTF-8 (BOM or not), or UTF-16 with a BOM (Windows PowerShell 5.1 Out-File and ">"). Never throws. */
+export function licenceFileText(buf) {
+  if (buf[0] === 0xff && buf[1] === 0xfe) return buf.toString('utf16le', 2);
+  if (buf[0] === 0xfe && buf[1] === 0xff) return Buffer.from(buf.subarray(2, buf.length - (buf.length % 2))).swap16().toString('utf16le');
+  return buf.toString('utf8');
 }
 
 /**
@@ -192,7 +219,7 @@ export async function findLicence({ files, publicKey = LICENCE_PUBLIC_KEY, today
   let first = null;
   for (const { file, where } of files) {
     let text;
-    try { text = await readFile(file, 'utf8'); } catch { continue; }
+    try { text = licenceFileText(await readFile(file)); } catch { continue; }
     const r = { ...checkLicence(text, { publicKey, today }), file, where };
     if (r.status === 'valid') return r;
     first ||= r;

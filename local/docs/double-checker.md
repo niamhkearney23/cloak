@@ -109,7 +109,8 @@ Hiding cannot change the names of the people who reviewed and checked, or the
 firm named on the licence, which Cloak writes in the report, or the context
 sheet and the list of file names, which Cloak writes from tags and numbers.
 Those can only be marked as fine. (If the firm on the licence is also a party
-in the documents, its name in the report is a finding to mark as fine.)
+in the documents, its name in the report is a finding to mark as fine, even
+when the licence has only one word of that party's name.)
 
 If hiding something gives the review something new to decide (a name joined to
 another person, say), the review must be finished again, and the double check
@@ -171,7 +172,8 @@ It is not perfect.
   taken to be part of a place, not a person.
 - **The reviewer's own name in the report:** a one-word form shared with a
   party ("Siti", "Tan") is not counted, because many people share these. A
-  full name the key holds is.
+  full name the key holds is. (The licensee line is not treated this way: one
+  word counts there.)
 - **Amounts in a spreadsheet** are found only in a column whose header says it
   is an amount, as in the first pass. Amounts and dates written in words are
   not found.
