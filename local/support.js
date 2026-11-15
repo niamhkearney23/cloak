@@ -110,10 +110,12 @@ export function keyValues(matter) {
   return out;
 }
 
-/** Replace every whole-word occurrence of a value (any letter case) with its tag. */
-export function redactText(text, values) {
-  if (!text || !values.length) return { text: String(text ?? ''), count: 0 };
-  const byFirst = new Map();
+// The first-token index of a list of values is built once per list (one support file passes the same array to every call).
+const indexes = new WeakMap();
+function indexOf(values) {
+  let byFirst = indexes.get(values);
+  if (byFirst) return byFirst;
+  byFirst = new Map();
   for (const v of values) {
     const tk = tokens(v.value).map((x) => x.t);
     if (!tk.length) continue;
@@ -121,6 +123,14 @@ export function redactText(text, values) {
     byFirst.get(tk[0]).push({ tk, token: v.token });
   }
   for (const list of byFirst.values()) list.sort((a, b) => b.tk.length - a.tk.length);
+  indexes.set(values, byFirst);
+  return byFirst;
+}
+
+/** Replace every whole-word occurrence of a value (any letter case) with its tag. */
+export function redactText(text, values) {
+  if (!text || !values.length) return { text: String(text ?? ''), count: 0 };
+  const byFirst = indexOf(values);
   const toks = tokens(text);
   let out = '';
   let at = 0;

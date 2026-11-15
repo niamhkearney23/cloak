@@ -5,11 +5,22 @@ import os from 'node:os';
 import path from 'node:path';
 import { makeMatter } from './matter.js';
 import { createMatter, openMatter } from '../matter.js';
+import { redactLog } from '../support.js';
 
 // Fixes found in review (support and sample areas). Made-up data only.
 const FAST = { N: 2 ** 12, r: 8, p: 1 };
 const PASSWORD = 'a long test password';
 const exists = (p) => stat(p).then(() => true, () => false);
+
+test('the support file guard indexes the key values once, not once per string', () => {
+  const values = Array.from({ length: 21000 }, (_, i) => ({ value: `Person${i} Example${i}`, token: `PERSON_${i}` }));
+  const log = Array.from({ length: 300 }, (_, i) => JSON.stringify({ t: '2026-11-15T01:00:00Z', by: 'x', action: 'review-change', n: i, note: 'Person5 Example5 saw it' })).join('\n');
+  const started = Date.now();
+  const r = redactLog(log, values);
+  assert.equal(r.count, 300);
+  assert.match(r.text, /\{\{PERSON_5\}\} saw it/);
+  assert.ok(Date.now() - started < 3000, `took ${Date.now() - started} ms`);
+});
 
 test('a save that finishes after the matter is closed is refused, so the key file is never sealed with a zeroed key', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-closed-'));
