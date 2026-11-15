@@ -1,0 +1,10 @@
+/* Used by index.html only. Not part of the app stylesheet. */
+.index section { margin-top: var(--sp-6); }
+.index h2 { margin-bottom: var(--sp-3); }
+.idx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); }
+.idx-card { display: grid; gap: 6px; align-content: start; padding: 10px 10px 14px; background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--r-md); color: var(--text); text-decoration: none; box-shadow: var(--sh-1); }
+.idx-card:hover { border-color: var(--ink); box-shadow: var(--sh-2); }
+.idx-card b { color: var(--ink); padding: 0 4px; }
+.idx-card .small { padding: 0 4px; }
+.thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.thumbs img { display: block; width: 100%; height: auto; aspect-ratio: 1180 / 820; object-fit: cover; object-position: top left; border: 1px solid var(--rule); border-radius: 4px; background: var(--well); }

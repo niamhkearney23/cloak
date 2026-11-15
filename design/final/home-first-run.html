@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home, first run - Cloak</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true" focusable="false"><defs><symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.4 3 8 7.5 9.5 4.5-1.5 7.5-5.1 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/></symbol><symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6H9l2 2.5h8.5A1.5 1.5 0 0 1 21 10v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z"/></symbol><symbol id="i-file" viewBox="0 0 24 24"><path d="M6.5 3h7L18 7.5V20a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M13.5 3v4.5H18"/></symbol><symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5.5-6 6 6-6 6"/></symbol><symbol id="i-out" viewBox="0 0 24 24"><path d="M9 5H5.5A1.5 1.5 0 0 0 4 6.5v12A1.5 1.5 0 0 0 5.5 20h12a1.5 1.5 0 0 0 1.5-1.5V15"/><path d="M14 4h6v6M20 4l-9 9"/></symbol><symbol id="i-scissors" viewBox="0 0 24 24"><circle cx="6" cy="6.5" r="2.5"/><circle cx="6" cy="17.5" r="2.5"/><path d="M8 8 20 18M8 16 20 6"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.2A9.8 9.8 0 0 1 12 6c6.4 0 10 6 10 6a17 17 0 0 1-3.2 3.8M6.5 7.5A17 17 0 0 0 2 12s3.6 6 10 6c1.5 0 2.8-.3 4-.8"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol><symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V3.5h10V9"/><rect x="4" y="9" width="16" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/></symbol><symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6A1.5 1.5 0 0 0 14 4.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v11m-4.5-4.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 8-8m-3 3 3 3m-6 0 2 2"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.7"/><path d="M4.5 20c.8-4 3.8-6 7.5-6s6.7 2 7.5 6"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.1"/></symbol><symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v5M12 17.8v.1"/></symbol><symbol id="i-pc" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8.5 20h7M12 16.5V20"/></symbol><symbol id="i-chevl" viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></symbol><symbol id="i-chevr" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></symbol><symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7 4.5 11.5 9 16"/><path d="M5 11.5h9.5a4.5 4.5 0 0 1 0 9H11"/></symbol><symbol id="i-book" viewBox="0 0 24 24"><path d="M4.5 5.5C7 4.5 9.5 4.7 12 6.5c2.5-1.8 5-2 7.5-1v13c-2.5-1-5-.8-7.5 1-2.5-1.8-5-2-7.5-1z"/><path d="M12 6.5v13"/></symbol><symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 9.5a4.5 4.5 0 0 1 0 9z"/></symbol><symbol id="i-doc" viewBox="0 0 24 24"><path d="M6.5 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol><symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.3"/><path d="M3 19.5c.6-3.3 3-5 6-5s5.4 1.7 6 5"/><path d="M16 5.5a3.2 3.2 0 0 1 0 6M18 14.8c1.8.6 3 2.2 3.4 4.7"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol><symbol id="i-hide" viewBox="0 0 24 24"><rect x="4" y="9.5" width="16" height="5" rx="1.2" fill="currentColor" stroke="none"/><path d="M4 5.5h10M4 18.5h6"/></symbol></defs></svg>
+  <a class="skip" href="#main">Skip to the content</a>
+  <header class="bar">
+    <div class="brand"><a href="home.html" aria-label="Cloak home"><span class="mark" aria-hidden="true"></span><span>cloak</span></a><span class="by">by Lawgistics</span></div>
+    
+    <div class="bar-right">
+      <span id="licence-bar" class="licence-bar"><span class="lead-in">Licensed to</span> <b>Zainal Ariffin &amp; Rao</b></span>
+      <span class="bar-sep" aria-hidden="true"></span>
+      <button class="bar-link" type="button">Help</button>
+      <span class="offline" title="Everything runs on this computer. Nothing is sent anywhere."><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-shield"/></svg><span>On this computer only</span></span>
+    </div>
+  </header>
+  <main id="main"><div class="home">
+    <div class="tip" role="note" id="tip-home"><span><b>Start here.</b> <b>Cloak a folder</b> hides client details in a folder of documents before they go to an AI tool. <b>Restore a draft</b> puts them back into what the AI wrote. New to Cloak? Try the sample matter first.</span><button class="link" type="button">Got it</button></div>
+    <div class="home-grid">
+      <section class="home-hero" aria-labelledby="h">
+        <p class="kicker"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-lock"/></svg>Runs on this computer. Nothing is sent anywhere.</p>
+        <h1 id="h">Send the case to the AI, <em>not the client.</em></h1>
+        <p class="lead">Cloak hides names and numbers in a folder of documents, then puts them back into the AI's draft.</p>
+        <figure class="specimen" aria-label="An example of a sentence before and after cloaking">
+          <div class="part">
+            <div class="cap"><span>The original</span><span>stays on this computer</span></div>
+            <p lang="ms"><span class="real">Pada 12 Mac 2024</span>, <span class="real">Tan Ah Kow</span> membayar <span class="real">RM 48,500.00</span> kepada <span class="real">Gudang Lima Sdn Bhd</span>.</p>
+          </div>
+          <div class="cut"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-scissors"/></svg><span>Cloak cuts here</span></div>
+          <div class="part">
+            <div class="cap"><span>Cloaked</span><span>what the AI sees</span></div>
+            <p lang="ms">Pada <span class="tag"><span class="b">{{</span>DATE_1<span class="b">}}</span></span>, <span class="tag"><span class="b">{{</span>PERSON_1<span class="b">}}</span></span> membayar <span class="tag"><span class="b">{{</span>AMOUNT_1<span class="b">}}</span></span> kepada <span class="tag"><span class="b">{{</span>COMPANY_2<span class="b">}}</span></span>.</p>
+          </div>
+        </figure>
+      </section>
+      <section aria-label="What would you like to do?">
+        <div class="choices">
+          <a class="choice primary" href="setup-new.html" id="go-cloak"><span class="eyebrow">Before the AI</span><b>Cloak a folder</b><span class="desc">Hide names and numbers in a folder of documents.</span><span class="go"><svg class="i i-md" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></span></a>
+          <a class="choice" href="restore-start.html" id="go-restore"><span class="eyebrow">After the AI</span><b>Restore a draft</b><span class="desc">Put the real details back into a draft, and check it.</span><span class="go"><svg class="i i-md" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg></span></a>
+        </div>
+        <div class="try-sample"><span class="ico"><svg class="i i-lg" aria-hidden="true" focusable="false"><use href="#i-book"/></svg></span><div><b>New to Cloak?</b> Try a sample matter: ten made-up documents, ready in a few minutes.</div><a class="btn" id="go-sample" href="sample.html">Try a sample matter</a></div>
+      </section>
+    </div>
+    <div class="flow" aria-label="What stays and what leaves">
+      <div class="stay"><h3><svg class="i i-md" aria-hidden="true" focusable="false"><use href="#i-pc"/></svg>Stays on this computer</h3><p>Your documents, the encrypted key, the real names and numbers, and the log. Nothing is sent anywhere, ever.</p></div>
+      <div class="leave"><h3><svg class="i i-md" aria-hidden="true" focusable="false"><use href="#i-out"/></svg>Leaves only when you export</h3><p>The cloaked copies, with tags instead of names, to a folder you choose. Nobody can export until a person has reviewed them.</p></div>
+    </div>
+    <p class="signed">Signed in as <b>Siti Aminah binti Yusof</b><span class="sep"></span><button class="link" type="button" id="change-name">Change name</button><span class="sep"></span><a href="licence.html">Licence</a><span class="sep"></span><a href="help-how.html">How Cloak works</a><span class="sep"></span><a href="help-data.html">Your data</a><span class="sep"></span><a href="help-about.html">About</a></p>
+  </div></main>
+  <footer class="foot"><svg class="i i-sm" aria-hidden="true" focusable="false"><use href="#i-lock"/></svg><span>Everything runs on this computer. Nothing is sent anywhere.</span></footer>
+  
+</body>
+</html>
