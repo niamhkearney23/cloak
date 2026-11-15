@@ -187,12 +187,13 @@ test('once everything is decided the review can be signed off, and only then exp
   assert.equal(result.written.length, 5);
   assert.equal(result.heldBack, 1);
   const names = await readdir(out);
-  assert.ok(names.includes('REVIEWED-NOT-DOUBLE-CHECKED.txt'));
+  assert.ok(names.includes('REVIEWED-AND-DOUBLE-CHECKED.txt'));
+  assert.ok(!names.includes('REVIEWED-NOT-DOUBLE-CHECKED.txt'));
   const all = (await Promise.all(names.map((n) => readFile(path.join(out, n), 'utf8')))).join('\n');
   for (const w of ['Bobby', 'Rahim', 'Osman', 'Along', 'Ah Kow', 'Ah Kaw', '陈文华', '收据']) assert.ok(!all.includes(w), `${w} is in the exported files: …${all.slice(Math.max(0, all.indexOf(w) - 80), all.indexOf(w) + 40)}…`);
   assert.match(all, /Hong Seng Trading/);
   const report = JSON.parse(await readFile(path.join(out, 'cloak-report.json'), 'utf8'));
-  assert.match(report.review, /^Reviewed by reviewer-one on \d{1,2} [A-Z][a-z]{2} \d{4}, \d{1,2}:\d{2} (?:am|pm)\./);
+  assert.match(report.review, /^Reviewed by reviewer-one on \d{1,2} [A-Z][a-z]{2} \d{4}, \d{1,2}:\d{2} (?:am|pm)\. Double-checked by reviewer-one on \d{1,2} [A-Z][a-z]{2} \d{4}, \d{1,2}:\d{2} (?:am|pm)\.$/);
   assert.equal(report.files.find((f) => f.checked_by_hand).non_latin_text_hidden, true);
   assert.equal(report.files.find((f) => f.checked_by_hand).checked_by_hand.by, 'reviewer-one');
 });

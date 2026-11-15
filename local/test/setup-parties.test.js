@@ -75,7 +75,7 @@ test('"Don\'t hide" belongs to one matter: another matter still hides the same w
   await a.close(); await b.close();
 });
 
-test('setup is kept in the matter, is logged without the names, and export is limited to test matters', async () => {
+test('setup is kept in the matter and logged without the names; once the double check passes any matter can be exported, and the report says whether it was ticked as a test matter', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-gate-'));
   const docs = path.join(root, 'documents');
   await mkdir(docs, { recursive: true });
@@ -84,13 +84,23 @@ test('setup is kept in the matter, is logged without the names, and export is li
   await session.setSetup({ client: 'Seri Kembara Logistics Sdn Bhd', others: 'Bintang Timur' });
   await session.cloakFolder({ folder: docs });
   const { finishReview } = await import('./helpers.js');
+  const { readFile } = await import('node:fs/promises');
   await finishReview(session);
-  await assert.rejects(session.export({ outDir: path.join(root, 'out') }), (e) => e.code === 'TEST_MATTER_ONLY' && /limited to test matters/.test(e.message));
+  // Not a test matter: the double check is what allows the export.
+  assert.equal(session.testMatter, false);
+  assert.ok((await session.export({ outDir: path.join(root, 'out') })).written.length >= 1);
+  const report = JSON.parse(await readFile(path.join(root, 'out', 'cloak-report.json'), 'utf8'));
+  assert.equal(report.test_matter, false);
+  assert.match(report.double_check.statement, /^Double-checked by x on /);
+  // The tick is kept and recorded.
   await session.setSetup({ testMatter: true });
   await finishReview(session).catch(() => {});
-  assert.ok((await session.export({ outDir: path.join(root, 'out') })).written.length >= 1);
-  const log = await (await import('node:fs/promises')).readFile(path.join(root, 'm', 'log.jsonl'), 'utf8');
+  assert.ok((await session.export({ outDir: path.join(root, 'out2') })).written.length >= 1);
+  assert.equal(JSON.parse(await readFile(path.join(root, 'out2', 'cloak-report.json'), 'utf8')).test_matter, true);
+  assert.match(await readFile(path.join(root, 'out2', 'REVIEWED-AND-DOUBLE-CHECKED.txt'), 'utf8'), /Made-up test documents only: yes/);
+  const log = await readFile(path.join(root, 'm', 'log.jsonl'), 'utf8');
   assert.match(log, /"action":"setup-changed"/);
-  assert.ok(!/Kembara|Bintang/.test(log), 'the names are not in the log');
+  assert.match(log, /"action":"exported".*"double_checked":true.*"test_matter":false/);
+  assert.ok(!/Kembara|Bintang|Hashim|Daud/.test(log), 'the names are not in the log');
   await session.close();
 });

@@ -208,6 +208,7 @@ function keyItems(matter) {
       short: letters <= 3,
       english: ALSO_ENGLISH.has(low) || AMBIGUOUS.has(low),
       hidden: e.match === false, // folder names and other values that are only used for putting back
+      oneWord: single,
     });
   }
   return items;
@@ -225,8 +226,13 @@ function caseFits(o, text) {
   return false;
 }
 
-function keyFinds(text, ctx) {
-  const hits = occurrences(text, ctx.keyTree).filter((o) => caseFits(o, text) && !HONOUR_START.test(text.slice(o.start, o.start + 40)));
+/**
+ * `who(offset)` is true on a line naming who reviewed or checked. There a
+ * one-word form ("Siti", "Tan") is not counted: a reviewer may share a common
+ * name word with a party. A full name or a number the key holds is.
+ */
+function keyFinds(text, ctx, who = () => false) {
+  const hits = occurrences(text, ctx.keyTree).filter((o) => caseFits(o, text) && !HONOUR_START.test(text.slice(o.start, o.start + 40)) && !(o.item.oneWord && who(o.start)));
   return longestFirst(hits).map((o) => ({ check: 'key', start: o.start, end: o.end, value: text.slice(o.start, o.end), token: o.item.token, hidden: o.item.hidden, otherCase: shape(text.slice(o.start, o.end)) !== o.item.shape }));
 }
 
@@ -567,7 +573,8 @@ export function reportUnit(text, id = 'cloak-report.json') {
     }
     if (own !== null && (parent === 'tags' || parent === 'replaced')) { bareTags.push({ line: n, name: own, parent }); exempt.set(n, ALL); return; }
     if (!rest.startsWith('"')) { exempt.set(n, ALL); return; }
-    if (TIME_KEYS.has(key)) exempt.set(n, ALL);
+    // Cloak's own words for a file whose name it does not show ("(file 4: name not shown because...)").
+    if (TIME_KEYS.has(key) || /^"\(file \d+: name not shown because the file was not read\)"$/.test(rest)) exempt.set(n, ALL);
     else if (WHO_KEYS.has(key)) exempt.set(n, ONLY_KEY);
     if (own === 'name' && parent === 'file') parts[parts.length - 1].label = `Report: entry for ${JSON.parse(rest)}`;
   });
@@ -623,7 +630,8 @@ export function inspect(matter, units) {
     const held = blank(unit.text.replace(TAG, (m) => HOLD.repeat(m.length)), unit.fixed || [], ' ');
     const base = blank(held, occurrences(held, ctx.keepTree).map((o) => [o.start, o.end]));
     const own = [];
-    own.push(...keyFinds(forCheck(base, unit, 'key'), ctx));
+    const whoLines = new Set([...(unit.exempt || [])].filter(([, skip]) => skip === ONLY_KEY).map(([line]) => line));
+    own.push(...keyFinds(forCheck(base, unit, 'key'), ctx, (at) => whoLines.has(lineAt(starts, at))));
     own.push(...factFinds(matter, forCheck(base, unit, 'fact'), { allowKinds: unit.allowKinds || [], unknownToo: unit.kind === 'document' }));
     own.push(...patternFinds(forCheck(base, unit, 'pattern'), ctx));
     own.push(...nameFinds(forCheck(base, unit, 'name'), ctx, { prose: unit.kind === 'document' }));
