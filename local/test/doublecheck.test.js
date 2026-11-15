@@ -127,6 +127,7 @@ test('planted leaks of each kind fail the check: a missed name, an NRIC in a foo
   plant('Comments', 'Paid on 03.03.2023.');
   plant('Header', 'See {{PERSON_99}}, {{person_1}} and {{PERSON_1');
   f.cloaked = f.cloaked.replace(/^File: /, 'File: Zubaidah ');
+  f.out = f.out.replace('.cloaked.txt', ' Rohani.cloaked.txt');
   s.matter.cloak.register('PATH_9', 'Ahmad bin Ismail', { match: false });
   plant('Document properties', 'Folder: {{PATH_9}}');
   const view = await s.doubleCheck();
@@ -137,6 +138,7 @@ test('planted leaks of each kind fail the check: a missed name, an NRIC in a foo
   assert.ok(has('pattern', /^900101-14-5678$/, 'Footer'), 'an NRIC in a footer');
   assert.ok(has('fact', /^03\.03\.2023$/, 'Comments'), 'a date the key holds, written another way');
   assert.ok(has('name', /^Zubaidah$/, 'File name'), 'a name in the file name');
+  assert.ok(all.some((p) => p.check === 'name' && p.value === 'Rohani' && p.part === 'Exported file names' && p.unit === '(file names)'), 'a name in the name of an exported file');
   assert.ok(has('tag', /^\{\{person_1\}\}$/, 'Header') && has('tag', /^\{\{PERSON_1$/, 'Header'), 'damaged tags');
   assert.ok(has('tag', /^\{\{PERSON_99\}\}$/, 'Header'), 'a tag that is not in the key');
   assert.ok(all.some((p) => p.check === 'tag' && /\{\{PATH_9\}\}/.test(p.value) && /\{\{PERSON_\d+\}\}/.test(p.value)), 'one real value under two different tags');
@@ -314,6 +316,16 @@ test('key sweep: names of four letters or more in any letter case, honours and f
   const kinds = keySweep(m, 'zulkarnain paid RM60000 on 03/03/2023.').map((h) => h.kind).sort();
   assert.deepEqual(kinds, ['amount', 'date', 'key']);
   assert.deepEqual(keySweep(m, 'A Tan Sri was there.'), [], '"Tan" in "Tan Sri" is the honour, not the surname');
+});
+
+test('key sweep: the folder names of a synced source, which the first pass keeps only for putting back, are swept too', () => {
+  const m = matterOf('Nothing here.');
+  m.cloak.register('PATH_1', 'Maju Jaya Dispute', { match: false });
+  const v = doubleCheck(m, [unitOf('File: notes\n\nSee the Maju Jaya Dispute folder for the rest.')]);
+  assert.equal(v.groups.length, 1);
+  assert.equal(v.groups[0].value, 'Maju Jaya Dispute');
+  assert.match(v.groups[0].what, /\{\{PATH_1\}\}.*kept only for putting back/);
+  assert.equal(v.groups[0].places[0].line, 3);
 });
 
 test('the reviewer\'s own name in the report: sharing one name word with a party is not a finding; a full name the key holds is', () => {
