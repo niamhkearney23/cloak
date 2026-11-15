@@ -406,8 +406,10 @@
     const bump = (s) => counts.set(s, (counts.get(s) || 0) + 1);
     const plain = String(text || '').replace(TOKEN_RE, ' ');
 
-    // Title + capitalised word: a strong signal.
-    const titled = /\b(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof|Sir|Dame|Garda|Sgt|Inspector|Judge|Encik|En|Puan|Pn|Cik|Tuan|Datuk|Dato'?|Datin|Tan Sri|Puan Sri|Tengku|Tunku|Haji|Hajah|Hj|Madam|Mdm|ASP|DSP|Insp|Cpl|Kpl|Sjn)\.?\s+((?:[A-Z][\p{L}'’-]+)(?:\s+[A-Z][\p{L}'’-]+)*)/gu;
+    // Title + capitalised word: a strong signal. In the same sentence and on
+    // the same line only: a dot may follow an abbreviation ("Mr.", "Dr.") but
+    // after a whole word it ends the sentence ("Thank you Puan. Cabinets done").
+    const titled = /\b(?:(?:Mr|Mrs|Ms|Mx|Dr|Prof|Sgt|En|Pn|Hj|Mdm|ASP|DSP|Insp|Cpl|Kpl|Sjn)\.?|Miss|Sir|Dame|Garda|Inspector|Judge|Encik|Puan|Cik|Tuan|Datuk|Dato'?|Datin|Tan Sri|Puan Sri|Tengku|Tunku|Haji|Hajah|Madam)[ \t]+((?:[A-Z][\p{L}'’-]+)(?:[ \t]+[A-Z][\p{L}'’-]+)*)/gu;
     const titledNames = [...plain.matchAll(titled)].map((m) => m[1]);
 
     // Runs of capitalised words, skipping ones that start a sentence.

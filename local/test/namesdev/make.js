@@ -53,7 +53,9 @@ Saya, «mono|Margono» (No. Pasport: B7712345), warganegara Indonesia, beralamat
 3. Pada 4 Mac 2024, Bu «title|Mala» menyuruh saya menutup dapur. Kak «title|Kala» juga ada di situ.
 4. Saya pernah memberitahu «nick|Angah» bahawa ekzos itu berbunyi kuat. Ah «title|Wah» berkata ia akan dibaiki.
 
-Diikrarkan oleh «mono|Margono» di George Town pada 1 April 2024.`,
+Diikrarkan oleh «mono|Margono» di George Town pada 1 April 2024.
+
+Tandatangan: «mono|Margono»`,
   },
   {
     rel: '03 WhatsApp Chat with Dapur Staff.txt', kind: 'txt',
@@ -72,6 +74,7 @@ Diikrarkan oleh «mono|Margono» di George Town pada 1 April 2024.`,
 04/03/24, 12:02 pm - «chat|Margono» Dapur: Bu «title|Mala», «trap|mala» chicken order semua cancel?
 04/03/24, 12:03 pm - Kak «chat|Mala»: Ya cancel. «trap|Sunny» day pun takde customer kadang-«trap|kala»
 04/03/24, 12:10 pm - «chat|Angah»: «trap|Will» update all of you tonight
+04/03/24, 12:14 pm - «chat|Kala» Manager: Thank you Puan. «trap|Cabinets» done today. Encik. «trap|Jubin» baru minggu depan
 `,
   },
   {

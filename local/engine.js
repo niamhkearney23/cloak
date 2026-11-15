@@ -226,9 +226,11 @@ function editDistance(a, b, max) {
 
 const CO_END = String.raw`(?:Sdn\.?\s*Bhd\.?|SDN\.?\s*BHD\.?|Berhad|BERHAD|Bhd\.?|BHD\.?|PLT|Pte\.?\s*Ltd\.?|PTE\.?\s*LTD\.?|Ltd\.?|LTD\.?|Limited|LIMITED|LLP|Inc\.?|Enterprises?|ENTERPRISES?|Trading|TRADING|Holdings|HOLDINGS|Industries|INDUSTRIES|Realty|Ventures|&\s*Co\.?|&\s*Associates|&\s*Partners|&\s*Rakan-Rakan|dan\s+Rakan-Rakan)`;
 const CO_WORD = String.raw`(?:${W}|\d+[A-Z]*|&|\((?:M|Malaysia|MALAYSIA|Asia|ASIA|KL|Sabah|Sarawak)\))`;
+// Initials at the start of a firm's name: "K.S. Rao & Co", "J. A. Nathan & Partners".
+const INITIALS = String.raw`(?<![\p{L}.])\p{Lu}\.(?:[ ]?\p{Lu}\.)*[ ]?`;
 const COMPANY_RES = [
-  new RegExp(String.raw`\b(?:Messrs\.?|Tetuan|M\/s) +(${W}(?:(?: *, *| +)(?:${W}|&|and|dan))*(?: +Co\.?)?)`, 'gu'),
-  new RegExp(String.raw`(${W}(?: *, *${W}| +${W}){0,5} *(?:&|and|dan) *(?:Partners|PARTNERS|Co\.?|CO\.?|Associates|ASSOCIATES|Rakan-Rakan|RAKAN-RAKAN|Company|COMPANY))(?![\p{L}])`, 'gu'),
+  new RegExp(String.raw`\b(?:Messrs\.?|Tetuan|M\/s) +((?:${INITIALS})?${W}(?:(?: *, *| +)(?:${W}|&|and|dan))*(?: +Co\.?)?)`, 'gu'),
+  new RegExp(String.raw`((?:${INITIALS})?${W}(?: *, *${W}| +${W}){0,5} *(?:&|and|dan) *(?:Partners|PARTNERS|Co\.?|CO\.?|Associates|ASSOCIATES|Rakan-Rakan|RAKAN-RAKAN|Company|COMPANY))(?![\p{L}])`, 'gu'),
   new RegExp(String.raw`(${W}(?: +${CO_WORD}){0,7}) +(${CO_END})(?![\p{L}])`, 'gu'),
   new RegExp(String.raw`\b((?:Syarikat|Perusahaan|Klinik|Restoran|Kedai|Bengkel|Koperasi|Persatuan|Yayasan|Kilang|Pasaraya) +${W}(?: +${W}){0,4})`, 'gu'),
   new RegExp(String.raw`\b((?:${W} +){1,3}Bank(?: +(?:Berhad|Bhd\.?|Islamic|Malaysia|\(M\)))*|Bank +(?!Negara)${W}(?: +${W}){0,2}|Maybank|CIMB|AmBank|Agrobank|HSBC|OCBC|UOB)\b`, 'gu'),
@@ -306,10 +308,13 @@ export function findNames(text) {
     });
   }
 
+  // A first name that is also an ordinary word, followed by a surname from the
+  // lists, is a name: "May Wong", "Dan Ong".
+  const ordinaryFirst = (w, next) => ORDINARY.has(plainWord(w)) && /^\p{Lu}\p{Ll}/u.test(w) && next && isNameWord(next) && !AMBIGUOUS.has(next.toLowerCase());
   const trim = (input) => {
     const out = input.slice();
     while (out.length > 2 && !isNameWord(out[0]) && !GENERIC_PARTS.has(out[0].toLowerCase()) && isNameWord(out[1]) && !AMBIGUOUS.has(out[1].toLowerCase()) && /^\p{Lu}\p{Ll}/u.test(out[0]) && VERBISH.test(out[0])) out.shift();
-    while (out.length && (isStop(out[0]) || PARTICLE_WORD.test(out[0])) && !isNameWord(out[0])) out.shift();
+    while (out.length && (isStop(out[0]) || PARTICLE_WORD.test(out[0])) && !isNameWord(out[0]) && !ordinaryFirst(out[0], out[1])) out.shift();
     while (out.length && (isStop(out[out.length - 1]) || PARTICLE_WORD.test(out[out.length - 1])) && !isNameWord(out[out.length - 1])) out.pop();
     return out;
   };
@@ -549,11 +554,24 @@ export function findNames(text) {
   }
   for (const line of rest.matchAll(/^(?:From|Sender|To|Cc|Bcc|Daripada|Kepada|Sent by|Reply-To):[ \t]*(.+)$/gim)) {
     for (const piece of line[1].split(/[;,]/)) {
-      const name = norm(piece.replace(/<[^>]*>|\S+@\S+|["']/g, ''));
+      const name = norm(piece.replace(/<[^>]*>|\S+@\S+|["']/g, '').replace(/\([^)]*\)/g, ' '));
       const words = name.split(' ').filter(Boolean);
-      if (words.length >= 2 && words.length <= 6 && words.every((w) => /^\p{Lu}/u.test(w) || PARTICLE_WORD.test(w)) && !words.some((w) => isStop(w) && !isNameWord(w))) add('PERSON', name, 'email header');
+      // One word is enough here: the display name of a sender is a person ("Bernice <...>").
+      if (words.length === 1 ? looksLikeName(name, { strong: true }) : words.length <= 6 && words.every((w) => /^\p{Lu}/u.test(w) || PARTICLE_WORD.test(w)) && !words.some((w) => isStop(w) && !isNameWord(w))) add('PERSON', name, 'email header');
     }
   }
+  // Form lines that name a person: "Nama: Ani", "Signed: Sutarno", "Tandatangan: Ani", "Witness: Ani".
+  for (const line of rest.matchAll(/^[ \t]*(?:Name|Nama|Nama penuh|Full name|Signed|Sgd\.?|Signature|Tandatangan|Witness|Saksi|Contact person|Interviewed by|Interviewer|Note taken by|Noted by|Received by|Diterima oleh|Approved by|Disahkan oleh|Checked by|Certified by)[ \t]*:[ \t]*([^\n]+)$/gimu)) {
+    const name = norm(line[1].replace(/\([^)\n]*\)/g, ' ').split(/,|\s[-–—]\s|\s{3,}/)[0]);
+    if (name && looksLikeName(name, { strong: true })) add('PERSON', name, 'named on a form line');
+  }
+  // Action items in file notes: "Sharon to open a new file", "- Adlina to get the notice".
+  const action = new RegExp(String.raw`(?:^|[.!?][ \t]+|\n)[ \t]*(?:[-•*][ \t]*|\d+[.)][ \t]*)?(${W})[ \t]+to[ \t]+\p{Ll}`, 'gu');
+  rest = rest.replace(action, (m, name) => {
+    if (!isNameWord(name) || AMBIGUOUS.has(name.toLowerCase())) return m;
+    add('PERSON', name, 'given a task in a note');
+    return m.replace(name, blank(name));
+  });
 
   // 5. Runs of capitalised words that contain a known name word.
   for (const line of rest.split(/\n+/)) {
@@ -565,7 +583,9 @@ export function findNames(text) {
         const words = trim(run);
         run = [];
         if (words.length < 2 || words.length > 6) return;
-        if (words.some((w) => isStop(w) && !isNameWord(w) && !PARTICLE_WORD.test(w))) return;
+        // "Mak Long", "Pak Ngah": a family title and a birth-order word, not a name.
+        if (words.length === 2 && KIN_START.test(words[0]) && BIRTH_ORDER.has(words[1].toLowerCase())) return;
+        if (words.some((w, i) => isStop(w) && !isNameWord(w) && !PARTICLE_WORD.test(w) && !(i === 0 && ordinaryFirst(w, words[1])))) return;
         const hits = words.filter((w) => isNameWord(w));
         const strong = hits.filter((w) => !AMBIGUOUS.has(w.toLowerCase()));
         const chinese = CHINESE_SURNAMES.has(words[0].toLowerCase()) && words.length <= 4;
@@ -746,6 +766,10 @@ function replaceKnown(text, root, ctx = false) {
   for (const f of keep) { out += text.slice(at, f.start) + `{{${f.e.token}}}`; at = f.end; }
   return out + text.slice(at);
 }
+
+// Two- and three-letter words and abbreviations that are never taken for initials.
+const COMMON_SHORT = new Set('OK NO RE PS CC BY TO OF AT IN ON MY US UK HQ PM AM QS DO ID IC HP GM MD HR IT PR NB AOB TBC TBA FYI ETA CEO CFO COO KL JB PG SG SDN BHD LLP PLT DR MR MS DAN AND THE FOR NOT ADA'.split(' '));
+const INITIALS_PLACE = new RegExp(String.raw`(^|\n)([ \t]*)(\p{Lu}{2,3})(?=[ \t]*(?:\n|$))|((?:${['Attendance', 'Attended by', 'Note taken by', 'Noted by', 'Prepared by', 'Drafted by', 'Fee earner', 'Initials', 'Interviewed by', 'Recorded by', 'By'].map(ci).join('|')})[ \t]*:?[ \t]+)(\p{Lu}{2,3})(?![\p{L}])`, 'gu');
 
 export { Cloak, TOKEN_RE, norm, isStop };
 
@@ -1255,7 +1279,7 @@ export class Matter {
     // so a term in those scripts is matched wherever it appears.
     let spaced = lifted;
     for (const e of this.cloak.entries.filter((x) => x.match !== false && NO_SPACES.test(x.value)).sort((x, y) => y.value.length - x.value.length)) spaced = spaced.split(e.value).join(`{{${e.token}}}`);
-    let out = this.cloak.cloak(this.known(spaced, { context: true }), { skipKnown: true, detectors: FORWARD_DETECTORS });
+    let out = this.cloak.cloak(this.known(this.hideInitials(spaced), { context: true }), { skipKnown: true, detectors: FORWARD_DETECTORS });
     // An honour in front of a person's tag becomes part of the tag;
     // anywhere else it goes back as it was.
     out = out.replace(HONOUR_MARK_RE, (m, c, after, base) => (base ? `{{${this.titleFor(base, norm(honours[c.codePointAt(0) - 0x100000]))}}} ` : honours[c.codePointAt(0) - 0x100000]));
@@ -1305,7 +1329,57 @@ export class Matter {
       }
       for (const [t, count] of counts) if (!safe.has(t.toLowerCase()) && !list.some((s) => s.text === t)) list.push({ text: t, count });
     }
+    // A first name from the name lists at the start of a sentence ("Sharon to
+    // open a new file") is not caught by the check for capitals mid-sentence.
+    const starts = new Map();
+    for (const m of plain.matchAll(/(?:^|[.!?:;][ \t]+|\n[ \t]*(?:[-•*][ \t]*)?)(\p{Lu}\p{Ll}+)(?=[ \t]+\p{Ll})/gu)) {
+      if (isNameWord(m[1]) && !AMBIGUOUS.has(m[1].toLowerCase()) && !isStop(m[1])) starts.set(m[1], (starts.get(m[1]) || 0) + 1);
+    }
+    for (const [t, count] of starts) if (!safe.has(t.toLowerCase()) && !list.some((s) => s.text === t)) list.push({ text: t, count });
     return list;
+  }
+
+  /** Initials of known people (two or three letters, only when one person has them): "JN" for Jeremy Ng. */
+  initialsIndex() {
+    const entries = this.cloak.entries;
+    if (this.initialsCache && this.initialsCache.cloak === this.cloak && this.initialsCache.size === entries.length) return this.initialsCache.map;
+    const map = new Map();
+    const clash = new Set();
+    for (const e of entries) {
+      if (!/^PERSON_\d+$/.test(e.token)) continue;
+      const words = nameWords(e.value).filter((w) => !PARTICLE_WORD.test(w) && /^\p{Lu}/u.test(w));
+      for (const ws of [words, words.filter((w) => !GENERIC_PARTS.has(w.toLowerCase()))]) {
+        if (ws.length < 2 || ws.length > 3) continue;
+        const ini = ws.map((w) => w[0].toUpperCase()).join('');
+        if (COMMON_SHORT.has(ini)) continue;
+        if (map.has(ini) && map.get(ini) !== e.token) clash.add(ini); else map.set(ini, e.token);
+      }
+    }
+    for (const c of clash) map.delete(c);
+    this.initialsCache = { cloak: this.cloak, size: entries.length, map };
+    return map;
+  }
+
+  /**
+   * Initials in the places a file note signs them: a line with nothing else,
+   * or after "Attendance:", "Note taken by", "Prepared by"... Elsewhere two or
+   * three capitals are left alone ("DO", "QS").
+   */
+  hideInitials(text) {
+    const index = this.initialsIndex();
+    if (!index.size) return text;
+    return text.replace(INITIALS_PLACE, (m, lineStart, spaces, alone, label, after) => {
+      const value = alone || after;
+      const base = index.get(value);
+      if (!base) return m;
+      let token = this.cloak.entries.find((e) => e.token.startsWith(`${base}.INITIALS`) && e.value === value)?.token;
+      if (!token) {
+        token = `${base}.INITIALS`;
+        for (let n = 2; this.cloak.byToken.has(token); n++) token = `${base}.INITIALS${n}`;
+        this.cloak.register(token, value, { match: false });
+      }
+      return alone ? `${lineStart}${spaces}{{${token}}}` : `${label}{{${token}}}`;
+    });
   }
 
   /** The key: tag -> real value. Stays on this machine. */
