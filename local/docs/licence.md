@@ -104,7 +104,8 @@ changed readable line (for example "Seats") makes it invalid.
 
 - **It keeps an honest firm honest; it is not copy protection.** The check runs
   in plain JavaScript inside the installed program folder (the app is not
-  packed into an archive). Someone with administrator rights and some skill
+  packed into an archive, and the per-user install folder can be changed
+  without administrator rights). Someone with some skill
   could edit it out, or run Cloak's reading engine directly: the installed
   program can be started as plain Node.js (Electron's `ELECTRON_RUN_AS_NODE`).
   Turning that off needs Electron "fuses", which the electron-builder version
@@ -164,7 +165,14 @@ Signature:
   (see `test/licence.test.js`).
 - `app/main.js`: the licence section. An installed copy always uses
   `licence-key.js`; only a copy run from the source folder accepts a test key in
-  `CLOAK_TEST_LICENCE_KEY`.
+  `CLOAK_TEST_LICENCE_KEY` (and a test computer-wide licence folder in
+  `CLOAK_TEST_USER_DATA`). Electron's `app.isPackaged` is decided from the
+  program file's name, so a copy of the installed program renamed to
+  `electron.exe` reads as "not packaged"; `app/testhooks.js` therefore also
+  requires that Electron was started on a folder (`electron <folder>`), that the
+  folder is not the installed `resources/app`, and that `package.json` has no
+  `cloakRelease` mark (the build writes it: `build.extraMetadata`). Any doubt
+  means the built-in key.
 - Tests: `test/licence.test.js` (valid, changed, ended, other key, not a
   licence, email-mangled text, user then machine licence, the evaluation rule,
   report fields, restore without a licence, the vendor tool) and the Licence

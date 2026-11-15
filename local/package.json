@@ -44,7 +44,8 @@
       "!test/**"
     ],
     "extraMetadata": {
-      "main": "app/main.js"
+      "main": "app/main.js",
+      "cloakRelease": true
     },
     "win": {
       "target": "nsis",

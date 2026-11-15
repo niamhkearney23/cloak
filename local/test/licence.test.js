@@ -271,3 +271,25 @@ test('the licence tool can keep the private key encrypted', async () => {
   assert.equal(withIt.status, 0, withIt.stderr);
   assert.match(withIt.stdout, /BEGIN CLOAK LICENCE/);
 });
+
+// An installed copy never honours the CLOAK_TEST_* licence settings, however its program file is named.
+test('test licence settings are honoured only for the source folder run by Electron, never for an installed copy', async () => {
+  const { testHooksAllowed } = await import('../app/testhooks.js');
+  const source = { isPackaged: false, defaultApp: true, appPath: local, resourcesPath: path.join(local, 'node_modules', 'electron', 'dist', 'resources'), release: false };
+  assert.equal(testHooksAllowed(source), true, 'electron <source folder>, as the tests start it');
+  // The installed program (resources/app inside the install folder), under its own name.
+  const installed = { isPackaged: true, defaultApp: undefined, appPath: '/opt/Cloak/resources/app', resourcesPath: '/opt/Cloak/resources', release: true };
+  assert.equal(testHooksAllowed(installed), false);
+  // The same program file renamed to electron.exe: Electron then says isPackaged is false.
+  assert.equal(testHooksAllowed({ ...installed, isPackaged: false }), false, 'renamed program file');
+  // Stock Electron started on the installed app folder: defaultApp is true, isPackaged false.
+  const stock = { isPackaged: false, defaultApp: true, appPath: '/opt/Cloak/resources/app', resourcesPath: '/opt/Cloak/resources', release: true };
+  assert.equal(testHooksAllowed(stock), false, 'release mark in package.json');
+  assert.equal(testHooksAllowed({ ...stock, release: false }), false, 'app folder inside the resources folder');
+  assert.equal(testHooksAllowed({ ...source, release: undefined }), false, 'package.json unreadable');
+  assert.equal(testHooksAllowed({ ...source, defaultApp: false }), false);
+  // The build writes the mark; the source tree does not carry it.
+  const pkg = JSON.parse(await readFile(path.join(local, 'package.json'), 'utf8'));
+  assert.equal(pkg.build.extraMetadata.cloakRelease, true);
+  assert.equal(pkg.cloakRelease, undefined);
+});

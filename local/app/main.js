@@ -5,6 +5,7 @@
 
 import { app, BrowserWindow, dialog, ipcMain, safeStorage, session as electronSession } from 'electron';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { readFile, writeFile, mkdir, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -19,6 +20,7 @@ import { extractFile } from '../extract.js';
 import { firstRunApi } from './firstrun.js';
 import { checkLicence, findLicence, keyFingerprint, licenceBlock, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
 import { LICENCE_PUBLIC_KEY } from '../licence-key.js';
+import { testHooksAllowed } from './testhooks.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -212,15 +214,23 @@ Object.assign(api, firstRun.api);
 // computer for everyone (docs/it-deployment.md). No licence, or one that has
 // ended, means an evaluation copy. Restoring a draft never asks.
 
+// Test settings for the licence are honoured only in a copy run from the source folder, never in an installed one
+// (however its program file is named: see app/testhooks.js).
+function releaseMark() {
+  try { return JSON.parse(readFileSync(path.join(here, '..', 'package.json'), 'utf8')).cloakRelease === true; } catch { return true; }
+}
+const testHooks = testHooksAllowed({ isPackaged: app.isPackaged, defaultApp: process.defaultApp, appPath: app.getAppPath(), resourcesPath: process.resourcesPath, release: releaseMark() });
+
 const userLicenceFile = () => path.join(app.getPath('userData'), 'licence.txt');
 function machineLicenceFile() {
-  if (!app.isPackaged && process.env.CLOAK_TEST_USER_DATA) return path.join(process.env.CLOAK_TEST_USER_DATA, 'machine', 'licence.txt');
+  if (testHooks && process.env.CLOAK_TEST_USER_DATA) return path.join(process.env.CLOAK_TEST_USER_DATA, 'machine', 'licence.txt');
   if (process.platform === 'win32') return path.join(process.env.ProgramData || 'C:\\ProgramData', 'Cloak', 'licence.txt');
   if (process.platform === 'darwin') return '/Library/Application Support/Cloak/licence.txt';
   return '/etc/cloak/licence.txt';
 }
-// Tests run from the source folder may check licences with their own key. An installed copy never can.
-const licenceKey = () => (!app.isPackaged && process.env.CLOAK_TEST_LICENCE_KEY) || LICENCE_PUBLIC_KEY;
+// Tests run from the source folder may check licences with their own key. An installed copy never can, whatever
+// its program file is called or how it is started (Electron decides isPackaged from the file name alone).
+const licenceKey = () => (testHooks && process.env.CLOAK_TEST_LICENCE_KEY) || LICENCE_PUBLIC_KEY;
 let licence = null; // what the last check found
 
 async function loadLicence() {
