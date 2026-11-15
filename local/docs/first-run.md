@@ -98,8 +98,8 @@ cannot protect. **About**: version, support contact, where
 
 To update when other work lands:
 
-- **Double check**: the paragraph in `helpHow()` (app/app.js) says it is not
-  built yet. Change it when the double checker is merged.
+- **Double check**: done. The paragraph in `helpHow()` (app/app.js) describes
+  the double checker as built (see `docs/double-checker.md`).
 - **Support contact**: `SUPPORT_CONTACT` in `support.js` is a placeholder
   (`[support contact to be added before release]`). It shows on About and
   in every support file.
@@ -139,8 +139,10 @@ only to the place the person chose.
 Messages in `app/main.js`, `matter.js` and `app/app.js` now say what happened
 and what to do next. Error codes, meanings and every phrase a test matches
 are unchanged, so no test needed new wording. Wrong passwords and recovery
-codes, and a failed key sweep, get their next step in the window, keyed by
-the error code (`NEXT_STEP` in app.js). A draft file that cannot be read now
+codes get their next step in the window, keyed by the error code (`NEXT_STEP`
+in app.js). An export refused by the double check (code `DOUBLE_CHECK`, which
+replaced the old key sweep's `SWEEP_FAILED`) says what to do next itself and
+opens the Double check tab. A draft file that cannot be read now
 says so; before, the box was left empty without a word.
 
 Not changed: messages inside `export()` in matter.js (the double checker is

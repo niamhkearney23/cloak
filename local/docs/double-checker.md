@@ -59,8 +59,12 @@ is not in the copies, so the double check cannot see it either.
 3. **Leftover names.** An independent look for anything that still looks like
    a name:
    - words after a title: Encik, Puan, Cik, Tuan, Mr, Mrs, Ms, Dr, Dato',
-     Datuk, Datin, Tan Sri, Puan Sri, Madam, Kak, Abang, Pak, Mak, Uncle,
-     Aunty, Haji, Cikgu, Ustaz and more;
+     Datuk, Datin, Tan Sri, Puan Sri, Madam, Haji, Cikgu, Ustaz and more, and
+     the first pass's informal titles (Kak, Abang, Pak, Mak, Uncle, Aunty,
+     Adik, Ibu, Bu, Ah...). As in the first pass, an informal title stays in
+     the text ("Ah {{PERSON_2}}" is fine), it starts a name but is not inside
+     one ("Tan Ah Kow" is one name), and a birth-order word after it belongs to
+     the title ("Pak Ngah");
    - names with bin, binti, a/l, a/p, s/o, d/o, anak, and half a name next to a
      tag (`{{PERSON_1}} bin Ismail`);
    - words in Cloak's name lists (Malay, Chinese, Indian and English names),
@@ -101,9 +105,11 @@ For each finding there are two buttons:
   It covers the places the person saw. If the same words turn up in a new place
   later, they are asked about again.
 
-Hiding cannot change the names of the people who reviewed and checked, which
-Cloak writes in the report, or the context sheet and the list of file names,
-which Cloak writes from tags and numbers. Those can only be marked as fine.
+Hiding cannot change the names of the people who reviewed and checked, or the
+firm named on the licence, which Cloak writes in the report, or the context
+sheet and the list of file names, which Cloak writes from tags and numbers.
+Those can only be marked as fine. (If the firm on the licence is also a party
+in the documents, its name in the report is a finding to mark as fine.)
 
 If hiding something gives the review something new to decide (a name joined to
 another person, say), the review must be finished again, and the double check
@@ -125,12 +131,15 @@ starts again.
 
 ## The export gate
 
-Export is allowed for **any matter** once the double check has passed: every
-file passes, or every finding was decided by a person. The "made-up test
-documents only" tick is kept and recorded in the report; it no longer limits
-export. Other conditions on export (for example a licence in evaluation mode
-that allows test matters only) are separate conditions, checked as well as the
-double check, not instead of it.
+The double check no longer cares whether a matter is made-up: once it has
+passed (every file passes, or every finding was decided by a person), the
+export may go ahead for any matter. The "made-up test documents only" tick is
+kept and recorded in the report.
+
+The licence is a separate condition, checked as well as the double check, not
+instead of it (see `licence.md`): with no licence, Cloak is an evaluation copy
+and exports test matters only (`EVALUATION_TEST_MATTERS_ONLY`). So a real
+matter needs both a licence and a passed double check.
 
 **Any later change to the review** (an added term, a "Don't hide", a merge, a
 chronology edit, a new file) takes the review sign-off away. When the review is
