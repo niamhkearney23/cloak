@@ -76,7 +76,7 @@ function toForward(re) {
   return re;
 }
 const forwardOf = (d) => { const re = toForward(d.re); return re.forward ? { ...d, re, forward: true } : d; };
-const FORWARD_DETECTORS = DETECTORS.map(forwardOf);
+export const FORWARD_DETECTORS = DETECTORS.map(forwardOf);
 
 // ------------------------------------------------------- pattern rules
 
@@ -85,7 +85,7 @@ const STATES = 'Selangor|Johor|Perak|Kedah|Kelantan|Terengganu|Pahang|Negeri Sem
 const ADDRESS_WORD = /\b(?:Jalan|Jln|Lorong|Lrg|Taman|Tmn|Persiaran|Lebuh|Lebuhraya|Kampung|Kg|Bandar|Seksyen|Section|Desa|Bukit|Pusat|Wisma|Menara|Plaza|Kompleks|Bangunan|Tingkat|Level|Floor|Aras|Blok|Block|Unit|Suite|Lot|No|Off|Batu|Medan|Changkat|Pangsapuri|Apartment|Kondominium|Condominium|Residensi|Residence|Tower|Flat|Rumah|Pekan|Simpang|Solok|Lengkok|Lingkaran|Dataran|Laman|Vista|Heights|Park|Garden|Gardens|Avenue|Road|Street|Lane|Drive|Peti Surat|P\.?O\.? Box)\b\.?/i;
 
 /** Postal addresses: found by postcode + town, then walked back to the start. */
-function findAddresses(text) {
+export function findAddresses(text) {
   const spans = [];
   const anchor = new RegExp(String.raw`\b\d{5}\s+(?!(?:Tel|Fax|Email|Emel|Phone|HP)\b)\p{Lu}\p{L}*(?:[ \t]+(?!(?:Tel|Fax|Email|Emel|Phone|HP)\b)\p{Lu}\p{L}*){0,3}(?:\s*,\s*(?:${STATES}))*`, 'gu');
   for (const m of text.matchAll(anchor)) {
@@ -155,7 +155,7 @@ const RAW_PATTERNS = [
   ...fromOld('PHONE').slice(0, 2).map((d) => ({ type: 'PHONE', re: d.re })),
 ];
 
-const PATTERNS = RAW_PATTERNS.map(forwardOf);
+export const PATTERNS = RAW_PATTERNS.map(forwardOf);
 
 // The same number written differently is the same thing.
 const idKey = {
