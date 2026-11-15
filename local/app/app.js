@@ -952,7 +952,7 @@
         <tr><td>Version</td><td id="about-version">${esc(a.version || state.info?.version || '')}</td></tr>
         <tr><td>Made by</td><td>Lawgistics</td></tr>
         <tr><td>Support</td><td>${esc(a.support || '')}</td></tr>
-        <tr><td>Open-source parts</td><td>Cloak is built with open-source software, including the Electron window, the Tesseract OCR engine and its language data, and PDF.js. Their licences are listed in ${code(a.noticesName || 'THIRD-PARTY-NOTICES.txt')} in the folder where Cloak is installed${a.installFolder ? `: <span class="path inline">${esc(a.installFolder)}</span>` : ''}.${a.notices ? '' : ' <span class="muted" id="notices-missing">That file is not in this copy of Cloak.</span>'}</td></tr>
+        <tr><td>Open-source parts</td><td>Cloak is built with open-source software, including the Electron window, the Tesseract OCR engine and its language data, and PDF.js. Their licences are listed in ${code(a.noticesName || 'THIRD-PARTY-NOTICES.txt')} in the folder where the file is kept${a.noticesFolder || a.installFolder ? `: <span class="path inline" id="notices-folder">${esc(a.noticesFolder || a.installFolder)}</span>` : ''}.${a.notices ? '' : ' <span class="muted" id="notices-missing">That file is not in this copy of Cloak.</span>'}</td></tr>
         <tr><td>Running on</td><td>${esc(a.system || '')}${a.electron ? ` · Electron ${esc(a.electron)}` : ''}</td></tr>
       </tbody></table>
       <h3>Save a support file</h3>

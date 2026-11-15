@@ -7,6 +7,7 @@ import { makeMatter } from './matter.js';
 import { createMatter, openMatter } from '../matter.js';
 import { redactLog, selfTest, noPaths, supportFile } from '../support.js';
 import { readZip } from '../zip.js';
+import { firstRunApi } from '../app/firstrun.js';
 import { planSample, createSampleMatter } from '../sample.js';
 
 // Fixes found in review (support and sample areas). Made-up data only.
@@ -53,6 +54,25 @@ test('a Documents folder that is a link into OneDrive is refused for the sample,
   assert.deepEqual(await readdir(synced), [], 'nothing was created in the synced folder');
   // A place that does not exist yet, below the link, is seen through it too.
   assert.match((await planSample(path.join(link, 'new place'))).refused, /OneDrive/);
+});
+
+test('About names the folder where THIRD-PARTY-NOTICES.txt really is in an installed copy', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-notices-'));
+  const install = path.join(root, 'Programs', 'Cloak');
+  const resources = path.join(install, 'resources');
+  await mkdir(path.join(resources, 'app'), { recursive: true });
+  await writeFile(path.join(resources, 'THIRD-PARTY-NOTICES.txt'), 'x\n');
+  const before = process.resourcesPath;
+  process.resourcesPath = resources;
+  try {
+    const app = { isPackaged: true, getAppPath: () => path.join(resources, 'app'), getPath: () => root };
+    const api = firstRunApi({ app, dialog: {}, getWin: () => null, getMatter: () => null, setMatter: () => {}, who: () => 'tester', testPicks: null }).api;
+    const a = await api.about();
+    assert.equal(a.noticesFolder, resources);
+    assert.equal(a.notices, path.join(resources, 'THIRD-PARTY-NOTICES.txt'));
+  } finally {
+    process.resourcesPath = before;
+  }
 });
 
 test('the self-test writes its result even if the OCR engine never answers', async () => {
