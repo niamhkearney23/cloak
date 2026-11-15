@@ -6,8 +6,12 @@
   const tags = (s) => esc(s).replace(/\{\{[^}]+\}\}/g, (m) => `<span class="tag">${m}</span>`);
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
+  // How many calls to the app are still running. Closing the matter waits until it is zero.
+  let pending = 0;
   async function call(name, args) {
-    const r = await window.cloak.call(name, args);
+    pending++;
+    let r;
+    try { r = await window.cloak.call(name, args); } finally { pending--; }
     if (r.error) throw Object.assign(new Error(withNextStep(r.error, r.code)), { code: r.code });
     return r.ok;
   }
@@ -39,6 +43,9 @@
       o.querySelector('#no').focus();
     });
   }
+  // The pasted draft and the restored text hold real details: they are never kept once the matter is closed.
+  const DRAFT_NOT_KEPT = 'The pasted draft and the restored text are not kept: copy or save the restored text first.';
+  const draftAtRisk = () => !!(state.draft?.trim() || state.restoreResult);
   const TYPE_WORDS = { ACCOUNT: 'bank account number', NRIC: 'NRIC or ID number', PASSPORT: 'passport number', PHONE: 'phone number', EMAIL: 'email address', ADDRESS: 'address', CASE: 'court case number', LAND: 'land title', VEHICLE: 'vehicle plate', COMPANY_NO: 'company number', UEN: 'company number', LOCATION: 'location', ID_NUMBER: 'ID or reference number', POSTCODE: 'postcode', NUMBER: 'long number', TAX_NO: 'tax number', CARD: 'card number' };
 
   // ------------------------------------------------------------------ first run
@@ -119,7 +126,7 @@
     on('#client-name', 'input', (e) => { state.client = e.target.value; });
     on('#other-parties', 'input', (e) => { state.others = e.target.value; });
     on('#test-matter', 'change', (e) => { state.testMatter = e.target.checked; });
-    on('#back', 'click', async () => { await call('closeMatter').catch(() => {}); state.matter = null; home(); });
+    on('#back', 'click', async () => { if (pending) return; await call('closeMatter').catch(() => {}); matterClosed(); home(); });
     on('#pick-folder', 'click', async () => {
       const p = await call('pickFolder', { title: 'Choose the folder of documents' });
       if (!p) return;
@@ -137,7 +144,7 @@
         await call('checkLocation', { dir: p, what: 'The matter folder', folder: state.folder, manual: state.manualSource });
       } catch (err) { return setup(err.message); }
       await call('closeMatter').catch(() => {});
-      state.matter = null;
+      matterClosed();
       state.matterDir = p;
       setup();
     });
@@ -220,6 +227,7 @@
       <p class="msg warn">If both the password and this code are lost, the key cannot be opened by anyone. There is no back door.</p>
       <p class="print-only small">Do not keep this sheet with the cloaked copies or in the matter folder on the computer.</p>
       <div class="row no-print"><button class="btn" id="print">Print this page</button></div>
+      <p class="msg warn no-print" id="recovery-wait" hidden>Write the recovery code down first and tick the box. It is shown only once, so Cloak cannot go back to the home screen yet.</p>
       <label class="check no-print"><input type="checkbox" id="wrote"> I have written the recovery code down</label>
       <p class="no-print"><button class="btn primary" id="continue" disabled>Continue</button></p>
     </div>`);
@@ -667,13 +675,13 @@
       </div>
       <div class="row"><button class="btn" id="back">Back</button></div>
     </div>`);
-    on('#back', 'click', async () => { await call('closeMatter').catch(() => {}); state.matter = null; state.afterOpen = null; home(); });
+    on('#back', 'click', async () => { if (pending) return; await call('closeMatter').catch(() => {}); matterClosed(); state.afterOpen = null; home(); });
     on('#pick-matter', 'click', async () => {
       const p = await call('pickFolder', { title: 'Choose the matter folder' });
       if (!p) return;
       try { await call('checkLocation', { dir: p, what: 'The matter folder' }); } catch (err) { return restoreStart(err.message); }
       await call('closeMatter').catch(() => {});
-      state.matter = null;
+      matterClosed();
       state.matterDir = p;
       restoreStart();
     });
@@ -701,7 +709,11 @@
       <div id="restore-result">${r ? restoreResultHtml(r) : ''}</div>
     </div>`);
     on('#draft', 'input', (e) => { state.draft = e.target.value; });
-    on('#restore-back', 'click', async () => { await call('closeMatter').catch(() => {}); state.matter = null; state.afterOpen = null; state.restoreResult = null; state.draft = ''; home(); });
+    on('#restore-back', 'click', async () => {
+      if (pending) return;
+      if (draftAtRisk() && !(await confirmDialog({ title: 'Finish with this draft?', body: `This closes the matter. ${DRAFT_NOT_KEPT}`, yes: 'Done' }))) return;
+      if (pending) return;
+      await call('closeMatter').catch(() => {}); matterClosed(); state.afterOpen = null; state.restoreResult = null; state.draft = ''; home(); });
     on('#pick-draft', 'click', async () => {
       try { const f = await call('pickDraftFile'); if (f) { state.draft = f.text; restoreScreen(); } } catch (err) { restoreScreen(err.message); }
     });
@@ -766,6 +778,11 @@
     document.getElementById(`tip-${id}`)?.remove();
   }
   const isSample = () => !!state.sample && state.matterDir === state.sample.matterDir;
+  // The matter is closed. If it was the sample, nothing of it (its folders, its parties, the "made-up test documents" tick) carries into the next matter.
+  function matterClosed() {
+    if (isSample()) Object.assign(state, { folder: null, matterDir: null, client: '', others: '', testMatter: false, level: 'strict', manualSource: '', location: null, review: null, chrono: null, exported: null });
+    state.matter = null;
+  }
   function screenNote(id) {
     if (isSample() && SAMPLE_NOTES[id]) return `<div class="tip sample-note" role="note" id="sample-note-${id}"><span>${SAMPLE_NOTES[id]}</span></div>`;
     return tip(id);
@@ -942,7 +959,7 @@
         <tr><td>Version</td><td id="about-version">${esc(a.version || state.info?.version || '')}</td></tr>
         <tr><td>Made by</td><td>Lawgistics</td></tr>
         <tr><td>Support</td><td>${esc(a.support || '')}</td></tr>
-        <tr><td>Open-source parts</td><td>Cloak is built with open-source software, including the Electron window, the Tesseract OCR engine and its language data, and PDF.js. Their licences are listed in ${code(a.noticesName || 'THIRD-PARTY-NOTICES.txt')} in the folder where Cloak is installed${a.installFolder ? `: <span class="path inline">${esc(a.installFolder)}</span>` : ''}.${a.notices ? '' : ' <span class="muted" id="notices-missing">That file is not in this copy of Cloak.</span>'}</td></tr>
+        <tr><td>Open-source parts</td><td>Cloak is built with open-source software, including the Electron window, the Tesseract OCR engine and its language data, and PDF.js. Their licences are listed in ${code(a.noticesName || 'THIRD-PARTY-NOTICES.txt')} in the folder where the file is kept${a.noticesFolder || a.installFolder ? `: <span class="path inline" id="notices-folder">${esc(a.noticesFolder || a.installFolder)}</span>` : ''}.${a.notices ? '' : ' <span class="muted" id="notices-missing">That file is not in this copy of Cloak.</span>'}</td></tr>
         <tr><td>Running on</td><td>${esc(a.system || '')}${a.electron ? ` · Electron ${esc(a.electron)}` : ''}</td></tr>
       </tbody></table>
       <h3>Save a support file</h3>
@@ -972,14 +989,21 @@
 
   // A way back to the home screen from any screen (the review screen has no Back button).
   async function goHome() {
-    if (document.getElementById('progress')) return; // cloaking is running: wait until it has finished
+    if (state.recovery) { // the recovery code is shown only once: it must be written down first
+      document.getElementById('recovery-wait')?.removeAttribute('hidden');
+      document.getElementById('wrote')?.focus();
+      return;
+    }
+    if (document.getElementById('progress') || pending) return; // cloaking or a save is running: wait until it has finished
     closeHelp?.();
     if (!state.info?.fullName) return nameScreen();
     if (state.matter) {
-      const yes = await confirmDialog({ title: 'Go to the home screen?', body: 'This closes the matter. Everything you decided is saved in it. Cloaked copies you have not exported are not kept: to export them later, open the matter and cloak the folder again.', yes: 'Close the matter' });
+      const yes = await confirmDialog({ title: 'Go to the home screen?', body: 'This closes the matter. Everything you decided is saved in it. Cloaked copies you have not exported are not kept: to export them later, open the matter and cloak the folder again.' + (draftAtRisk() ? ` ${DRAFT_NOT_KEPT}` : ''), yes: 'Close the matter' });
       if (!yes) return;
+      if (pending) return;
       await call('closeMatter').catch(() => {});
-      Object.assign(state, { matter: null, afterOpen: null, review: null, chrono: null, exported: null, restoreResult: null, draft: '' });
+      matterClosed();
+      Object.assign(state, { afterOpen: null, review: null, chrono: null, exported: null, restoreResult: null, draft: '' });
     }
     home();
   }

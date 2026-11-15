@@ -73,7 +73,7 @@ async function slot(type, secret, dataKey, kdf) {
 const aadOf = (file) => Buffer.from(JSON.stringify([file.format, file.format_version, file.matter_id]), 'utf8');
 
 async function write(path, file) {
-  const tmp = `${path}.${process.pid}.tmp`;
+  const tmp = `${path}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   await writeFile(tmp, JSON.stringify(file, null, 1), { mode: 0o600 });
   // Keep the previous version beside it (also encrypted) in case a save is cut short.
   await copyFile(path, `${path}.bak`).catch(() => {});
