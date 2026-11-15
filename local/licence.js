@@ -117,10 +117,16 @@ function blockLines(text) {
   return block.join('\n').length > MAX_TEXT ? null : block; // the 16 KB limit is for the licence itself
 }
 
-/** The licence block on its own, tidied, for saving. */
+/**
+ * The licence block for saving. The readable lines are written again from the signed details, so the saved file
+ * always says exactly what was signed, whatever was pasted. Null when there is no licence in the text.
+ */
 export function licenceBlock(text) {
-  const lines = blockLines(text);
-  return lines ? `${lines.join('\n')}\n` : null;
+  const p = parse(text);
+  let d = null;
+  try { d = p && JSON.parse(p.payload.toString('utf8')); } catch { d = null; }
+  if (!d || checkDetails(d)) return null;
+  return [BEGIN, ...SUMMARY.map(([, label, value]) => `${label}: ${value(d)}`), '', 'Data:', wrap(b64url(p.payload)), 'Signature:', wrap(b64url(p.signature)), END, ''].join('\n');
 }
 
 function parse(text) {
@@ -130,19 +136,23 @@ function parse(text) {
   const di = body.indexOf('Data:');
   const si = body.indexOf('Signature:');
   if (di < 0 || si < di) return null;
-  // The readable lines. A line that carries on from the one above (an email program wrapped it) is part of that line.
+  // The readable lines. Each is one of the six known labels (compared as written by NFKC, ignoring spacing and case),
+  // or carries on from the line above it (an email program wrapped it). Nothing else may stand there: a line that
+  // is not a known label becomes part of the line above, where it fails the comparison with the signed details.
   const summary = [];
+  let unknown = false;
+  let cur = null;
   for (const l of body.slice(0, di)) {
-    const m = l.match(/^([A-Za-z ]+):\s*(.*)$/);
-    if (m) summary.push([m[1].trim().toLowerCase(), m[2]]);
-    else if (!l) summary.push(null);
-    else if (summary.length && summary[summary.length - 1]) summary[summary.length - 1][1] += ` ${l}`;
+    if (!l) { cur = null; continue; }
+    const m = l.match(/^([^:]*):\s*(.*)$/);
+    const key = m && m[1].normalize('NFKC').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (m && SUMMARY.some(([k]) => k === key)) { cur = [key, m[2]]; summary.push(cur); } else if (cur) cur[1] += ` ${l}`; else unknown = true;
   }
   const joined = (ls) => ls.join('').replace(/\s+/g, '').replace(/=+$/, '');
   const data = joined(body.slice(di + 1, si));
   const sig = joined(body.slice(si + 1));
   if (!/^[A-Za-z0-9_+/-]+$/.test(data) || !/^[A-Za-z0-9_+/-]+$/.test(sig)) return null;
-  return { payload: unb64(data), signature: unb64(sig), summary };
+  return { payload: unb64(data), signature: unb64(sig), summary, unknown };
 }
 
 /** Is the licence still running today? Works on the details of a licence that has been checked. */
@@ -184,9 +194,10 @@ export function checkLicence(text, { publicKey = LICENCE_PUBLIC_KEY, today = new
   if (problem) return fail('BAD_DETAILS', `This licence cannot be used: ${problem}`);
   if (details.key !== fingerprint) return otherKey();
   // The readable lines at the top must say the same as the signed details.
-  for (const [key, got] of p.summary.filter(Boolean)) {
-    const [, label, value] = SUMMARY.find(([k]) => k === key) || [];
-    if (value && !same(got, value(details))) return fail('CHANGED', `The "${label}" line of this licence has been changed since it was issued, so it cannot be used. Ask the supplier for a fresh copy of the licence file.`);
+  if (p.unknown) return fail('CHANGED', 'The readable lines at the top of this licence have been changed since it was issued, so it cannot be used. Ask the supplier for a fresh copy of the licence file.');
+  for (const [key, got] of p.summary) {
+    const [, label, value] = SUMMARY.find(([k]) => k === key);
+    if (!same(got, value(details))) return fail('CHANGED', `The "${label}" line of this licence has been changed since it was issued, so it cannot be used. Ask the supplier for a fresh copy of the licence file.`);
   }
   const licence = { id: details.id, firm: details.firm, seats: details.seats, issued: details.issued, expires: details.expires, key: fingerprint };
   return { ...licenceState(licence, today), licence };

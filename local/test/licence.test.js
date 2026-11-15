@@ -350,3 +350,37 @@ test('a licence whose long "Licensed to" line was wrapped by email still checks,
   // Text added after a line is part of that line, so it is refused.
   assert.equal(check(text.replace('Seats: 10', 'Seats: 10\n(unlimited)')).code, 'CHANGED');
 });
+
+// What is shown must be what was signed: every readable line is checked, and the saved file is written from the signed details.
+test('readable lines with look-alike, unknown, duplicate or stray labels are refused, and the saved file shows only what was signed', () => {
+  const text = issue();
+  const edits = {
+    'Cyrillic look-alike labels': text.replace('Licensed to: Made-up Advocates & Solicitors', 'Licensed tо: Big Other Firm Sdn Bhd').replace('Seats: 10', 'Seаts: 500'),
+    'other label words': text.replace('Licensed to:', 'Licenced to:').replace('Seats: 10', 'No. of seats: 500').replace('Expires: 14 Nov 2027', 'Expiry: 31 Dec 2099'),
+    'false lines above the real ones': text.replace('Product: Cloak\n', 'Product: Cloak\nLicensed to: Big Other Firm Sdn Bhd\nSeats: 500\n'),
+    'a false line first': text.replace('Product: Cloak\n', 'Licensed to: Big Other Firm Sdn Bhd\nProduct: Cloak\n'),
+    'a duplicate label': text.replace('Seats: 10\n', 'Seats: 10\nSeats: 500\n'),
+    'a line after a blank line': text.replace('\nData:', '\nSeats: 500\n\nData:'),
+    'stray text': text.replace('Product: Cloak\n', 'Product: Cloak\n\nBig Other Firm Sdn Bhd\n'),
+    'a label with two kinds of quoting': text.replace('Licensed to: Made-up', '>  > Licensed to: Big Other Firm Sdn Bhd\nMade-up'),
+  };
+  for (const [what, edited] of Object.entries(edits)) {
+    assert.notEqual(edited, text, what);
+    const r = check(edited);
+    assert.equal(r.code, 'CHANGED', what);
+    assert.equal(licenceBlock(edited) === null || check(licenceBlock(edited)).status === 'valid', true, what);
+  }
+  // Spacing and case in a label are not changes; neither is a tab before the colon.
+  assert.equal(check(text.replace('Licensed to:', 'LICENSED  TO :').replace('Seats:', 'Seats\t:')).status, 'valid');
+  // Only the Data and the Signature are needed; the readable lines may be left out.
+  const lines = text.trim().split('\n');
+  const bare = [lines[0], ...lines.slice(lines.indexOf('Data:'))].join('\n');
+  assert.equal(check(bare).status, 'valid');
+  // What is saved always shows exactly what was signed, and checks again when read back.
+  const saved = licenceBlock(text.replace('Seats: 10', 'Seats:   10').replace('Made-up Advocates', 'Made-up  Advocates'));
+  assert.equal(saved, text);
+  assert.equal(licenceBlock(bare), text);
+  assert.equal(check(saved).status, 'valid');
+  assert.equal(licenceBlock('not a licence'), null);
+  assert.equal(licenceBlock(editDetails(text, (d) => { d.seats = 0; })), null);
+});
