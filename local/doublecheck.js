@@ -209,6 +209,9 @@ function keyItems(matter) {
       english: ALSO_ENGLISH.has(low) || AMBIGUOUS.has(low),
       hidden: e.match === false, // folder names and other values that are only used for putting back
       oneWord: single,
+      // One word that is not in the name lists ("Cabinets" taken for a name by mistake): written with other
+      // capitals it may be the ordinary word, so it is listed as a possible name for a person to decide.
+      softCase: single && !common && !(letters <= 3) && !NAME_WORDS.has(low),
     });
   }
   return items;
@@ -233,7 +236,12 @@ function caseFits(o, text) {
  */
 function keyFinds(text, ctx, who = () => false) {
   const hits = occurrences(text, ctx.keyTree).filter((o) => caseFits(o, text) && !HONOUR_START.test(text.slice(o.start, o.start + 40)) && !(o.item.oneWord && who(o.start)));
-  return longestFirst(hits).map((o) => ({ check: 'key', start: o.start, end: o.end, value: text.slice(o.start, o.end), token: o.item.token, hidden: o.item.hidden, otherCase: shape(text.slice(o.start, o.end)) !== o.item.shape }));
+  return longestFirst(hits).map((o) => {
+    const value = text.slice(o.start, o.end);
+    const otherCase = shape(value) !== o.item.shape;
+    if (o.item.softCase && otherCase) return { check: 'name', rule: 'case', start: o.start, end: o.end, value, token: o.item.token };
+    return { check: 'key', start: o.start, end: o.end, value, token: o.item.token, hidden: o.item.hidden, otherCase };
+  });
 }
 
 const tagOfFact = (facts, item) => `${KIND_TAG[item.kind]}_${facts.numbers.get(`${item.kind}|${item.key}`)}`;
@@ -667,7 +675,7 @@ const WHAT = {
   key: (f) => `In the key as {{${f.token}}}${f.hidden ? ' (kept only for putting back, so it is never hidden in the text)' : ''}${f.otherCase ? ', written in another letter case' : ''}.`,
   fact: (f) => (f.unknown ? `A ${FACT_WORDS[f.fact]} that Strict should have hidden. It is not in the key.` : f.approximate ? `A rounded amount close to {{${f.token}}}.` : `The same ${FACT_WORDS[f.fact]} as {{${f.token}}}, written another way.`) + inKeyNote(f),
   pattern: (f) => `Looks like ${PATTERN_WORDS[f.type] || 'a number or identifier'}.${inKeyNote(f)}`,
-  name: (f) => ({ title: 'Possible name: it follows a title (Encik, Puan, Mr, Dato\'...).', particle: 'Possible name: it has bin, binti, a/l or a/p.', list: 'Possible name: a word from the name lists.', caps: 'Capitalised words that may be a name. No one has marked them as fine.' }[f.rule]) + inKeyNote(f),
+  name: (f) => ({ title: 'Possible name: it follows a title (Encik, Puan, Mr, Dato\'...).', particle: 'Possible name: it has bin, binti, a/l or a/p.', list: 'Possible name: a word from the name lists.', caps: 'Capitalised words that may be a name. No one has marked them as fine.', case: `Possible name: the key holds this word as {{${f.token}}}, with other capitals. Here it may be the ordinary word.` }[f.rule]) + inKeyNote(f),
   tag: (f) => ({ malformed: 'A damaged tag. Tags are written {{TYPE_1}} or {{TYPE_1.ENDING}}.', bare: 'A tag name without its braces.', unknown: 'A tag that is not in this matter\'s key.', same: `One real value under two different tags: ${f.value}.` }[f.kind]),
 };
 
@@ -759,7 +767,7 @@ export function keySweep(matter, text, { allowKinds = [] } = {}) {
   const lines = String(text).split('\n');
   const paragraphOf = (line) => lines.slice(0, line).filter((l) => l.trim()).length;
   const hits = [];
-  for (const f of keyFinds(plain, ctx)) hits.push({ kind: 'key', at: f.start, value: f.value, token: f.token });
+  for (const f of keyFinds(plain, ctx).filter((x) => x.check === 'key')) hits.push({ kind: 'key', at: f.start, value: f.value, token: f.token });
   for (const f of factFinds(matter, plain, { allowKinds })) hits.push({ kind: f.fact, at: f.start, value: f.value, approximate: !!f.approximate });
   return hits.sort((a, b) => a.at - b.at).map((h) => {
     const line = lineAt(starts, h.at);

@@ -456,6 +456,16 @@ class Session {
     };
     const note = `Reviewed by ${this.review.complete.by} on ${formatDate(this.review.complete.when)}. ${double.statement}`;
     const report = buildReport({ matter: this.matter, files: plan.files, total: this.run.total, user: this.user, seconds: this.run.seconds, cached: this.run.cached, source: this.run.source.cloaked, review: note });
+    // What the double check hid by its exact text is hidden in what the report says about each file too (part names, reasons).
+    const hides = (this.review.exactHides || []).filter((h) => this.matter.cloak.byToken.has(h.token)).sort((a, b) => b.value.length - a.value.length);
+    if (hides.length) {
+      for (const e of report.files) {
+        e.name = replaceExact(e.name, hides);
+        e.reasons = e.reasons.map((r) => replaceExact(r, hides));
+        e.proof.could_not_be_read = e.proof.could_not_be_read.map((r) => replaceExact(r, hides));
+        e.proof.parts_read = e.proof.parts_read.map((r) => replaceExact(r, hides));
+      }
+    }
     report.level = this.matter.options.level;
     if (this.matter.facts.on) report.facts = { dates_version: this.matter.facts.datesVersion, un_blurred: this.matter.facts.unblurred.map((u) => ({ kind: u.kind, by: u.by, when: u.when })) };
     // The person's own statement that the documents are made up. Cloak cannot tell.
@@ -547,10 +557,14 @@ class Session {
     }
     if (decision !== 'hide') throw new Error('Choose "Hide it" or "It is fine".');
     if (!group.fixable) throw new Error(group.check === 'tag' ? 'A tag problem cannot be hidden. Remove the file, or mark it as fine if you are sure.' : 'This is the name of the person who reviewed or double-checked, which Cloak writes in the report. Mark it as fine, or have someone else do the export.');
+    // What the review has waiting before the change: only something new reopens it.
+    const waiting = () => { const d = this.reviewData(); return new Set([...d.unsure.map((u) => `u|${u.text}`), ...d.merges.map((m) => `m|${m.tag}`), ...d.shortForms.map((a) => `s|${a.tag}|${a.also}`)]); };
+    const before = waiting();
+    const isNew = () => [...waiting()].some((k) => !before.has(k));
     const how = this.hideFinding(group, kind);
     this.reapply();
     state.hidden += 1;
-    let reopened = this.reviewData().blockers.length > 0;
+    let reopened = isNew();
     if (!reopened) {
       // If the same words still show (a name in lower case, for one), their exact text is hidden under the tag.
       await this.checkExport(only);
@@ -558,7 +572,7 @@ class Session {
       if (still && how.token) {
         for (const s of surfaces(still)) this.addExactHide(s, how.token);
         this.reapply();
-        reopened = this.reviewData().blockers.length > 0;
+        reopened = isNew();
       }
     }
     // Something new for the review to decide: it must be finished again, and the double check run again.
