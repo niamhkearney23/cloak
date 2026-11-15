@@ -95,6 +95,7 @@ pre.filetext { white-space: pre-wrap; word-break: break-word; background: #fff; 
 @media (max-width: 720px) { .choices { grid-template-columns: 1fr; } }
 
 select.merge { width: 150px; padding: 4px 8px; border-radius: 99px; font-size: 13px; }
+.found { background: var(--amber-bg); color: var(--amber-fg); border-radius: 4px; padding: 0 3px; font-weight: 600; }
 
 .btn.danger-fill { background: var(--red-fg); border-color: var(--red-fg); }
 .narrow-dialog { width: min(520px, 100%); }

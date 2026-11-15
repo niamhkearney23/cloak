@@ -146,6 +146,12 @@ const api = {
   },
   export: async ({ outDir, only }) => needMatter().export({ outDir, only: only === 'chronology' ? 'chronology' : 'all' }),
 
+  // The double check (feature 4): run it on what would be exported, show the last result, decide one finding.
+  // Its findings hold real text: they are shown in this window only.
+  doubleCheck: async () => needMatter().doubleCheck(),
+  doubleCheckView: async () => needMatter().checkView(),
+  decideFinding: async ({ key, decision, kind }) => needMatter().decideFinding({ key: String(key || ''), decision: decision === 'hide' ? 'hide' : decision === 'fine' ? 'fine' : '', kind }),
+
   // The chronology table.
   chronology: async ({ build, undated }) => {
     const m = needMatter();
