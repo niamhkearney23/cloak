@@ -101,6 +101,24 @@ select.merge { width: 150px; padding: 4px 8px; border-radius: 99px; font-size: 1
 .more { margin-top: 12px; }
 .more summary { cursor: pointer; color: var(--blue-fg); font-weight: 600; }
 .print-only { display: none; }
+
+/* First run: tips, the sample matter, help */
+.tip { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; background: var(--blue-bg); color: var(--blue-fg); border-radius: 12px; padding: 10px 14px; margin: 10px 0 16px; font-size: 14px; text-align: left; }
+.tip .link { flex: none; font-size: 13.5px; }
+.tip.sample-note { border-left: 4px solid var(--blue-fg); }
+.try-sample { display: flex; gap: 16px; align-items: center; justify-content: space-between; border: 1px dashed #c9c9d1; border-radius: 18px; padding: 16px 20px; margin-top: 16px; text-align: left; }
+.help-links { margin-top: 14px; }
+.bar-link { background: none; border: 1px solid var(--rule); border-radius: 99px; padding: 2px 12px; cursor: pointer; color: var(--text); font-size: 13px; }
+.bar-link:hover { border-color: var(--ink); }
+.dialog.help { width: min(900px, 100%); padding-top: 16px; }
+.help-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; position: sticky; top: -16px; background: #fff; padding: 6px 0 10px; z-index: 1; }
+.help-head .tabs { margin: 0; }
+.help h3 { font-size: 15.5px; margin: 20px 0 6px; color: var(--ink); }
+.help li { margin-bottom: 6px; }
+.help td:first-child { width: 190px; font-weight: 600; }
+.help code { font: 12.5px ui-monospace, Menlo, Consolas, monospace; background: var(--soft); border-radius: 6px; padding: 1px 6px; }
+.path.inline { display: inline; padding: 1px 6px; flex: none; min-width: 0; }
+#self-test td:first-child { white-space: nowrap; font-weight: 600; }
 @media print {
   .bar, .foot, .no-print, .overlay { display: none !important; }
   .print-only { display: block; }

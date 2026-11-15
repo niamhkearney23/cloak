@@ -16,6 +16,7 @@ import { assertNotSynced, locate } from '../source.js';
 import { formatDate } from '../dates.js';
 import { checkDraft } from '../draftcheck.js';
 import { extractFile } from '../extract.js';
+import { firstRunApi } from './firstrun.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +28,7 @@ app.commandLine.appendSwitch('disable-sync');
 app.commandLine.appendSwitch('no-pings');
 app.commandLine.appendSwitch('disable-features', 'AutofillServerCommunication,OptimizationHints,MediaRouter,Translate,InterestFeedContentSuggestions');
 if (process.env.CLOAK_TEST_USER_DATA) app.setPath('userData', process.env.CLOAK_TEST_USER_DATA);
+if (process.env.CLOAK_TEST_DOCUMENTS) app.setPath('documents', process.env.CLOAK_TEST_DOCUMENTS);
 
 let win = null;
 let matter = null; // the open matter session
@@ -87,7 +89,7 @@ const api = {
 
   pickFolder: async ({ title }) => {
     if (testPicks) return testPicks.shift() ?? null;
-    const r = await dialog.showOpenDialog(win, { title, properties: ['openDirectory', 'createDirectory'] });
+    const r = await dialog.showOpenDialog(win, { title, defaultPath: firstRun.pickerStart(), properties: ['openDirectory', 'createDirectory'] });
     return r.canceled ? null : r.filePaths[0];
   },
 
@@ -184,6 +186,10 @@ const api = {
   },
   closeMatter: async () => { await matter?.close(); matter = null; return {}; },
 };
+
+// First run: the sample matter, the help screens and the support file (app/firstrun.js).
+const firstRun = firstRunApi({ app, dialog, getWin: () => win, getMatter: () => matter, setMatter: (s) => { matter = s; }, who, testPicks });
+Object.assign(api, firstRun.api);
 
 ipcMain.handle('cloak', async (event, name, args) => {
   // Only the app's own window may call in.
