@@ -593,6 +593,7 @@ const WHO_KEYS = new Set(['by', 'review', 'statement', 'fine_marked_by', 'licens
  */
 export function reportUnit(text, id = 'cloak-report.json') {
   const exempt = new Map();
+  const firmLines = new Set(); // the licensee line: a who-line, but one-word key values count on it too
   const bareTags = [];
   const parts = [{ line: 1, label: 'Report' }];
   const stack = [];
@@ -615,10 +616,10 @@ export function reportUnit(text, id = 'cloak-report.json') {
     if (!rest.startsWith('"')) { exempt.set(n, ALL); return; }
     // Cloak's own words for a file whose name it does not show ("(file 4: name not shown because...)").
     if (TIME_KEYS.has(key) || /^"\(file \d+: name not shown because the file was not read\)"$/.test(rest)) exempt.set(n, ALL);
-    else if (WHO_KEYS.has(key)) exempt.set(n, ONLY_KEY);
+    else if (WHO_KEYS.has(key)) { exempt.set(n, ONLY_KEY); if (key === 'licensed_to') firmLines.add(n); }
     if (own === 'name' && parent === 'file') parts[parts.length - 1].label = `Report: entry for ${JSON.parse(rest)}`;
   });
-  return { id, title: 'Report (cloak-report.json)', kind: 'report', text, parts, exempt, bareTags };
+  return { id, title: 'Report (cloak-report.json)', kind: 'report', text, parts, exempt, bareTags, firmLines };
 }
 
 /** The marker file. The lines saying who reviewed and who double-checked are only looked at by the key sweep. */
@@ -675,7 +676,7 @@ export function inspect(matter, units) {
     const held = blank(unit.text.replace(TAG, (m) => HOLD.repeat(m.length)), unit.fixed || [], ' ');
     const base = blank(held, occurrences(held, ctx.keepTree).map((o) => [o.start, o.end]));
     const own = [];
-    const whoLines = new Set([...(unit.exempt || [])].filter(([, skip]) => skip === ONLY_KEY).map(([line]) => line));
+    const whoLines = new Set([...(unit.exempt || [])].filter(([line, skip]) => skip === ONLY_KEY && !unit.firmLines?.has(line)).map(([line]) => line));
     own.push(...keyFinds(forCheck(base, unit, 'key'), ctx, (at) => whoLines.has(lineAt(starts, at))));
     own.push(...factFinds(matter, forCheck(base, unit, 'fact'), { allowKinds: unit.allowKinds || [], unknownToo: unit.kind === 'document' }));
     own.push(...patternFinds(forCheck(base, unit, 'pattern'), ctx));
