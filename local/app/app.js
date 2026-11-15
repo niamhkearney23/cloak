@@ -43,6 +43,9 @@
       o.querySelector('#no').focus();
     });
   }
+  // The pasted draft and the restored text hold real details: they are never kept once the matter is closed.
+  const DRAFT_NOT_KEPT = 'The pasted draft and the restored text are not kept: copy or save the restored text first.';
+  const draftAtRisk = () => !!(state.draft?.trim() || state.restoreResult);
   const TYPE_WORDS = { ACCOUNT: 'bank account number', NRIC: 'NRIC or ID number', PASSPORT: 'passport number', PHONE: 'phone number', EMAIL: 'email address', ADDRESS: 'address', CASE: 'court case number', LAND: 'land title', VEHICLE: 'vehicle plate', COMPANY_NO: 'company number', UEN: 'company number', LOCATION: 'location', ID_NUMBER: 'ID or reference number', POSTCODE: 'postcode', NUMBER: 'long number', TAX_NO: 'tax number', CARD: 'card number' };
 
   // ------------------------------------------------------------------ first run
@@ -706,7 +709,11 @@
       <div id="restore-result">${r ? restoreResultHtml(r) : ''}</div>
     </div>`);
     on('#draft', 'input', (e) => { state.draft = e.target.value; });
-    on('#restore-back', 'click', async () => { if (pending) return; await call('closeMatter').catch(() => {}); matterClosed(); state.afterOpen = null; state.restoreResult = null; state.draft = ''; home(); });
+    on('#restore-back', 'click', async () => {
+      if (pending) return;
+      if (draftAtRisk() && !(await confirmDialog({ title: 'Finish with this draft?', body: `This closes the matter. ${DRAFT_NOT_KEPT}`, yes: 'Done' }))) return;
+      if (pending) return;
+      await call('closeMatter').catch(() => {}); matterClosed(); state.afterOpen = null; state.restoreResult = null; state.draft = ''; home(); });
     on('#pick-draft', 'click', async () => {
       try { const f = await call('pickDraftFile'); if (f) { state.draft = f.text; restoreScreen(); } } catch (err) { restoreScreen(err.message); }
     });
@@ -991,7 +998,7 @@
     closeHelp?.();
     if (!state.info?.fullName) return nameScreen();
     if (state.matter) {
-      const yes = await confirmDialog({ title: 'Go to the home screen?', body: 'This closes the matter. Everything you decided is saved in it. Cloaked copies you have not exported are not kept: to export them later, open the matter and cloak the folder again.', yes: 'Close the matter' });
+      const yes = await confirmDialog({ title: 'Go to the home screen?', body: 'This closes the matter. Everything you decided is saved in it. Cloaked copies you have not exported are not kept: to export them later, open the matter and cloak the folder again.' + (draftAtRisk() ? ` ${DRAFT_NOT_KEPT}` : ''), yes: 'Close the matter' });
       if (!yes) return;
       if (pending) return;
       await call('closeMatter').catch(() => {});

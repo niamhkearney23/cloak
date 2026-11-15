@@ -58,7 +58,15 @@ test('Home does nothing while the restore screen is still reading the documents 
     assert.equal(await page.locator('.overlay').count(), 0, 'no "close the matter" question while the folder is being read');
     assert.equal(await page.locator('#go-cloak').count(), 0, 'still on the restore screen');
     await page.waitForSelector('#restore-report', { timeout: 90000 });
+    // Done and Home both say that the draft and the restored text are not kept.
+    await page.click('#restore-back');
+    await page.waitForSelector('.overlay');
+    assert.match(await page.textContent('.overlay'), /pasted draft and the restored text are not kept/);
+    await page.click('#no');
+    assert.equal(await page.locator('#go-cloak').count(), 0, 'Cancel stays on the restore screen');
     await page.click('#bar-home');
+    await page.waitForSelector('.overlay');
+    assert.match(await page.textContent('.overlay'), /pasted draft and the restored text are not kept/);
     await page.click('#yes');
     await page.waitForSelector('#go-cloak');
     // The key file was not sealed under a wrong key: the matter opens with its password.
