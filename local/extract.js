@@ -25,6 +25,12 @@ import { photoDetails } from './metadata.js';
 
 const require = createRequire(import.meta.url);
 
+// Raise this whenever a change makes Cloak read a file differently (more text,
+// or a part it used to miss). A matter's cache then reads each file again
+// instead of keeping the old reading. 2: fax, JBIG2 and JPEG 2000 pictures and
+// standard-CMap Chinese in PDFs, which version 1 read as empty pages.
+export const READER_VERSION = 2;
+
 const TEXT_TYPES = new Set(['.txt', '.md', '.csv', '.tsv', '.log', '.json', '.xml', '.ics', '.vcf']);
 const HTML_TYPES = new Set(['.html', '.htm']);
 const IMAGE_TYPES = new Set(['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp', '.webp', '.gif']);
@@ -455,12 +461,19 @@ async function extractXlsx(buf, result) {
 // ------------------------------------------------------------------- .pdf
 
 let pdfjsReady = null;
+// pdf.js decodes fax (CCITT), JBIG2 and JPEG 2000 pictures, formats many
+// scanners use, only with its own decoders, and reads Chinese, Japanese and
+// Korean text written with Adobe's standard character maps only with those
+// maps. Both ship inside the app and are read from these folders on disk
+// (pdf.js uses fs.readFile in Node, never the network). Without them such
+// pages came out empty with no warning.
+const pdfjsFolder = (sub) => `${path.join(path.dirname(require.resolve('pdfjs-dist/package.json')), sub).split(path.sep).join('/')}/`;
 async function extractPdf(buf, result) {
   pdfjsReady ||= import('pdfjs-dist/legacy/build/pdf.mjs');
   const pdfjs = await pdfjsReady;
   const { createCanvas } = require('@napi-rs/canvas');
   let doc;
-  const task = pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true, isEvalSupported: false, verbosity: 0 });
+  const task = pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true, isEvalSupported: false, verbosity: 0, wasmUrl: pdfjsFolder('wasm'), cMapUrl: pdfjsFolder('cmaps') });
   try {
     doc = await task.promise;
   } catch (err) {

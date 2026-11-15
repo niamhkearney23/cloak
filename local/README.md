@@ -4,11 +4,11 @@ Cloaks a whole folder of documents on this computer. Nothing is sent anywhere:
 the code in this folder makes no network calls, and OCR runs locally with
 language data that ships with the app.
 
-Built so far: **feature 1, cloak a folder**, **feature 2, the key** and
-**feature 3, the review screen**, in one app window. The double checker,
-restore and the Claude connector come next. Until the double checker exists,
-exported copies are marked **reviewed, not double-checked**. Until the review screen and double checker exist, treat every cloaked
-copy as **not reviewed**.
+Built so far: **feature 1, cloak a folder**, **feature 2, the key**,
+**feature 3, the review screen** and **feature 4, the double checker**, in one
+app window, with restoring a draft. The Claude connector comes next. Exported
+copies come with a report and a marker file (`REVIEWED-AND-DOUBLE-CHECKED.txt`)
+saying who reviewed them and who double-checked them, and when.
 
 ## What it does
 
@@ -125,6 +125,9 @@ watch the files being read, then review.
   person; who approved it is recorded.
 - Any change after the review is finished, and any new file, means it has to
   be finished again.
+- **Double check:** once the review is finished, a second check of everything
+  an export would write (below). Export runs it too, and waits until every
+  file passes or every finding is decided.
 - A tag number is never reused, even after its tag is removed.
 
 The window can load only its own files. Network requests are refused, name
@@ -198,17 +201,25 @@ A matter is **Standard** (identifiers only: names, ID numbers, accounts, phones,
 
 **What Strict still lets through.** Strict cannot see: places not on the list and without a cue word; products, brands and vessel names (not built); job titles other than the listed ones; unusual events and how something happened (free text, which is the lawyer's to judge: the highlight-and-tag tool on the review screen is not built yet); relative dates; amounts and dates written in words; anything in an image the OCR misread; names in Chinese, Tamil or Jawi script (flagged, or hidden whole as a passage); and the **shape** of the dispute: who sued whom for what and in what order, which a person who knows the case can recognise even with every value blurred. Strict lowers the chance of tying a text to a real dispute; it does not remove it.
 
-**The review screen** lists blurred facts separately from names, with counts. A single fact can be un-blurred (`unblurFact`); the matter records who did it and when, and the report lists it. The key sweep (below) reads every file again before export.
+**The review screen** lists blurred facts separately from names, with counts. A single fact can be un-blurred (`unblurFact`); the matter records who did it and when, and the report lists it. The double checker (below) reads every file again before export and looks for every fact in any format.
 
 ## The context sheet
 
-Every Strict export comes with `000-context-sheet.cloaked.txt`: the rules for working with tags, a cast list (role and relationships only), a date table (time order and gaps in days, no real dates), an amount table (which is larger, which adds up to which), and what kind of thing each tag is (bank, court, property...). It is made from the cloaked text and checked by the key sweep like any other file.
+Every Strict export comes with `000-context-sheet.cloaked.txt`: the rules for working with tags, a cast list (role and relationships only), a date table (time order and gaps in days, no real dates), an amount table (which is larger, which adds up to which), and what kind of thing each tag is (bank, court, property...). It is made from the cloaked text and checked by the double checker like any other file (job titles may show there, as each person's role).
 
 The cast list's roles are read from the wording next to each tag by rules (a direct description such as "TAG, the estate agent" or "the wife of the Plaintiff, TAG"). They are precise but incomplete: many people get no role. A reviewer can correct them (`matter.roles`). Job titles that Strict hides are not brought back in the sheet ("company officer").
 
-## The key sweep
+## The double checker
 
-Before anything is exported the key is swept: every value the key holds (whole word, any letter case, names under four letters and honours like Tan Sri skipped) and every fact in **any format** is looked for in the cloaked text, with the paragraph number. Any hit stops the export. It cannot see inside a spreadsheet's amount column on its own (it needs the column name), and it does not replace the review.
+A second, separate check of everything an export would write: each cloaked copy (its `File:` line included), the context sheet, the chronology, the names of the exported files, `cloak-report.json` and the marker file. It runs from **Run the double check** in the review's finish bar, and again every time someone exports. No AI is used. Full details, and what it misses: `docs/double-checker.md`.
+
+- **Key sweep:** every value the key holds, in every form (names, ID numbers, addresses, emails, phones, the folder names of a synced source), and every blurred fact in **any format**. Names of four letters or more in any letter case; three-letter short forms written with a capital; ordinary words in the key only as the key writes them.
+- **Pattern sweep:** NRIC/MyKad, passports, phones, emails, bank and card numbers, case numbers, land titles, vehicle plates, postcode and town, company numbers, run again afresh.
+- **Leftover names:** words after a title (Encik, Puan, Mr, Dato', Kak, Pak, Uncle...), names with bin, binti, a/l or a/p, words from the name lists, and capitalised words no one has marked as fine.
+- **Every part of every file:** each finding says the file, the part (header, footer, comments, tracked changes, properties, sheet name, defined names, email headers, attachment name, file name) and the line, with a short excerpt.
+- **Tags:** well formed, in the key, and one real value never under two tags.
+
+For each finding a person chooses **Hide it** (hidden as on the review screen, then everything is cloaked and checked again) or **It is fine** (kept in the encrypted matter with who and when; the log gets counts only). Export waits until every file passes or every finding is decided. Any later change to the review starts the double check again. The real words are shown on the screen only, never in an exported file or the log.
 
 ## The chronology table
 
@@ -224,7 +235,7 @@ What it will miss or split: events whose rows use different words, languages wit
 
 The setup screen asks **Who is the client?** and **Who are the other parties?** (one party per line; several ways of writing one party separated by `;`; start a line with `person:` or `company:` to force the type). Every form typed is hidden everywhere, file and folder names included. Nothing is guessed from folder names. A company with no ending ("Seri Kembara") also gets its last distinctive word as a short form. Every company that is tagged also gets its short forms with each ending taken off, one at a time (Sdn Bhd, Berhad, (M), Enterprise, Trading, Holdings...). Words in file and folder names that are not ordinary document words go on the "not sure" list.
 
-**Test matters only.** Until the double checker is built, cloaked copies can be exported only from a matter ticked as "made-up test documents only". That tick is the person's own statement: Cloak cannot tell real documents from made-up ones.
+**Test matters.** A matter can be ticked as "made-up test documents only". The tick is recorded in the export report. It is the person's own statement: Cloak cannot tell real documents from made-up ones. Export needs the double check to pass, for any matter; an evaluation copy (no licence) also limits export to test matters (`docs/licence.md`).
 
 **"Don't hide"** is stored in the matter's key, so it applies to that matter only.
 
@@ -249,7 +260,9 @@ It is rules and word lists, not an AI model, and it is not perfect.
 - **Words inside pictures on a typed page** (stamps, letterheads, handwriting).
   They are not read and are not in the cloaked copy.
 - **Handwriting and poor scans.** Low-confidence OCR blocks the file.
-- **Attachments inside emails.** They are not opened; save them into the folder.
+- **Attachments inside emails** are opened and read like any other file (see
+  "The completeness rule" above). An attachment Cloak cannot read, such as
+  an old .doc or a password-protected PDF, blocks the whole email.
 - **Place names and organisations without a company ending** (a town, a
   school, a government office) are kept unless they are part of an address.
 - **Unusual number formats** not covered by the patterns, and plates that are

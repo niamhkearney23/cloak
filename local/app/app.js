@@ -8,11 +8,17 @@
 
   async function call(name, args) {
     const r = await window.cloak.call(name, args);
-    if (r.error) throw Object.assign(new Error(r.error), { code: r.code });
+    if (r.error) throw Object.assign(new Error(withNextStep(r.error, r.code)), { code: r.code });
     return r.ok;
   }
+  // What to do next, for errors whose message only says what happened. Keyed by the error's code.
+  const NEXT_STEP = {
+    WRONG_SECRET: (m) => (/recovery code/i.test(m) ? 'Check the code on the printed sheet and type it again. Spaces, dashes and capital letters do not matter.' : 'Check that Caps Lock is off and type it again. If the password is lost, use the recovery code instead.'),
+    // DOUBLE_CHECK (export refused by the double check) says what to do next itself, and opens the Double check tab.
+  };
+  const withNextStep = (text, code) => (NEXT_STEP[code] ? `${text} ${NEXT_STEP[code](text)}` : text);
 
-  const state = { info: null, folder: null, matterDir: null, matter: null, options: { dates: false, amounts: false, provisions: false }, progress: new Map(), review: null, tab: 'unsure', filter: '', busy: false, exported: null, manualSource: '', location: null, recovery: null, showAll: false, client: '', others: '', testMatter: false, level: 'strict', afterOpen: null, showUndated: false, chrono: null, draft: '', docsFolder: null, restoreResult: null };
+  const state = { info: null, folder: null, matterDir: null, matter: null, options: { dates: false, amounts: false, provisions: false }, progress: new Map(), review: null, tab: 'unsure', filter: '', busy: false, exported: null, manualSource: '', location: null, recovery: null, showAll: false, client: '', others: '', testMatter: false, level: 'strict', afterOpen: null, showUndated: false, chrono: null, draft: '', docsFolder: null, restoreResult: null, check: null, checking: false };
 
   function show(html) { main.innerHTML = html; main.scrollTop = 0; }
   function on(selector, event, fn) { main.querySelectorAll(selector).forEach((el) => el.addEventListener(event, fn)); }
@@ -62,15 +68,18 @@
       <span class="mark" aria-hidden="true"></span>
       <h1>Cloak</h1>
       <p class="muted">Hide client details before a document goes to an AI tool. Put them back afterwards.</p>
+      ${tip('home')}
       <div class="choices">
         <button class="choice primary" id="go-cloak"><b>Cloak a folder</b>Hide names and numbers in a folder of documents.</button>
         <button class="choice" id="go-restore"><b>Restore a draft</b>Put the real details back into a draft, and check it.</button>
       </div>
-      <p class="small muted" style="margin-top:26px">Signed in as <b>${esc(state.info.who)}</b> · <button class="link" id="change-name">Change name</button></p>
+      ${homeExtras()}
+      <p class="small muted" style="margin-top:26px">Signed in as <b>${esc(state.info.who)}</b> · <button class="link" id="change-name">Change name</button> · <button class="link" id="go-licence">Licence</button></p>
     </div>`);
     on('#go-cloak', 'click', () => { state.afterOpen = null; setup(); });
     on('#go-restore', 'click', () => restoreStart());
     on('#change-name', 'click', () => nameScreen());
+    on('#go-licence', 'click', () => licenceScreen());
   }
 
   // ----------------------------------------------------------------- setup
@@ -79,6 +88,7 @@
     const o = state.options;
     show(`<div class="narrow">
       <h1>Cloak a folder</h1>
+      ${screenNote('setup')}
       ${error ? message(error) : ''}
       <div class="card">
         <h2>1. The documents</h2>
@@ -102,7 +112,7 @@
         <div class="field"><label for="client-name">Who is the client?</label><textarea id="client-name" rows="2" autocomplete="off">${esc(state.client)}</textarea><span class="small muted">Every way it is written, separated by ; (for example: Seri Kembara Logistics Sdn Bhd; Seri Kembara; Kembara). Each form is hidden everywhere, file and folder names included.</span></div>
         <div class="field"><label for="other-parties">Who are the other parties?</label><textarea id="other-parties" rows="3" autocomplete="off">${esc(state.others)}</textarea><span class="small muted">One party per line. Forms of the same party are separated by ;. Start a line with person: or company: if Cloak should treat it as one or the other.</span></div>
         <label class="check"><input type="checkbox" id="test-matter" ${state.testMatter ? 'checked' : ''}> This matter holds made-up test documents only</label>
-        <p class="small muted">Until the double checker is built, cloaked copies can be exported only from a test matter.</p>
+        <p class="small muted">Tick this only if every document is made up. The export report records it.</p>
       </div>
       <div class="row"><button class="btn" id="back">Back</button><button class="btn primary" id="start" ${state.folder && state.matter ? '' : 'disabled'}>Start cloaking</button></div>
     </div>`);
@@ -159,7 +169,7 @@
         <button class="btn primary" id="m-create">Create matter</button>`;
       on('#m-create', 'click', async () => {
         const pw = document.getElementById('m-pw').value;
-        if (pw !== document.getElementById('m-pw2').value) return matterForm('The two passwords do not match.');
+        if (pw !== document.getElementById('m-pw2').value) return matterForm('The two passwords do not match. Type the same password in both boxes.');
         try {
           state.level = document.getElementById('m-level').value;
           const made = await call('createMatter', { dir: state.matterDir, name: document.getElementById('m-name').value.trim(), password: pw, level: state.level });
@@ -257,10 +267,10 @@
   async function act(action) {
     if (state.busy) return;
     state.busy = true;
-    try { state.review = await call('action', action); state.exported = null; review(); } catch (err) { review(err.message); } finally { state.busy = false; }
+    try { state.review = await call('action', action); state.exported = null; state.check = null; review(); } catch (err) { review(err.message); } finally { state.busy = false; }
   }
 
-  function review(error) {
+  function review(error, notice) {
     const d = state.review;
     document.getElementById('matter-name').textContent = state.matter?.name || '';
     const joined = d.merges.length + d.shortForms.length;
@@ -269,9 +279,10 @@
     const blocked = d.files.filter((f) => !f.willExport && f.status !== 'container').length;
     show(`<div class="wide">
       <h1>Review</h1>
+      ${screenNote('review')}
       <p class="muted">${plural(d.files.length, 'file', 'files')} read in ${state.seconds.toFixed(1)} seconds. Nothing has been exported. Check the lists below, then finish the review.</p>
       ${d.source && d.source.label ? `<p class="small muted">Source: <b>${esc(d.source.kind)}</b>${d.source.workspace_path ? ` · workspace path <b>${esc(d.source.workspace_path)}</b>` : ''}. Read only.</p>` : ''}
-      ${error ? message(error) : ''}
+      ${error ? message(error) : ''}${notice ? message(notice, 'warn') : ''}
       <div class="card">
         <h2>Add a word or name the tool missed</h2>
         <div class="addbar"><input type="text" id="add-text" placeholder="Type it exactly as it appears" autocomplete="off">
@@ -279,30 +290,57 @@
           <button class="btn primary" id="add-go">Hide it in every file</button></div>
       </div>
       <div class="tabs" role="tablist">
-        ${tab('unsure', 'Not sure', d.unsure.length, true)}${tab('joined', 'Joined names', joined, true)}${tab('terms', 'Everything replaced', d.terms.length)}${d.facts?.length ? tab('facts', 'Hidden facts', d.facts.length) : ''}${tab('chrono', 'Chronology', state.chrono ? state.chrono.dated : '')}${tab('files', 'Files', d.files.length)}
+        ${tab('unsure', 'Not sure', d.unsure.length, true)}${tab('joined', 'Joined names', joined, true)}${tab('terms', 'Everything replaced', d.terms.length)}${d.facts?.length ? tab('facts', 'Hidden facts', d.facts.length) : ''}${tab('chrono', 'Chronology', state.chrono ? state.chrono.dated : '')}${tab('files', 'Files', d.files.length)}${tab('check', 'Double check', d.doubleCheck?.ran ? d.doubleCheck.counts.undecided : '', true)}
       </div>
       <div id="panel"></div>
-      <div class="finish">
-        <div id="finish-note">${d.complete
-    ? `<span class="chip cloaked">Review finished</span> by ${esc(d.complete.by)} on ${esc(d.complete.whenText)}. ${plural(willExport, 'file', 'files')} ready to export${blocked ? `, ${blocked} held back` : ''}.`
-    : d.blockers.length ? `<b>Before you can finish:</b> ${d.blockers.map(esc).join(' ')}` : `Everything is decided. ${plural(willExport, 'file', 'files')} will be exported${blocked ? ` and ${blocked} held back` : ''}.`}</div>
-        <div class="row">${d.complete ? `${state.chrono?.confirmed ? '<button class="btn primary" id="export-chrono">Export the chronology only (recommended)</button><button class="btn" id="export">Export all files…</button>' : '<button class="btn primary" id="export">Export cloaked copies…</button>'}` : `<button class="btn primary" id="finish" ${d.blockers.length ? 'disabled' : ''}>Finish review</button>`}</div>
-      </div>
-      ${state.exported ? `<div class="msg ok" id="exported">${plural(state.exported.written.length, 'cloaked copy', 'cloaked copies')} written to <b>${esc(state.exported.outDir)}</b>.${state.exported.heldBack ? ` ${plural(state.exported.heldBack, 'file was', 'files were')} held back.` : ''} The double checker is not built yet, so treat these as <b>not double-checked</b>.</div>` : ''}
+      <div class="finish">${finishBar(d, willExport, blocked)}</div>
+      ${state.exported ? `<div class="msg ok" id="exported">${plural(state.exported.written.length, 'cloaked copy', 'cloaked copies')} written to <b>${esc(state.exported.outDir)}</b>.${state.exported.heldBack ? ` ${plural(state.exported.heldBack, 'file was', 'files were')} held back.` : ''} ${esc(state.exported.doubleCheck?.statement || '')}</div>` : ''}
     </div>`);
     on('.tab', 'click', (e) => { state.tab = e.currentTarget.dataset.tab; review(); });
     const add = () => { const text = document.getElementById('add-text').value.trim(); if (text) act({ type: 'add', text, kind: document.getElementById('add-kind').value }); };
     on('#add-go', 'click', add);
     on('#add-text', 'keydown', (e) => { if (e.key === 'Enter') add(); });
-    on('#finish', 'click', async () => { try { state.review = await call('complete'); review(); } catch (err) { review(err.message); } });
+    on('#finish', 'click', async () => { try { state.review = await call('complete'); state.check = null; review(); } catch (err) { review(err.message); } });
+    // Export runs the double check first. If anything is left to decide, nothing is written and the Double check tab opens.
     const doExport = (only) => async () => {
       const outDir = await call('pickFolder', { title: 'Choose where to save the cloaked copies' });
       if (!outDir) return;
-      try { state.exported = await call('export', { outDir, only }); review(); } catch (err) { review(err.message); }
+      try {
+        state.exported = await call('export', { outDir, only });
+        state.review = await call('review');
+        state.check = await call('doubleCheckView');
+        review();
+      } catch (err) {
+        if (err.code === 'DOUBLE_CHECK') {
+          state.check = await call('doubleCheckView').catch(() => null);
+          state.review = await call('review').catch(() => state.review);
+          state.tab = 'check';
+        }
+        review(err.message);
+      }
     };
     on('#export', 'click', doExport('all'));
     on('#export-chrono', 'click', doExport('chronology'));
-    ({ unsure: panelUnsure, joined: panelJoined, terms: panelTerms, facts: panelFacts, chrono: panelChronology, files: panelFiles })[state.tab]();
+    on('#run-check', 'click', () => { state.tab = 'check'; runCheck(); });
+    ({ unsure: panelUnsure, joined: panelJoined, terms: panelTerms, facts: panelFacts, chrono: panelChronology, files: panelFiles, check: panelCheck })[state.tab]();
+  }
+
+  // The finish bar: finish the review, run the double check, export.
+  function finishBar(d, willExport, blocked) {
+    if (!d.complete) {
+      return `<div id="finish-note">${d.blockers.length ? `<b>Before you can finish:</b> ${d.blockers.map(esc).join(' ')}` : `Everything is decided. ${plural(willExport, 'file', 'files')} will be exported${blocked ? ` and ${blocked} held back` : ''}.`}</div>
+        <div class="row"><button class="btn primary" id="finish" ${d.blockers.length ? 'disabled' : ''}>Finish review</button></div>`;
+    }
+    const c = d.doubleCheck || { ran: false };
+    const passed = c.ran && c.passed;
+    const note = !c.ran ? '<span id="check-state">Next: the double check. It also runs when you export.</span>'
+      : passed ? `<span class="chip cloaked" id="check-state">Double check passed</span> ${esc(c.whenText)}.${c.counts.places ? ` ${plural(c.counts.places, 'finding', 'findings')} marked fine by a person.` : ' Nothing left to decide.'}${c.hidden ? ` ${plural(c.hidden, 'finding', 'findings')} hidden during the check.` : ''}`
+        : `<span class="chip partial" id="check-state">Double check: ${c.counts.undecided} to decide</span> in ${plural(c.counts.filesFailing, 'file', 'files')}.`;
+    const exporting = state.chrono?.confirmed
+      ? `<button class="btn ${passed ? 'primary' : ''}" id="export-chrono">Export the chronology only (recommended)</button><button class="btn" id="export">Export all files…</button>`
+      : `<button class="btn ${passed ? 'primary' : ''}" id="export">Export cloaked copies…</button>`;
+    return `<div id="finish-note"><span class="chip cloaked">Review finished</span> by ${esc(d.complete.by)} on ${esc(d.complete.whenText)}. ${plural(willExport, 'file', 'files')} ready to export${blocked ? `, ${blocked} held back` : ''}. ${note}</div>
+      <div class="row"><button class="btn ${passed ? '' : 'primary'}" id="run-check" ${state.checking ? 'disabled' : ''}>${c.ran ? 'Run the double check again' : 'Run the double check'}</button>${exporting}</div>`;
   }
 
   function panel(html) { document.getElementById('panel').innerHTML = html; }
@@ -481,6 +519,7 @@
     state.chrono = r.view;
     state.review = r.review;
     state.exported = null;
+    state.check = null;
     review();
   }
 
@@ -531,12 +570,93 @@
     }));
   }
 
+  // ------------------------------------------------------- the double check
+
+  // A second check of everything that would be exported. Its findings show the real words, on this screen only.
+  async function runCheck() {
+    if (state.busy) return;
+    state.busy = true;
+    state.checking = true;
+    review();
+    try {
+      state.check = await call('doubleCheck');
+      state.review = await call('review');
+      state.checking = false;
+      review();
+    } catch (err) {
+      state.checking = false;
+      review(err.message);
+    } finally { state.busy = false; }
+  }
+
+  async function decide(key, decision, kind) {
+    if (state.busy) return;
+    state.busy = true;
+    try {
+      const r = await call('decideFinding', { key, decision, kind });
+      state.check = r.check;
+      state.review = r.review;
+      state.exported = null;
+      if (r.reopened) {
+        state.tab = r.review.unsure.length ? 'unsure' : r.review.merges.length + r.review.shortForms.length ? 'joined' : 'check';
+        review(null, 'Hiding it gave the review something new to decide. Decide it, finish the review, then run the double check again.');
+      } else review();
+    } catch (err) { review(err.message); } finally { state.busy = false; }
+  }
+
+  const CHECK_WORDS = { key: 'In the key', fact: 'Fact', pattern: 'Number or ID', name: 'Possible name', tag: 'Tag problem' };
+
+  async function panelCheck() {
+    const d = state.review;
+    if (!d.complete) return panel('<div class="msg warn" id="check-wait">Finish the review first. The double check reads exactly what would be exported.</div>');
+    if (state.checking) return panel('<p id="check-running"><span class="spinner"></span> Running the double check on every file that would be exported…</p>');
+    if (!state.check) {
+      try { state.check = await call('doubleCheckView'); } catch (err) { return panel(message(err.message)); }
+    }
+    drawCheck();
+  }
+
+  function drawCheck() {
+    const c = state.check?.ran ? state.check : null;
+    const intro = '<p class="muted small">A second, separate check of everything that would be exported: each cloaked copy, the context sheet, the chronology, the file names and the report. It looks again for every value in the key (in any format), for numbers that look like an NRIC, phone, account or case number, and for anything that still looks like a name, in every part of every file. No AI is used. For each finding, hide it or say it is fine. Export waits until every file passes or every finding is decided.</p>';
+    if (!c) {
+      panel(`${intro}<button class="btn primary" id="check-go">Run the double check</button>`);
+      return on('#check-go', 'click', runCheck);
+    }
+    const where = (p) => `<div class="example">${esc(p.title)} · ${esc(p.part)} · line ${p.line}</div><div class="small">${tags(p.excerpt.slice(0, p.mark[0]))}<span class="found">${esc(p.excerpt.slice(p.mark[0], p.mark[1]))}</span>${tags(p.excerpt.slice(p.mark[1]))}</div>`;
+    const decided = (g) => g.places.find((p) => p.decided)?.decided;
+    // Files that fail come first; the findings come before the list of files.
+    const units = [...c.units.filter((u) => u.status === 'fail'), ...c.units.filter((u) => u.status !== 'fail')];
+    panel(`${intro}
+      <p id="check-summary">${c.passed ? '<span class="chip cloaked">Passed</span>' : '<span class="chip partial">Not passed yet</span>'} Checked ${esc(c.whenText)} by ${esc(c.by)}: ${plural(c.counts.files, 'file', 'files')}, ${plural(c.counts.places, 'finding', 'findings')}${c.counts.undecided ? `, <b>${c.counts.undecided} still to decide</b>` : ''}.</p>
+      ${c.groups.length ? `<table id="check-findings"><thead><tr><th>Found</th><th>Where</th><th></th></tr></thead><tbody>${c.groups.map((g, i) => `<tr data-finding="${i}">
+        <td><span class="chip ${g.undecided ? 'manual' : ''}">${esc(CHECK_WORDS[g.check] || g.check)}</span><br><b>${esc(g.value)}</b><div class="reason">${tags(g.what)}</div></td>
+        <td>${g.places.map(where).join('')}${g.more ? `<div class="reason">and ${g.more} more</div>` : ''}</td>
+        <td>${g.undecided ? `<div class="row">${g.fixable ? `${g.check === 'name' ? `<select class="merge" data-dc-kind="${i}" aria-label="Hide it as"><option value="PERSON" ${g.hideAs === 'PERSON' ? 'selected' : ''}>as a person</option><option value="COMPANY" ${g.hideAs === 'COMPANY' ? 'selected' : ''}>as a company</option><option value="OTHER" ${g.hideAs === 'OTHER' ? 'selected' : ''}>as something else</option></select>` : ''}<button class="btn small primary" data-dc-hide="${i}">Hide it</button>` : ''}<button class="btn small" data-dc-fine="${i}">It is fine</button></div>`
+    : `<span class="chip cloaked">Marked fine</span>${decided(g) ? `<div class="reason">by ${esc(decided(g).by)}<br>${esc(decided(g).whenText)}</div>` : ''}`}</td></tr>`).join('')}</tbody></table>` : '<div class="msg ok" id="check-clean">Nothing was found. Every file passes.</div>'}
+      <h2 style="margin-top:18px">Each file</h2>
+      <table id="check-files"><thead><tr><th>File</th><th>Result</th><th class="num">Findings</th></tr></thead><tbody>${units.map((u) => `<tr>
+        <td>${esc(u.id)}<div class="reason">${esc(u.title)}</div></td>
+        <td>${u.status === 'pass' ? `<span class="chip cloaked">Passed</span>${u.findings ? ' <span class="small muted">every finding decided</span>' : ''}` : `<span class="chip partial">Failed</span> <span class="small">${plural(u.undecided, 'finding', 'findings')} to decide</span>`}</td>
+        <td class="num">${u.findings}</td></tr>`).join('')}</tbody></table>`);
+    on('[data-dc-hide]', 'click', (e) => {
+      const i = +e.currentTarget.dataset.dcHide;
+      decide(c.groups[i].key, 'hide', main.querySelector(`[data-dc-kind="${i}"]`)?.value);
+    });
+    on('[data-dc-fine]', 'click', async (e) => {
+      const g = c.groups[+e.currentTarget.dataset.dcFine];
+      const yes = await confirmDialog({ title: 'Is this fine to send?', body: `<b>${esc(g.value)}</b> will go out as written in ${plural(g.undecided, 'place', 'places')}. The matter records that you decided this, and when.`, yes: 'Yes, it is fine' });
+      if (yes) decide(g.key, 'fine');
+    });
+  }
+
   // ---------------------------------------------------------------- restore
 
   function restoreStart(error) {
     state.afterOpen = restoreScreen;
     show(`<div class="narrow">
       <h1>Restore a draft</h1>
+      ${tip('restore')}
       <p class="muted">Put the real details back into a draft that has tags in it. This runs on this computer only.</p>
       ${error ? message(error) : ''}
       <div class="card">
@@ -568,6 +688,7 @@
     const r = state.restoreResult;
     show(`<div class="wide">
       <h1>Restore a draft</h1>
+      ${screenNote('draft')}
       ${error ? message(error) : ''}
       <div class="card">
         <h2>The draft</h2>
@@ -590,7 +711,7 @@
     });
     on('#do-restore', 'click', async () => {
       state.draft = document.getElementById('draft').value;
-      if (!state.draft.trim()) return restoreScreen('Paste or choose a draft first.');
+      if (!state.draft.trim()) return restoreScreen('There is no draft to check yet. Paste the draft into the box, or choose a file.');
       document.getElementById('restore-result').innerHTML = '<p><span class="spinner"></span> Checking…</p>';
       try { state.restoreResult = await call('restoreDraft', { draft: state.draft, folder: state.docsFolder }); restoreScreen(); } catch (err) { restoreScreen(err.message); }
     });
@@ -616,9 +737,327 @@
     <div class="card white"><h2>The restored draft</h2><pre class="filetext" id="restored-text">${esc(r.restored)}</pre><div class="row"><button class="btn primary" id="copy-restored">Copy</button><button class="btn" id="save-restored">Save as…</button></div></div>`;
   }
 
+  // ------------------------------------------------------------ first run
+  //
+  // The first-time tips, the sample matter, the help screens and the support
+  // file. Other screens only draw what tip(), screenNote() and homeExtras() return.
+
+  // A short note on each main screen until it is closed. Closing it is remembered on this computer.
+  const TIPS = {
+    home: '<b>Start here.</b> <b>Cloak a folder</b> hides client details in a folder of documents before they go to an AI tool. <b>Restore a draft</b> puts them back into what the AI wrote. New to Cloak? Try the sample matter first.',
+    setup: '<b>This screen sets up a cloaking run.</b> Choose the documents (they are only read, never changed), choose or create the matter that holds the encrypted key, and say who the parties are. Nothing is saved or sent until you finish the review and export.',
+    review: '<b>Check what Cloak found before anything leaves.</b> Work through each tab with an amber number, read any file that needs a manual check, then press Finish review. Nothing has been exported yet.',
+    restore: '<b>This puts the real details back into a draft.</b> Open the matter the draft was made from, then paste the draft. Cloak checks the draft as well. It all happens on this computer.',
+  };
+  // While the sample matter is open, these take the place of the tips.
+  const SAMPLE_NOTES = {
+    setup: '<b>This is the sample matter.</b> Everything is filled in for you: the ten made-up documents, the matter (already open) and the people in it. Look at what each part asks for, then press <b>Start cloaking</b> at the bottom.',
+    review: '<b>Sample matter.</b> A few words on the <b>Not sure</b> list are names or part of an address: hide those, and mark the rest as fine. Confirm the joined names. On the <b>Files</b> tab, the WhatsApp chat needs a manual check because it has a line in Chinese. Then finish the review and export to the <b>Cloaked copies</b> folder inside the sample folder.',
+    draft: '<b>Trying the sample?</b> Open a file in the <b>Cloaked copies</b> folder, copy a few lines with their tags, paste them here and press <b>Check and restore</b>.',
+  };
+  const TIPS_KEY = 'cloak.tipsClosed';
+  const tipsClosed = () => { try { return JSON.parse(localStorage.getItem(TIPS_KEY) || '[]'); } catch { return []; } };
+  function tip(id) {
+    if (!TIPS[id] || tipsClosed().includes(id)) return '';
+    return `<div class="tip" role="note" id="tip-${id}"><span>${TIPS[id]}</span><button class="link" data-tip-close="${id}">Got it</button></div>`;
+  }
+  function closeTip(id) {
+    try { localStorage.setItem(TIPS_KEY, JSON.stringify([...new Set([...tipsClosed(), id])])); } catch { /* not remembered: it shows again next time */ }
+    document.getElementById(`tip-${id}`)?.remove();
+  }
+  const isSample = () => !!state.sample && state.matterDir === state.sample.matterDir;
+  function screenNote(id) {
+    if (isSample() && SAMPLE_NOTES[id]) return `<div class="tip sample-note" role="note" id="sample-note-${id}"><span>${SAMPLE_NOTES[id]}</span></div>`;
+    return tip(id);
+  }
+
+  const homeExtras = () => `<div class="try-sample"><div><b>New to Cloak?</b> Try it on a sample matter: ten made-up documents, ready in a few minutes.</div><button class="btn" id="go-sample" data-go-sample>Try a sample matter</button></div>
+      <p class="small help-links"><button class="link" data-help="how">How Cloak works</button> · <button class="link" data-help="data">Your data</button> · <button class="link" data-help="about">About</button></p>`;
+
+  // "Try a sample matter": where to put it and a password; Cloak does the rest.
+  async function sampleScreen(error) {
+    let s;
+    try { s = await call('sampleStart', { parent: state.sampleParent || null }); } catch (err) { s = { refused: err.message }; }
+    if (s.parent) state.sampleParent = s.parent;
+    show(`<div class="narrow">
+      <h1>Try a sample matter</h1>
+      <p class="muted">${esc(s.about || '')} Cloak copies them into a new folder, creates a test matter for them with the people already filled in, and takes you through cloaking and the review.</p>
+      ${error ? message(error) : ''}
+      <div class="card">
+        <h2>1. Where to put it</h2>
+        <p class="muted small">Cloak makes a new folder. Nothing already there is changed.</p>
+        <div class="row"><span class="path" id="sample-path">${esc(s.folder || '')}</span><button class="btn" id="sample-place">Choose another place…</button></div>
+        ${s.refused ? `<div class="msg warn" id="sample-refused">${esc(s.refused)}</div>` : ''}
+      </div>
+      <div class="card">
+        <h2>2. A password for the sample matter</h2>
+        <p class="muted small">Every matter has its own password, 10 characters or more. You need it to open the matter again or to restore a draft. Cloak never saves it.</p>
+        <div class="field"><label for="sample-pw">Password</label><input type="password" id="sample-pw" autocomplete="new-password"></div>
+        <div class="field"><label for="sample-pw2">Type the password again</label><input type="password" id="sample-pw2" autocomplete="new-password"></div>
+      </div>
+      <div class="row"><button class="btn" id="back">Back</button><button class="btn primary" id="sample-create" ${s.refused ? 'disabled' : ''}>Create the sample matter</button></div>
+    </div>`);
+    on('#back', 'click', () => home());
+    on('#sample-place', 'click', async () => {
+      const p = await call('pickFolder', { title: 'Choose where to put the sample matter' });
+      if (p) { state.sampleParent = p; sampleScreen(); }
+    });
+    on('#sample-pw2', 'keydown', (e) => { if (e.key === 'Enter') document.getElementById('sample-create').click(); });
+    on('#sample-create', 'click', async (e) => {
+      const pw = document.getElementById('sample-pw').value;
+      if (pw !== document.getElementById('sample-pw2').value) return sampleScreen('The two passwords do not match. Type the same password in both boxes.');
+      e.currentTarget.disabled = true;
+      e.currentTarget.textContent = 'Creating…';
+      try {
+        const made = await call('sampleCreate', { parent: state.sampleParent, password: pw });
+        Object.assign(state, { folder: made.docs, matterDir: made.matterDir, matter: { name: made.name }, client: made.client, others: made.others, testMatter: true, level: made.level, manualSource: '', location: null, afterOpen: null, review: null, chrono: null, exported: null, sample: { folder: made.folder, matterDir: made.matterDir, outDir: made.outDir } });
+        sampleCreated(made);
+      } catch (err) { sampleScreen(err.message); }
+    });
+    document.getElementById(s.refused ? 'sample-place' : 'sample-pw').focus();
+  }
+
+  function sampleCreated(made) {
+    show(`<div class="narrow">
+      <h1>The sample matter is ready</h1>
+      <p>Cloak made this folder:</p>
+      <div class="path" id="sample-folder">${esc(made.folder)}</div>
+      <ul class="small">
+        <li><b>Documents</b>: the ten made-up files. Open them in Word, Excel or a PDF viewer to compare with the cloaked copies later.</li>
+        <li><b>Matter key</b>: the matter, with its encrypted key, its cache and its log.</li>
+        <li><b>Cloaked copies</b>: empty for now. Export the cloaked copies here at the end.</li>
+      </ul>
+      <h2>The recovery code</h2>
+      <p class="small">Every matter gets a recovery code that opens it if the password is forgotten. It is shown only once. For a real matter, print it or write it down and keep it with the paper file. For the sample you do not need to keep it.</p>
+      <div class="code" id="recovery-code">${esc(made.recoveryCode)}</div>
+      <div class="row"><button class="btn primary" id="sample-continue">Continue</button></div>
+    </div>`);
+    on('#sample-continue', 'click', () => setup());
+  }
+
+  // ------------------------------------------------------------- help
+
+  const HELP_TABS = [['how', 'How Cloak works'], ['data', 'Your data'], ['about', 'About']];
+  let closeHelp = null;
+
+  async function helpScreen(tab = 'how') {
+    closeHelp?.();
+    const o = document.createElement('div');
+    o.className = 'overlay help-overlay';
+    o.innerHTML = `<div class="dialog help" role="dialog" aria-modal="true" aria-label="Help">
+      <div class="help-head"><div class="tabs" role="tablist">${HELP_TABS.map(([id, label]) => `<button class="tab" role="tab" data-help="${id}" aria-selected="${tab === id}">${label}</button>`).join('')}</div><button class="btn" id="help-close">Close</button></div>
+      <div id="help-body"><p class="muted">Loading…</p></div></div>`;
+    document.body.appendChild(o);
+    const onKey = (e) => { if (e.key === 'Escape') closeHelp?.(); };
+    closeHelp = () => { document.removeEventListener('keydown', onKey); o.remove(); closeHelp = null; };
+    document.addEventListener('keydown', onKey);
+    o.querySelector('#help-close').addEventListener('click', () => closeHelp?.());
+    o.addEventListener('click', (e) => { if (e.target === o) closeHelp?.(); });
+    o.querySelector('[aria-selected="true"]').focus();
+    const body = o.querySelector('#help-body');
+    if (tab === 'data') body.innerHTML = helpData(await call('dataPlaces').catch(() => ({})));
+    else if (tab === 'about') {
+      body.innerHTML = helpAbout(await call('about').catch(() => ({})));
+      body.querySelector('#save-support').addEventListener('click', saveSupport);
+    } else {
+      body.innerHTML = helpHow();
+      body.querySelector('#tips-again').addEventListener('click', (e) => {
+        try { localStorage.removeItem(TIPS_KEY); } catch { /* nothing to clear */ }
+        e.currentTarget.replaceWith(Object.assign(document.createElement('span'), { className: 'small muted', textContent: 'Done. Each screen will show its tip again.' }));
+      });
+    }
+  }
+
+  const code = (s) => `<code>${esc(s)}</code>`;
+
+  function helpHow() {
+    return `<h2>How Cloak works</h2>
+      <p>Cloak hides client details in a folder of documents before they go to an AI tool, and puts them back into what the AI writes. Everything happens on this computer.</p>
+      <ol class="steps">
+        <li><b>Cloak.</b> Choose a folder of documents. Cloak reads every part of every file (Word, PDF, Excel, emails, pictures and text files, with their headers, footnotes, comments, tracked changes and document details) and replaces names and numbers with tags such as ${code('{{PERSON_1}}')} or ${code('{{NRIC_2}}')}. The same person gets the same tag in every file. The originals are only read, never changed.</li>
+        <li><b>Review.</b> Nothing leaves until a person has checked it. Decide each word Cloak was not sure about, confirm names it joined together, and read any file that needs a manual check. Then finish the review. Your name and the time are recorded.</li>
+        <li><b>Double check.</b> A second, separate check of everything that would be exported: each cloaked copy, the context sheet, the chronology, the file names and the report. It looks again for every value in the key (dates and amounts in any format), for numbers that look like an NRIC, phone, account or case number, and for anything that still looks like a name, in every part of every file. Press <b>Run the double check</b> in the bar at the bottom of the review; it also runs by itself when you export. Each finding shows the words, the file and the line. Hide it, or say it is fine: your name and the time are kept in the matter, and only counts go in the log. Nothing is exported until every file passes or every finding is decided. No AI is used.</li>
+        <li><b>Export.</b> Cloak writes the cloaked copies as plain text files to a folder you choose, with a report of what was read in each file and who reviewed and double-checked it. A Strict matter also gets a context sheet that explains the tags to the AI.</li>
+        <li><b>Use your AI tool.</b> Give it the cloaked copies only, and ask it to keep every tag exactly as written. It never sees the real details. Its own terms still apply to what you send it, so follow your firm's policy.</li>
+        <li><b>Restore.</b> Paste the AI's draft into <b>Restore a draft</b>. Cloak puts the real details back from the matter's key and checks the draft: tags left over or made up, facts that are not in the documents, and sums or dates that do not add up.</li>
+      </ol>
+      <h3>Strict and Standard</h3>
+      <table><tbody>
+        <tr><td>Standard</td><td>Hides people, companies, NRIC and passport numbers, addresses, phone numbers, email addresses, bank accounts, case numbers, land titles and vehicle plates. Dates, amounts and legal provisions are kept unless you tick them.</td></tr>
+        <tr><td>Strict (the default)</td><td>Hides all of that, and also blurs facts that could tie the text to a real dispute: dates, amounts of money, reference numbers (contract, invoice, cheque, policy, claim), towns and places, project names, job titles that point to one person, and court and judge names.</td></tr>
+      </tbody></table>
+      <p class="small">Even Strict cannot hide the shape of a dispute: who sued whom, for what, and in what order. Someone who knows the case may still recognise it. Strict lowers that chance; it does not remove it.</p>
+      <h3>What Cloak cannot see</h3>
+      <p>Cloak works by rules and word lists, not by an AI model. It is not perfect: the review is what makes it safe.</p>
+      <ul>
+        <li><b>Files it cannot read</b> are blocked and listed, and never exported: old Word (.doc), .rtf, old Excel (.xls), PowerPoint, iPhone photos (.heic), archives other than zip, Outlook mailboxes (.pst, .ost), audio, video, and anything password-protected or damaged.</li>
+        <li><b>Parts it does not read</b> are left out of the cloaked copy: email routing headers, the name in a PDF's digital signature, stamps drawn on a page, barcodes and QR codes, a signature or a few handwritten words on a typed page, small or faint text in pictures, and fonts and layout.</li>
+        <li><b>Text it reads but may get wrong:</b> anything read by OCR (scans and pictures), and the reading order of PDF pages set in columns or tables.</li>
+        <li><b>Names it can miss:</b> a name with no clue around it (no title, no bin, binti, a/l or a/p, no ID number beside it) goes on the Not sure list for you to decide; one-word names and nicknames; people described but not named ("the only cardiologist in Kuantan"); names written in Chinese, Tamil or Jawi script (the file is held for a manual check); places and organisations without a company ending, unless they are part of an address.</li>
+        <li><b>Facts Strict can miss:</b> places that are not on its list and have no word such as Taman or Mukim before them; amounts and dates written in words; relative dates ("14 days after the letter"); a month on its own ("in March").</li>
+        <li><b>Not tested yet:</b> Outlook .msg files, scanned Tamil pages, and files kept only in the cloud by OneDrive or Google Drive.</li>
+      </ul>
+      <p><button class="btn small" id="tips-again">Show the first-time tips again</button></p>`;
+  }
+
+  function helpData(p) {
+    const path = (s) => (s ? `<span class="path inline">${esc(s)}</span>` : '');
+    return `<h2>Your data</h2>
+      <div class="msg ok"><b>Nothing leaves this computer.</b> Cloak makes no network connection of any kind. The window can only load its own files, name lookups are switched off, and there is no automatic update and no usage reporting.</div>
+      <h3>In each matter folder (the folder you chose for the matter)</h3>
+      <table><tbody>
+        <tr><td>${code('matter.cloakkey')}</td><td>The key: every tag and the real value it stands for. <b>Encrypted</b> (AES-256-GCM). It opens only with the matter password or the recovery code.</td></tr>
+        <tr><td>${code('matter.cloakkey.bak')}</td><td>The previous save of the key, encrypted the same way.</td></tr>
+        <tr><td>${code('cache')}</td><td>What was read from each file, so unchanged files are not read again. <b>Encrypted</b> with the matter key; the file names in it are scrambled.</td></tr>
+        <tr><td>${code('log.jsonl')}</td><td>Who did what and when, with counts. <b>Not encrypted.</b> It never holds names, numbers or text from the documents.</td></tr>
+        <tr><td>${code('matter.lock')}</td><td>Who has the matter open now: their name and the computer's name. Not encrypted. Removed when the matter is closed.</td></tr>
+      </tbody></table>
+      ${p.matterDir ? `<p class="small">The open matter's folder: ${path(p.matterDir)}</p>` : ''}
+      <h3>On this computer</h3>
+      <table><tbody>
+        <tr><td>Your full name</td><td>In ${code('profile.json')} in Cloak's own folder${p.appData ? `: ${path(p.appData)}` : ''}. Not encrypted.</td></tr>
+        <tr><td>Remembered passwords</td><td>Only if you tick "Remember the password on this computer". Kept in ${code('remembered.json')} in the same folder, locked by Windows or macOS for your login.</td></tr>
+        <tr><td>Which tips you closed</td><td>In the window's own storage, in the same folder.</td></tr>
+        <tr><td>OCR language data</td><td>Copied from the app to ${p.ocrData ? path(p.ocrData) : 'a temporary folder'}. Language data only, no documents.</td></tr>
+      </tbody></table>
+      <h3>Where you choose</h3>
+      <ul>
+        <li><b>Your documents</b> are only read: never changed, moved or copied.</li>
+        <li><b>Cloaked copies</b> and their report are plain text in the folder you export to. They hold tags, not real details, and are not encrypted: they are meant to go to the AI tool.</li>
+        <li><b>Restored drafts</b> that you save hold the real details again, and are <b>not encrypted</b>. Keep them with the matter's other documents.</li>
+        <li><b>Support files</b> are saved where you choose and never sent by Cloak.</li>
+      </ul>
+      <h3>What Cloak cannot protect</h3>
+      <ul>
+        <li>While a matter is open, its key is in this computer's memory.</li>
+        <li>Anyone who gets a copy of ${code('matter.cloakkey')} can try passwords against it for as long as they like. A long password is what protects it.</li>
+        <li>If both the password and the recovery code are lost, nobody can open the key. There is no back door.</li>
+        <li>Once you paste cloaked text into an AI tool, that tool's own terms apply.</li>
+      </ul>`;
+  }
+
+  function helpAbout(a) {
+    return `<h2>About Cloak</h2>
+      <table><tbody>
+        <tr><td>Version</td><td id="about-version">${esc(a.version || state.info?.version || '')}</td></tr>
+        <tr><td>Made by</td><td>Lawgistics</td></tr>
+        <tr><td>Support</td><td>${esc(a.support || '')}</td></tr>
+        <tr><td>Open-source parts</td><td>Cloak is built with open-source software, including the Electron window, the Tesseract OCR engine and its language data, and PDF.js. Their licences are listed in ${code(a.noticesName || 'THIRD-PARTY-NOTICES.txt')} in the folder where Cloak is installed${a.installFolder ? `: <span class="path inline">${esc(a.installFolder)}</span>` : ''}.${a.notices ? '' : ' <span class="muted" id="notices-missing">That file is not in this copy of Cloak.</span>'}</td></tr>
+        <tr><td>Running on</td><td>${esc(a.system || '')}${a.electron ? ` · Electron ${esc(a.electron)}` : ''}</td></tr>
+      </tbody></table>
+      <h3>Save a support file</h3>
+      <p>If something is not working, save a support file and send it to your supplier yourself. Cloak never sends it anywhere.</p>
+      <p class="small">It holds the version, the operating system, a self-test (does the OCR engine start, does the open matter's key open) and the open matter's log, which records actions, counts and the names of the people who worked on the matter, but no client details. As a second guard, anything in it that matches a value in the matter key is replaced by its tag. ${a.matterOpen ? 'The open matter\'s log will be included.' : 'No matter is open, so no matter log will be included. If the problem is with one matter, open it first.'}</p>
+      <button class="btn primary" id="save-support">Save a support file…</button>
+      <div id="support-result"></div>`;
+  }
+
+  async function saveSupport(e) {
+    const btn = e.currentTarget;
+    const box = document.getElementById('support-result');
+    btn.disabled = true;
+    box.innerHTML = '<p class="small"><span class="spinner"></span> Choose where to save it. Cloak then checks the OCR engine and the matter key, which takes a few seconds.</p>';
+    try {
+      const r = await call('saveSupportFile');
+      if (!r.saved) { box.innerHTML = '<p class="small muted">Not saved.</p>'; return; }
+      const word = (t) => (t.ok === true ? ['cloaked', 'Passed'] : t.ok === false ? ['partial', 'Failed'] : ['', 'Not run']);
+      box.innerHTML = `<div class="msg ok" id="support-saved">Support file saved to <b>${esc(r.file)}</b>. Cloak has not sent it anywhere.${r.replaced ? ` ${plural(r.replaced, 'value', 'values')} from the matter key ${r.replaced === 1 ? 'was' : 'were'} found in it and replaced by tags.` : ''}</div>
+        <table id="self-test"><tbody>${r.test.map((t) => `<tr><td>${esc(t.check)}</td><td><span class="chip ${word(t)[0]}">${word(t)[1]}</span> ${esc(t.what)}</td></tr>`).join('')}</tbody></table>`;
+    } catch (err) {
+      box.innerHTML = message(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // A way back to the home screen from any screen (the review screen has no Back button).
+  async function goHome() {
+    if (document.getElementById('progress')) return; // cloaking is running: wait until it has finished
+    closeHelp?.();
+    if (!state.info?.fullName) return nameScreen();
+    if (state.matter) {
+      const yes = await confirmDialog({ title: 'Go to the home screen?', body: 'This closes the matter. Everything you decided is saved in it. Cloaked copies you have not exported are not kept: to export them later, open the matter and cloak the folder again.', yes: 'Close the matter' });
+      if (!yes) return;
+      await call('closeMatter').catch(() => {});
+      Object.assign(state, { matter: null, afterOpen: null, review: null, chrono: null, exported: null, restoreResult: null, draft: '' });
+    }
+    home();
+  }
+
+  // Home and Help in the top bar, and the clicks every screen shares.
+  document.querySelector('.bar-right')?.insertAdjacentHTML('afterbegin', '<button class="bar-link" id="bar-home" data-go-home>Home</button><button class="bar-link" id="bar-help" data-help="how">Help</button>');
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-tip-close], [data-help], [data-go-sample], [data-go-home]');
+    if (!t) return;
+    if (t.dataset.tipClose) closeTip(t.dataset.tipClose);
+    else if (t.dataset.help) helpScreen(t.dataset.help);
+    else if (t.hasAttribute('data-go-home')) goHome();
+    else sampleScreen();
+  });
+
+  // ---------------------------------------------------------------- licence
+  // The licence is checked by the app on this computer. Without one (or after
+  // it ends) this is an evaluation copy: export is limited to test matters.
+  // Restoring drafts always works.
+
+  function licenceBar(v) {
+    const el = document.getElementById('licence-bar');
+    if (!el || !v) return;
+    el.textContent = v.licensed ? `Licensed to ${v.firm}` : 'Evaluation copy';
+    el.title = v.licensed ? `Licence ${v.id}. Ends ${v.expires}.` : 'No licence: cloaked copies can be exported only from test matters. Restoring drafts always works.';
+  }
+
+  async function licenceScreen(error, note) {
+    let v = null;
+    try { v = await call('licence'); } catch (err) { error = error || err.message; }
+    licenceBar(v);
+    const ends = v?.licensed && v.daysLeft <= 30 ? ` <span class="chip manual">${v.daysLeft ? `in ${plural(v.daysLeft, 'day', 'days')}` : 'today'}</span>` : '';
+    show(`<div class="narrow">
+      <h1>Licence</h1>
+      ${error ? message(error) : ''}${note ? message(note, 'ok') : ''}
+      ${v?.developmentKey ? message('This copy of Cloak was built for testing. It has the development licence key, so no licence will work in it. Ask your supplier for the copy built for sale.', 'warn') : ''}
+      <div class="card" id="licence-status">${v?.licensed ? `
+        <h2>Licensed to ${esc(v.firm)}</h2>
+        <p class="small">Licence ID: <b>${esc(v.id)}</b><br>Seats: <b>${esc(v.seats)}</b> <span class="muted">(for your records: Cloak does not count or limit seats)</span><br>Issued: ${esc(v.issued)}<br>Ends: <b>${esc(v.expires)}</b>${ends}</p>
+        <p class="small muted">${v.where === 'computer' ? 'Installed for everyone on this computer.' : 'Kept in your own user folder on this computer.'} It was checked on this computer. Nothing is sent anywhere.</p>`
+    : `<h2>Evaluation copy</h2>
+        <p>Everything works, but cloaked copies can be exported only from matters ticked as made-up test documents. Restoring drafts always works, with or without a licence.</p>
+        ${v && v.status !== 'none' ? `<div class="msg warn" id="licence-problem">${esc(v.reason)}</div>` : ''}`}
+      </div>
+      <div class="card">
+        <h2>${v?.licensed ? 'Replace the licence' : 'Add the licence'}</h2>
+        <p class="muted small">Paste the licence text, from BEGIN CLOAK LICENCE to END CLOAK LICENCE, or choose the licence file. It is checked on this computer. Nothing is sent anywhere.</p>
+        <div class="field"><textarea id="licence-text" rows="7" aria-label="Licence text" autocomplete="off" spellcheck="false" placeholder="-----BEGIN CLOAK LICENCE-----"></textarea></div>
+        <div class="row"><button class="btn primary" id="licence-use">Use this licence</button><button class="btn" id="licence-file">Choose the licence file…</button></div>
+      </div>
+      <div class="row"><button class="btn" id="licence-back">Back</button>${v?.licensed && v.where === 'user' ? '<button class="link" id="licence-remove">Remove the licence from this computer</button>' : ''}</div>
+    </div>`);
+    const install = async (text) => {
+      try {
+        const r = await call('installLicence', { text });
+        licenceScreen(null, `Licence added. Cloak is licensed to ${r.firm} until ${r.expires}.`);
+      } catch (err) { licenceScreen(err.message); }
+    };
+    on('#licence-use', 'click', () => {
+      const text = document.getElementById('licence-text').value;
+      if (!text.trim()) return licenceScreen('Paste the licence text first, or choose the licence file.');
+      install(text);
+    });
+    on('#licence-file', 'click', async () => {
+      try { const f = await call('pickLicenceFile'); if (f) install(f.text); } catch (err) { licenceScreen(err.message); }
+    });
+    on('#licence-back', 'click', () => home());
+    on('#licence-remove', 'click', async () => {
+      const yes = await confirmDialog({ title: 'Remove the licence?', body: 'Cloak goes back to being an evaluation copy for you on this computer: cloaked copies can then be exported only from test matters. Restoring drafts keeps working.', yes: 'Remove the licence' });
+      if (!yes) return;
+      try { await call('removeLicence'); licenceScreen(null, 'The licence was removed from this computer.'); } catch (err) { licenceScreen(err.message); }
+    });
+  }
+
   call('info').then((info) => {
     state.info = info;
     document.getElementById('version').textContent = `Version ${info.version}`;
     if (info.fullName) home(); else nameScreen();
+    call('licence').then(licenceBar, () => {});
   });
 })();
