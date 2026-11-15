@@ -205,7 +205,9 @@ What is in it
   result below, and counts about the open matter. No matter name, no folder
   paths, no client details.
 ${session ? `- matter-log.jsonl: the open matter's log. It records who did what and when,
-  with counts. It never holds names, numbers or text from the documents.
+  with counts. It never holds names, numbers or text from the documents. It
+  does name the people who worked on the matter in Cloak (their full name and
+  computer login), with the times.
 ` : '- No matter was open, so no matter log is included.\n'}
 As a second guard, every value in the open matter's key was looked for in this
 file and replaced by its tag (such as {{PERSON_1}}) wherever it was found.

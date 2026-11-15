@@ -838,7 +838,7 @@
       </tbody></table>
       <h3>Save a support file</h3>
       <p>If something is not working, save a support file and send it to your supplier yourself. Cloak never sends it anywhere.</p>
-      <p class="small">It holds the version, the operating system, a self-test (does the OCR engine start, does the open matter's key open) and the open matter's log, which records actions and counts but no client details. As a second guard, anything in it that matches a value in the matter key is replaced by its tag. ${a.matterOpen ? 'The open matter\'s log will be included.' : 'No matter is open, so no matter log will be included. If the problem is with one matter, open it first.'}</p>
+      <p class="small">It holds the version, the operating system, a self-test (does the OCR engine start, does the open matter's key open) and the open matter's log, which records actions, counts and the names of the people who worked on the matter, but no client details. As a second guard, anything in it that matches a value in the matter key is replaced by its tag. ${a.matterOpen ? 'The open matter\'s log will be included.' : 'No matter is open, so no matter log will be included. If the problem is with one matter, open it first.'}</p>
       <button class="btn primary" id="save-support">Save a support file…</button>
       <div id="support-result"></div>`;
   }
