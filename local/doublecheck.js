@@ -739,7 +739,7 @@ export function verdict(matter, inspections, { approvals = {} } = {}) {
     const approval = approvals[key];
     const place = placeOf(f);
     g.places.push({ unit: f.unit, title: f.title, part: f.part, line: f.line, excerpt: f.excerpt, mark: f.mark, place, decided: approval && approval.places.includes(place) ? { by: approval.by, when: approval.when } : null });
-    if (!fixable(f)) g.fixable = false;
+    if (!fixable(f)) { g.fixable = false; g.whyNot = f.check === 'tag' ? 'tag' : f.who ? 'who' : 'generated'; }
   }
   const list = [...groups.values()].map((g) => ({ ...g, undecided: g.places.filter((p) => !p.decided).length }));
   const perUnit = units.map((u) => {

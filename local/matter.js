@@ -556,7 +556,13 @@ class Session {
       return { check: this.checkView(), review: this.reviewData() };
     }
     if (decision !== 'hide') throw new Error('Choose "Hide it" or "It is fine".');
-    if (!group.fixable) throw new Error(group.check === 'tag' ? 'A tag problem cannot be hidden. Remove the file, or mark it as fine if you are sure.' : 'This is the name of the person who reviewed or double-checked, which Cloak writes in the report. Mark it as fine, or have someone else do the export.');
+    if (!group.fixable) {
+      throw new Error({
+        tag: 'A tag problem cannot be hidden. Leave the file out, or mark it as fine if you are sure.',
+        who: 'This is the name of the person who reviewed or double-checked, which Cloak writes in the report. Mark it as fine, or have someone else do the export.',
+        generated: 'Cloak writes this from tags and numbers, so hiding cannot change it. Mark it as fine if you are sure.',
+      }[group.whyNot] || 'This cannot be hidden. Mark it as fine if you are sure.');
+    }
     // What the review has waiting before the change: only something new reopens it.
     const waiting = () => { const d = this.reviewData(); return new Set([...d.unsure.map((u) => `u|${u.text}`), ...d.merges.map((m) => `m|${m.tag}`), ...d.shortForms.map((a) => `s|${a.tag}|${a.also}`)]); };
     const before = waiting();
@@ -565,21 +571,24 @@ class Session {
     this.reapply();
     state.hidden += 1;
     let reopened = isNew();
+    let current = false;
     if (!reopened) {
       // If the same words still show (a name in lower case, for one), their exact text is hidden under the tag.
       await this.checkExport(only);
+      current = true;
       const still = this.lastCheck.result.groups.find((g) => g.key === key && g.undecided);
       if (still && how.token) {
         for (const s of surfaces(still)) this.addExactHide(s, how.token);
         this.reapply();
         reopened = isNew();
+        current = false;
       }
     }
     // Something new for the review to decide: it must be finished again, and the double check run again.
     if (reopened) this.review.complete = null;
     await this.save();
     await this.log('double-check-hide', { check: group.check, as: how.as, review_reopened: reopened });
-    if (!reopened) await this.checkExport(only);
+    if (!reopened && !current) await this.checkExport(only);
     return { check: this.checkView(), review: this.reviewData(), reopened };
   }
 
