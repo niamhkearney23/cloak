@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, stat, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { makeMatter } from './matter.js';
 import { createMatter, openMatter } from '../matter.js';
 import { redactLog, selfTest, noPaths, supportFile } from '../support.js';
 import { readZip } from '../zip.js';
+import { planSample, createSampleMatter } from '../sample.js';
 
 // Fixes found in review (support and sample areas). Made-up data only.
 const FAST = { N: 2 ** 12, r: 8, p: 1 };
@@ -38,6 +39,20 @@ test('the support file leaves Cloak\'s own times and words alone, and every coun
   assert.equal(info.values_replaced_by_tags, 1);
   assert.match(files.text('README.txt'), /Made on 15 Nov 2026, 1:58 pm by Cloak/);
   assert.match(files.text('README.txt'), /Values replaced: 1\./);
+});
+
+test('a Documents folder that is a link into OneDrive is refused for the sample, and nothing is written there', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-link-'));
+  const synced = path.join(root, 'OneDrive - Example Firm', 'Documents');
+  await mkdir(synced, { recursive: true });
+  const link = path.join(root, 'Documents');
+  await symlink(synced, link, 'dir');
+  const plan = await planSample(link);
+  assert.match(plan.refused, /OneDrive/);
+  await assert.rejects(createSampleMatter({ parent: link, password: PASSWORD, kdf: FAST }), (e) => e.code === 'SYNC_LOCATION');
+  assert.deepEqual(await readdir(synced), [], 'nothing was created in the synced folder');
+  // A place that does not exist yet, below the link, is seen through it too.
+  assert.match((await planSample(path.join(link, 'new place'))).refused, /OneDrive/);
 });
 
 test('the self-test writes its result even if the OCR engine never answers', async () => {

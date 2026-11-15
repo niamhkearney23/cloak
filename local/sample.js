@@ -11,7 +11,7 @@
 // taken). Nothing that already exists is written into or removed. A synced
 // place (OneDrive, Google Drive, iManage Drive) is refused, as for any matter.
 
-import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,10 +30,27 @@ export async function sampleInfo() {
 
 const exists = (p) => stat(p).then(() => true, () => false);
 
+/**
+ * The place with every link or junction in it followed (the nearest folder that exists is resolved, the rest
+ * is added back), so a Documents folder that is really a link into OneDrive is seen for what it is.
+ */
+async function realPath(place) {
+  let full = path.resolve(place);
+  const rest = [];
+  for (;;) {
+    try { return path.join(await realpath(full), ...rest); } catch { /* not there (yet) */ }
+    const up = path.dirname(full);
+    if (up === full) return path.resolve(place);
+    rest.unshift(path.basename(full));
+    full = up;
+  }
+}
+
 /** The first free name in `parent`: "Cloak sample matter", then "Cloak sample matter 2", ... */
 export async function freeSampleFolder(parent) {
+  const base = await realPath(parent);
   for (let n = 1; n < 1000; n++) {
-    const folder = path.join(path.resolve(parent), n === 1 ? SAMPLE_FOLDER_NAME : `${SAMPLE_FOLDER_NAME} ${n}`);
+    const folder = path.join(base, n === 1 ? SAMPLE_FOLDER_NAME : `${SAMPLE_FOLDER_NAME} ${n}`);
     if (!(await exists(folder))) return folder;
   }
   throw new Error('There are already too many sample matters in that place. Delete the old "Cloak sample matter" folders, or choose another place.');
