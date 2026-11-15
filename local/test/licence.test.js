@@ -328,3 +328,25 @@ test('a licence file saved as UTF-16 (Windows PowerShell Out-File) is read; a da
     assert.ok(['VALID', 'NOT_A_LICENCE', 'CHANGED'].includes(r.code), `${name}: ${r.code}`); // a cut-off last byte (the newline) is harmless
   }
 });
+
+// A long firm name is wrapped by plain-text email at 76 columns (less when quoted): the wrapped line carries on the line above.
+test('a licence whose long "Licensed to" line was wrapped by email still checks, and a changed second half is still refused', () => {
+  const firm = 'Tetuan Contoh Abdullah, Lim, Ramasamy & Rakan-Rakan, Peguambela dan Peguamcara';
+  const text = issue({ firm, id: 'CL-TEST-' + 'WRAPPED'.repeat(6) });
+  const wrapAt = (s, n) => s.split('\n').flatMap((l) => (l.length <= n || !/\s/.test(l.replace(/^>\s*/, '')) ? [l] : l.match(new RegExp(`.{1,${n}}(?:\\s|$)`, 'g')).map((x) => x.trimEnd()))).join('\n');
+  const quote = (s) => s.split('\n').map((l) => `> ${l}`).join('\n');
+  assert.ok(text.split('\n').some((l) => l.length > 76));
+  const wrapped = wrapAt(text, 76);
+  assert.notEqual(wrapped, text);
+  assert.equal(check(wrapped).status, 'valid');
+  assert.equal(check(quote(wrapAt(quote(text), 72))).status, 'valid');
+  assert.equal(check(wrapAt(quote(text), 60).replace(/\n/g, '\r\n')).status, 'valid');
+  assert.equal(check(wrapped).licence.firm, firm);
+  // A break right after a hyphen.
+  assert.equal(check(text.replace('Rakan-Rakan', 'Rakan-\nRakan')).status, 'valid');
+  // Changing the second half, or any other line, is still refused.
+  assert.equal(check(wrapped.replace('Peguamcara', 'Peguamcari')).code, 'CHANGED');
+  assert.equal(check(wrapped.replace('Seats: 10', 'Seats: 100')).code, 'CHANGED');
+  // Text added after a line is part of that line, so it is refused.
+  assert.equal(check(text.replace('Seats: 10', 'Seats: 10\n(unlimited)')).code, 'CHANGED');
+});

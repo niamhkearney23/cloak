@@ -37,7 +37,9 @@ const b64url = (buf) => Buffer.from(buf).toString('base64').replace(/\+/g, '-').
 const unb64 = (s) => Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
 const wrap = (s) => s.match(/.{1,64}/g).join('\n');
 const pad = (n) => String(n).padStart(2, '0');
-const same = (a, b) => String(a).normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase() === String(b).normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase();
+// Whitespace does not count: an email program may break a line at a space, or right after a hyphen.
+const squash = (a) => String(a).normalize('NFC').replace(/\s+/g, '').toLowerCase();
+const same = (a, b) => squash(a) === squash(b);
 
 /** A calendar date as YYYY-MM-DD, in this computer's time zone. */
 export const dayOf = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -128,10 +130,13 @@ function parse(text) {
   const di = body.indexOf('Data:');
   const si = body.indexOf('Signature:');
   if (di < 0 || si < di) return null;
-  const summary = {};
+  // The readable lines. A line that carries on from the one above (an email program wrapped it) is part of that line.
+  const summary = [];
   for (const l of body.slice(0, di)) {
     const m = l.match(/^([A-Za-z ]+):\s*(.*)$/);
-    if (m) summary[m[1].trim().toLowerCase()] = m[2];
+    if (m) summary.push([m[1].trim().toLowerCase(), m[2]]);
+    else if (!l) summary.push(null);
+    else if (summary.length && summary[summary.length - 1]) summary[summary.length - 1][1] += ` ${l}`;
   }
   const joined = (ls) => ls.join('').replace(/\s+/g, '').replace(/=+$/, '');
   const data = joined(body.slice(di + 1, si));
@@ -179,8 +184,9 @@ export function checkLicence(text, { publicKey = LICENCE_PUBLIC_KEY, today = new
   if (problem) return fail('BAD_DETAILS', `This licence cannot be used: ${problem}`);
   if (details.key !== fingerprint) return otherKey();
   // The readable lines at the top must say the same as the signed details.
-  for (const [key, label, value] of SUMMARY) {
-    if (key in p.summary && !same(p.summary[key], value(details))) return fail('CHANGED', `The "${label}" line of this licence has been changed since it was issued, so it cannot be used. Ask the supplier for a fresh copy of the licence file.`);
+  for (const [key, got] of p.summary.filter(Boolean)) {
+    const [, label, value] = SUMMARY.find(([k]) => k === key) || [];
+    if (value && !same(got, value(details))) return fail('CHANGED', `The "${label}" line of this licence has been changed since it was issued, so it cannot be used. Ask the supplier for a fresh copy of the licence file.`);
   }
   const licence = { id: details.id, firm: details.firm, seats: details.seats, issued: details.issued, expires: details.expires, key: fingerprint };
   return { ...licenceState(licence, today), licence };
