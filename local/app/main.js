@@ -5,7 +5,7 @@
 
 import { app, BrowserWindow, dialog, ipcMain, safeStorage, session as electronSession } from 'electron';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,8 @@ import { assertNotSynced, locate } from '../source.js';
 import { formatDate } from '../dates.js';
 import { checkDraft } from '../draftcheck.js';
 import { extractFile } from '../extract.js';
+import { checkLicence, findLicence, keyFingerprint, licenceBlock, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
+import { LICENCE_PUBLIC_KEY } from '../licence-key.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -144,7 +146,11 @@ const api = {
     if (!f) throw new Error('That file is not in this run.');
     return { name: f.rel, text: f.cloaked || '', reasons: f.reasons };
   },
-  export: async ({ outDir, only }) => needMatter().export({ outDir, only: only === 'chronology' ? 'chronology' : 'all' }),
+  export: async ({ outDir, only }) => {
+    const m = needMatter();
+    m.licence = await loadLicence(); // an evaluation copy exports test matters only
+    return m.export({ outDir, only: only === 'chronology' ? 'chronology' : 'all' });
+  },
 
   // The chronology table.
   chronology: async ({ build, undated }) => {
@@ -185,6 +191,49 @@ const api = {
   closeMatter: async () => { await matter?.close(); matter = null; return {}; },
 };
 
+// ------------------------------------------------------------------ licence
+// A licence is checked here, on this computer, against the public key built
+// into the app (licence-key.js). Nothing is sent anywhere. A person's own
+// licence is kept in their user-data folder; IT can put one licence on the
+// computer for everyone (docs/it-deployment.md). No licence, or one that has
+// ended, means an evaluation copy. Restoring a draft never asks.
+
+const userLicenceFile = () => path.join(app.getPath('userData'), 'licence.txt');
+function machineLicenceFile() {
+  if (!app.isPackaged && process.env.CLOAK_TEST_USER_DATA) return path.join(process.env.CLOAK_TEST_USER_DATA, 'machine', 'licence.txt');
+  if (process.platform === 'win32') return path.join(process.env.ProgramData || 'C:\\ProgramData', 'Cloak', 'licence.txt');
+  if (process.platform === 'darwin') return '/Library/Application Support/Cloak/licence.txt';
+  return '/etc/cloak/licence.txt';
+}
+// Tests run from the source folder may check licences with their own key. An installed copy never can.
+const licenceKey = () => (!app.isPackaged && process.env.CLOAK_TEST_LICENCE_KEY) || LICENCE_PUBLIC_KEY;
+let licence = null; // what the last check found
+
+async function loadLicence() {
+  licence = await findLicence({ files: [{ file: userLicenceFile(), where: 'user' }, { file: machineLicenceFile(), where: 'computer' }], publicKey: licenceKey() });
+  return licence;
+}
+const licenceInfo = () => ({ ...licenceView(licence), developmentKey: keyFingerprint(licenceKey()) === DEVELOPMENT_KEY_FINGERPRINT });
+
+Object.assign(api, {
+  licence: async () => { await loadLicence(); return licenceInfo(); },
+  installLicence: async ({ text }) => {
+    const r = checkLicence(text, { publicKey: licenceKey() });
+    if (r.status !== 'valid') throw Object.assign(new Error(r.reason), { code: r.code });
+    await mkdir(path.dirname(userLicenceFile()), { recursive: true });
+    await writeFile(userLicenceFile(), licenceBlock(text), 'utf8');
+    await loadLicence();
+    return licenceInfo();
+  },
+  pickLicenceFile: async () => {
+    const file = testPicks ? testPicks.shift() : (await dialog.showOpenDialog(win, { title: 'Choose the licence file', properties: ['openFile'], filters: [{ name: 'Licence', extensions: ['txt', 'licence', 'lic'] }, { name: 'All files', extensions: ['*'] }] })).filePaths[0];
+    if (!file) return null;
+    if ((await stat(file)).size > 64 * 1024) throw new Error('That file is too large to be a Cloak licence.');
+    return { text: await readFile(file, 'utf8') };
+  },
+  removeLicence: async () => { await rm(userLicenceFile(), { force: true }); await loadLicence(); return licenceInfo(); },
+});
+
 ipcMain.handle('cloak', async (event, name, args) => {
   // Only the app's own window may call in.
   if (event.sender !== win?.webContents || !api[name]) return { error: 'Not allowed.' };
@@ -218,6 +267,11 @@ else {
   app.whenReady().then(async () => {
     await loadProfile();
     const ses = electronSession.defaultSession;
+    // Chromium's spell checker downloads a dictionary from Google when it
+    // starts, from outside the window, even with spellcheck off in the window.
+    // Switch it off for the whole session so that download is never tried.
+    // (Tested on Linux; on Windows and Mac a failure here must not stop the window.)
+    try { ses.setSpellCheckerEnabled(false); ses.setSpellCheckerLanguages([]); } catch { /* the name lookup block below still stops it */ }
     // Only the app's own files load. Everything else is refused.
     ses.webRequest.onBeforeRequest((details, done) => done({ cancel: !/^(?:file|devtools|chrome-devtools):/.test(details.url) }));
     ses.setPermissionRequestHandler((wc, permission, done) => done(false));

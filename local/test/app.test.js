@@ -221,3 +221,105 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
   await new Promise((r) => setTimeout(r, 800));
   await assert.rejects(stat(path.join(matter, 'matter.lock')));
 });
+
+// The Licence screen, driven like a person would. The licences are made up and
+// signed with a key made for this test; only a copy run from the source folder
+// may be given such a key. Chromium's own network log is recorded and every
+// Node thread carries the tripwire (test/net-tripwire.cjs), to show that the
+// window and the licence check reach nothing outside the computer.
+test('the licence screen: evaluation copy, refused licences, a licence from a file, nothing sent anywhere', { skip: noDisplay && 'no display (run under xvfb-run)', timeout: 120000 }, async () => {
+  const { _electron: electron } = require('playwright-core');
+  const { writeFile } = await import('node:fs/promises');
+  const { generateKeyPairSync } = await import('node:crypto');
+  const { issueLicence } = await import('../licence.js');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-app-licence-'));
+  const userData = path.join(root, 'userdata');
+  await mkdir(userData, { recursive: true });
+  await writeFile(path.join(userData, 'profile.json'), JSON.stringify({ fullName: 'Reviewer Example' }));
+  const vendor = generateKeyPairSync('ed25519');
+  const stranger = generateKeyPairSync('ed25519');
+  const licence = (privateKey, extra = {}) => issueLicence({ privateKey, firm: 'Made-up Law Chambers', seats: 5, issued: '2026-01-05', expires: '2099-12-31', id: 'CL-TEST-WINDOW', ...extra });
+  const licenceFile = path.join(root, 'made-up.licence.txt');
+  await writeFile(licenceFile, licence(vendor.privateKey));
+  const netLog = path.join(root, 'netlog.json');
+  const tripwire = path.join(root, 'tripwire.log');
+  await writeFile(tripwire, '');
+  const app = await electron.launch({
+    executablePath: require('electron'),
+    args: [local, '--no-sandbox', `--log-net-log=${netLog}`],
+    env: {
+      ...process.env,
+      CLOAK_TEST_USER_DATA: userData,
+      CLOAK_TEST_PICKS: JSON.stringify([licenceFile]),
+      CLOAK_TEST_LICENCE_KEY: vendor.publicKey.export({ type: 'spki', format: 'pem' }),
+      CLOAK_NET_TRIPWIRE: tripwire,
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${JSON.stringify(path.join(local, 'test', 'net-tripwire.cjs'))}`.trim(),
+    },
+  });
+  try {
+    const page = await app.firstWindow();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.waitForSelector('#go-licence');
+    await page.waitForFunction(() => document.getElementById('licence-bar')?.textContent === 'Evaluation copy');
+    await page.click('#go-licence');
+    await page.waitForSelector('#licence-status');
+    assert.match(await page.textContent('#licence-status'), /Evaluation copy[\s\S]*made-up test documents[\s\S]*Restoring drafts always works/);
+    assert.equal(await page.locator('.msg.warn', { hasText: 'development licence key' }).count(), 0, 'a test key is not the development key');
+
+    // Refused: changed after issue, signed with another key, ended, not a licence at all.
+    const refused = async (text, pattern) => {
+      await page.fill('#licence-text', text);
+      await page.click('#licence-use');
+      await page.waitForFunction((src) => new RegExp(src).test(document.querySelector('.msg.bad')?.textContent || ''), pattern.source);
+      assert.match(await page.textContent('#licence-status'), /Evaluation copy/);
+    };
+    await refused(licence(vendor.privateKey).replace('Seats: 5', 'Seats: 50'), /has been changed since it was issued/);
+    await refused(licence(stranger.privateKey), /different copy of Cloak/);
+    await refused(licence(vendor.privateKey, { issued: '2020-01-01', expires: '2020-12-31' }), /ended on 31 Dec 2020/);
+    await refused('hello', /not a Cloak licence/);
+    assert.equal(await page.textContent('#licence-bar'), 'Evaluation copy');
+    await assert.rejects(stat(path.join(userData, 'licence.txt')), 'a refused licence is not saved');
+
+    // A good licence, chosen as a file.
+    await page.click('#licence-file');
+    await page.waitForSelector('#licence-status h2:has-text("Licensed to Made-up Law Chambers")');
+    const status = await page.textContent('#licence-status');
+    assert.match(status, /Licence ID: CL-TEST-WINDOW/);
+    assert.match(status, /Seats: 5 \(for your records: Cloak does not count or limit seats\)/);
+    assert.match(status, /Ends: 31 Dec 2099/);
+    assert.match(await page.textContent('.msg.ok'), /Licence added/);
+    assert.equal(await page.textContent('#licence-bar'), 'Licensed to Made-up Law Chambers');
+    assert.match(await readFile(path.join(userData, 'licence.txt'), 'utf8'), /^-----BEGIN CLOAK LICENCE-----\n[\s\S]*-----END CLOAK LICENCE-----\n$/);
+
+    // It is still there after the window reloads.
+    await page.reload();
+    await page.waitForFunction(() => document.getElementById('licence-bar')?.textContent === 'Licensed to Made-up Law Chambers');
+
+    // Removing it makes this an evaluation copy again.
+    await page.click('#go-licence');
+    await page.click('#licence-remove');
+    await page.click('#yes');
+    await page.waitForSelector('#licence-status h2:has-text("Evaluation copy")');
+    assert.equal(await page.textContent('#licence-bar'), 'Evaluation copy');
+    await assert.rejects(stat(path.join(userData, 'licence.txt')));
+
+    // A request from the window is refused before it reaches the network (it shows up in the network log below).
+    assert.equal(await page.evaluate(() => fetch('https://example.com/').then(() => 'reached', () => 'blocked')), 'blocked');
+    assert.deepEqual(errors, []);
+  } finally {
+    await app.close();
+  }
+
+  // Node side: no thread of the app tried to reach the network.
+  assert.equal(await readFile(tripwire, 'utf8'), '', 'a Node thread tried to use the network');
+  // Chromium side: the network log was recorded, and holds no web request, name
+  // lookup, socket or connection of any kind. (The window's own refused request
+  // never reaches the network stack, so it is not in this log at all.)
+  const log = JSON.parse(await readFile(netLog, 'utf8'));
+  const names = Object.fromEntries(Object.entries(log.constants.logEventTypes).map(([name, n]) => [n, name]));
+  assert.ok(log.events.length > 0, 'the network log was recorded');
+  const contact = log.events.map((e) => names[e.type]).filter((n) => /^(URL_REQUEST_START_JOB|HOST_RESOLVER_MANAGER_REQUEST|SOCKET_ALIVE|TCP_CONNECT|UDP_CONNECT|SSL_CONNECT|QUIC_SESSION|CONNECT_JOB)$/.test(n));
+  const urls = log.events.map((e) => e.params?.url).filter(Boolean);
+  assert.deepEqual(contact, [], `network activity in Chromium's log: ${[...new Set(contact)].join(', ')} ${[...new Set(urls)].join(' ')}`);
+});
