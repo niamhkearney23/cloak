@@ -1227,7 +1227,8 @@ export class Matter {
 
   /** Short names defined in brackets: Maju Jaya Sdn Bhd ("MJSB"). */
   learnDefinitions(text) {
-    const cloaked = this.cloak.cloak(this.protect(String(text || '')).text);
+    // The one-pass search gives the same result as cloak() (test/fast.test.js), much faster on big files.
+    const cloaked = this.cloak.cloak(this.known(this.protect(String(text || '')).text), { skipKnown: true, detectors: FORWARD_DETECTORS });
     const re = /\{\{((?:PERSON|COMPANY)_\d+)[^}]*\}\}\s*(?:\([^()]{0,40}\)\s*)?\(\s*(?:hereinafter\s+(?:referred\s+to\s+as|called)\s+|selepas\s+ini\s+(?:dirujuk|disebut)\s+sebagai\s+|collectively\s+)?["“'‘]([^"”'’]{2,40})["”'’]\s*\)/gi;
     for (const m of cloaked.matchAll(re)) {
       const alias = norm(m[2]);
