@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Cloak by Lawgistics</title>
+<style>
+  :root {
+    --ink: #17202d;
+    --muted: #4f5a69;
+    --navy: #1b2a44;
+    --accent: #0c6a62;
+    --accent-soft: #e5f1ef;
+    --sand: #f5f2eb;
+    --line: #d7dbe1;
+    --warn: #7a430c;
+    --warn-soft: #fbf0e3;
+    --paper: #ffffff;
+    --desk: #e8eaee;
+    --serif: Georgia, "Times New Roman", Times, serif;
+    --sans: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--desk);
+    color: var(--ink);
+    font: 8.5pt/1.3 var(--sans);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .sheet {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 24px auto;
+    padding: 8mm 12mm 6mm;
+    background: var(--paper);
+    box-shadow: 0 2px 14px rgba(20, 30, 50, 0.16);
+    display: flex;
+    flex-direction: column;
+    gap: 2.2mm;
+  }
+  h1, h2, h3, p, ul { margin: 0; }
+  ul { padding-left: 1.05em; }
+  li { margin: 0.12em 0; }
+  li::marker { color: var(--accent); }
+
+  /* Header */
+  .top { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--navy); padding-bottom: 2mm; }
+  .brand { font: 700 15pt/1 var(--serif); color: var(--navy); letter-spacing: 0.01em; }
+  .brand span { font: 400 9pt/1 var(--sans); color: var(--muted); letter-spacing: 0; margin-left: 0.4em; }
+  .for { font-size: 8.4pt; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  h1 { font: 700 19pt/1.12 var(--serif); color: var(--navy); max-width: 92%; }
+  .lede { font-size: 9.9pt; color: var(--ink); max-width: 96%; }
+  .lede b { color: var(--accent); }
+
+  /* Flow */
+  .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3.2mm; }
+  .step { position: relative; border: 1px solid var(--line); border-top: 3px solid var(--accent); border-radius: 3px; padding: 1.8mm 2mm; background: var(--paper); }
+  .step b { display: block; font-size: 8.8pt; color: var(--navy); }
+  .step small { display: block; font-size: 7.7pt; color: var(--muted); line-height: 1.3; margin-top: 0.4mm; }
+  .step:not(:last-child)::after { content: "\2192"; position: absolute; right: -1.6mm; top: 50%; transform: translate(50%, -50%); color: var(--accent); font-weight: 700; font-size: 10pt; line-height: 1; }
+  .step.ai { border-top-color: var(--warn); background: var(--warn-soft); border-style: dashed; border-top-style: solid; }
+  .flow-note { font-size: 7.8pt; color: var(--muted); margin-top: -1.8mm; }
+  .flow-note b { color: var(--accent); }
+  .flow-note i { color: var(--warn); font-style: normal; font-weight: 700; }
+
+  /* Columns */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .card h2 { font: 700 11pt/1.2 var(--serif); color: var(--navy); margin-bottom: 1.2mm; padding-bottom: 0.8mm; border-bottom: 1px solid var(--line); }
+  .card + .card { margin-top: 2.2mm; }
+  .card p { margin-bottom: 1mm; }
+  .tagline { font-family: Consolas, "Courier New", monospace; font-size: 8.4pt; background: var(--accent-soft); color: var(--accent); padding: 0 0.3em; border-radius: 2px; white-space: nowrap; }
+
+  /* Honest box */
+  .honest { border: 1px solid var(--warn); border-left: 5px solid var(--warn); background: var(--warn-soft); border-radius: 3px; padding: 2.2mm 3.2mm; }
+  .honest h2 { font: 700 11.5pt/1.2 var(--serif); color: var(--warn); margin-bottom: 0.8mm; }
+
+  /* Figures */
+  .figs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.4mm; }
+  .fig { background: var(--sand); border-radius: 3px; padding: 1.6mm 2.4mm; }
+  .fig strong { display: block; font: 700 13.5pt/1.05 var(--serif); color: var(--navy); }
+  .fig span { display: block; font-size: 7.9pt; color: var(--muted); line-height: 1.3; margin-top: 0.6mm; }
+  .figs-note { font-size: 7.7pt; color: var(--muted); margin-top: -1.8mm; }
+
+  /* Status */
+  .status { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+  .status h3 { font: 700 9.4pt/1.2 var(--sans); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.8mm; }
+  .status .built h3 { color: var(--accent); }
+  .status .doing h3 { color: var(--warn); }
+
+  /* Footer */
+  .foot { margin-top: auto; display: grid; grid-template-columns: 1.25fr 1fr; gap: 5mm; border-top: 2px solid var(--navy); padding-top: 2.6mm; }
+  .foot p { font-size: 8.4pt; }
+  .foot .cta b { color: var(--navy); font-size: 10pt; display: block; margin-bottom: 0.6mm; }
+  .contact { font-weight: 600; color: var(--navy); margin-top: 1mm; }
+  .fine { font-size: 7.4pt; color: var(--muted); }
+
+  @page { size: A4; margin: 0; }
+  @media print {
+    body { background: var(--paper); }
+    .sheet { margin: 0; box-shadow: none; width: 210mm; height: 297mm; min-height: 0; overflow: hidden; }
+  }
+  @media screen and (max-width: 820px) {
+    body { font-size: 15px; }
+    .sheet { width: auto; min-height: 0; margin: 0; padding: 20px 16px; box-shadow: none; gap: 16px; }
+    h1 { font-size: 26px; max-width: none; }
+    .lede { font-size: 16px; max-width: none; }
+    .top { flex-direction: column; gap: 6px; }
+    .flow { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .step:not(:last-child)::after { display: none; }
+    .step b { font-size: 14px; }
+    .step small, .flow-note, .figs-note, .fig span, .foot p, .fine { font-size: 13px; }
+    .flow-note, .figs-note { margin-top: 0; }
+    .cols, .status, .foot { grid-template-columns: 1fr; gap: 14px; }
+    .figs { grid-template-columns: 1fr 1fr; }
+    .fig strong { font-size: 22px; }
+    .tagline { font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<main class="sheet">
+
+  <header class="top">
+    <div class="brand">Cloak <span>by Lawgistics</span></div>
+    <div class="for">For Malaysian litigation and dispute resolution firms</div>
+  </header>
+
+  <h1>Hide your client's details before documents go to an AI tool.</h1>
+
+  <p class="lede">Cloak hides client details in a folder of documents before they go to an AI tool, keeps the key <b>encrypted on your own drive</b>, and puts the real details back into the AI's draft. <b>Cloak runs entirely on your own computers.</b></p>
+
+  <section class="flow" aria-label="How Cloak works">
+    <div class="step"><b>1. Your documents</b><small>Word, PDF, scans, Excel, emails (.eml). Only ever read.</small></div>
+    <div class="step"><b>2. Cloak a folder</b><small>Names and numbers become tags like <span class="tagline">{{PERSON_1}}</span></small></div>
+    <div class="step"><b>3. Review</b><small>A named person decides every uncertain word.</small></div>
+    <div class="step"><b>4. Cloaked copies</b><small>Checked a second time, then saved to a folder you choose.</small></div>
+    <div class="step ai"><b>Your AI tool</b><small>Chosen and used by your lawyer. Sees tags in place of the names Cloak hid.</small></div>
+    <div class="step"><b>5. Restore a draft</b><small>Real details back in, and the draft checked.</small></div>
+  </section>
+  <p class="flow-note"><b>Steps 1 to 5 run on your computer.</b> Cloak has no network code and its window refuses web requests (tested on Linux; IT can confirm on Windows and Mac). <i>Only the cloaked copies your lawyer chooses</i> go to the AI company. Cloak itself sends nothing.</p>
+
+  <section class="cols">
+    <div>
+      <div class="card">
+        <h2>What it hides</h2>
+        <p>People, companies, NRIC and passport numbers, addresses, phone numbers, emails, bank accounts, case numbers, land titles and vehicle plates. The same person gets the same tag in every file, including the other spellings and short forms it can link.</p>
+        <p><b>Strict mode</b> (the default) also blurs dates, amounts, reference numbers, listed places, project names, some job titles and court names.</p>
+      </div>
+      <div class="card">
+        <h2>Every part of every file, or the file is blocked (with exceptions)</h2>
+        <ul>
+          <li>Word headers, footers, comments and tracked changes (deleted text too); hidden Excel sheets; email attachments; file and folder names</li>
+          <li>Scanned pages through OCR on your machine: English and Malay. A Chinese or Tamil page is held for a person to check</li>
+          <li>A file with a part it cannot read is listed and never exported; a page it cannot read reliably is held until a named person approves it</li>
+          <li>Not read, not blocking: routing headers, stamps, barcodes, handwriting, small text in pictures</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Built for partners and IT to check</h2>
+        <ul>
+          <li><b>Offline.</b> No internet needed. IT can block it in the firewall and it still works.</li>
+          <li><b>Encrypted key.</b> AES-256-GCM, opened by a password or a printed recovery code (a person can let Windows or macOS remember the password for their login). No back door.</li>
+          <li><b>Compulsory review.</b> A named person decides every uncertain word. Then a double check must pass: each key value, ID number or possible name it still finds is hidden or marked as fine by a named person before anything is exported.</li>
+          <li><b>Log.</b> Who did what, and when. Never a name or number from the documents (it names the lawyers who used Cloak).</li>
+          <li><b>Checked drafts.</b> Flags tags the AI invented and, when you point it at your documents, figures not found in them.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>You still decide</h2>
+        <p>Which AI tool to use, and its terms on keeping data and training. Whether a matter suits AI at all. And your lawyer reads each export before it leaves the firm.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="honest">
+    <h2>Cloak lowers the risk; it does not remove it.</h2>
+    <p>It uses rules and word lists, not an AI model, and it misses things. On a 22-file made-up matter written outside our rule-writing team (run once on 12 November 2026, an earlier version, counted by hand), names were still visible in 13 files, and the client's name in all 22. New name rules, measured on a separate 15-file made-up matter written by our own team, cut silent misses from 59 to 6 of 278 name places. Small tests, not miss rates. So a person reviews every export and the double checker looks again first. The AI company can still see what kind of dispute it is.</p>
+  </section>
+
+  <section class="figs" aria-label="Measured speed">
+    <div class="fig"><strong>&lt; 60 s</strong><span>20-file made-up matter, start to finish</span></div>
+    <div class="fig"><strong>about 9 min</strong><span>300-page scanned bundle, almost all of it OCR</span></div>
+    <div class="fig"><strong>about 1 min</strong><span>added by a 5,000-row spreadsheet</span></div>
+  </section>
+  <p class="figs-note">Measured once on a 4-core test machine, made-up documents. Not a guarantee: your times will differ.</p>
+
+  <section class="status">
+    <div class="built">
+      <h3>Built today</h3>
+      <p>Cloaking, encrypted key, review, double checker, Strict mode, chronology table, restore with checks, sample matter, help screens, offline licence file.</p>
+    </div>
+    <div class="doing">
+      <h3>In progress</h3>
+      <p>A redesigned window. Installers await code-signing certificates. <b>Every copy is an evaluation copy today:</b> export works only on matters marked as made-up test documents until a licence is issued. Not built: AI-tool connector, Outlook support in the app.</p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div>
+      <p><b>Questions about the PDPA or Bar Council guidance?</b> Ask for our research memo, written for review by a Malaysian advocate and solicitor (no review recorded yet). It is not legal advice. Bar Council Circular No 242/2025 discourages putting client-specific facts into any generative AI tool, and cloaked text can still carry some (memo, section 6.9). Cloak is not certified or approved by any regulator, court or Bar body, and we do not claim that it makes any use of AI lawful.</p>
+      <p class="fine">Early version (0.1.0) &middot; November 2026 &middot; not yet for real matters &middot; Windows 10 and 11, and Apple Silicon Macs (no Intel Mac build) &middot; installers not yet code-signed</p>
+    </div>
+    <div class="cta">
+      <p><b>Try it on your own terms</b>A 30-day pilot, starting on made-up documents your own team writes. You measure what it catches and what it misses. Lawgistics never receives your documents.</p>
+      <p class="contact">[Name] &middot; [email] &middot; [phone]</p>
+    </div>
+  </footer>
+
+</main>
+</body>
+</html>
