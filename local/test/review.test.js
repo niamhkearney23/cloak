@@ -13,7 +13,7 @@ const FAST = { N: 2 ** 12, r: 8, p: 1 };
 const PASSWORD = 'review test password';
 const FILES = {
   'letter one.txt': 'Dear Sirs,\n\nWe act for Abdul Rahim bin Osman. Our client met Bobby at the Pavilion Kuala Lumpur shopping centre.\nThe cheque was drawn on Hong Seng Trading and handed to Tan Ah Kow.\n',
-  'letter two.txt': 'Note of call.\n\nAlong confirmed the meeting. Bobby was there too, and so was Tan Ah Kaw, the brother of the payee.\nHong Seng Trading is the well-known hardware shop.\n',
+  'letter two.txt': 'Note of call.\n\nAlong confirmed the meeting. Bobby was there too, and so was Tan Ah Kaw, the brother of the payee.\nHong Seng Trading is the well-known hardware shop. The receipt was signed by Boyboy.\n',
   'statement.txt': 'I, Abdul Rahim bin Osman, state that Bobby is known to me. My family call me Along.\n',
   'chinese note.txt': '收据\n\n订金已由陈文华先生收讫。\n\nReceipt for the deposit.\n',
   'old.doc': 'old word bytes',
@@ -40,7 +40,10 @@ test('each term is listed once, with how many places and files it appears in', (
   assert.equal(data.terms.filter((t) => t.value === 'Abdul Rahim bin Osman').length, 1);
   assert.equal(rahim.type, 'PERSON');
   assert.ok(rahim.places >= 2);
-  assert.equal(rahim.files, 2);
+  // Letter two names him only as "Along"; the statement says that is him
+  // ("My family call me Along"), so it carries his tag too.
+  assert.equal(rahim.files, 3);
+  assert.equal(tagOf('Along').split('.')[0], rahim.tag);
   const shop = data.terms.find((t) => t.value === 'Hong Seng Trading');
   assert.equal(shop.files, 2);
   assert.ok(shop.forms.every((f) => typeof f.places === 'number'));
@@ -105,19 +108,23 @@ test('a removed tag number is never given to someone else', async () => {
 });
 
 test('merge two tags that are the same person: one tag number in every file', async () => {
-  // "Along" is the client's family nickname. The tool cannot know that: the
-  // reviewer hides it, then joins it to the client's tag.
+  // "Boyboy" is another nickname of the client that no document explains. The
+  // tool cannot know it is him: the reviewer hides it, then joins it to the
+  // client's tag.
   const full = tagOf('Abdul Rahim bin Osman');
-  await session.reviewAction({ type: 'add', text: 'Along', kind: 'PERSON' });
-  const nick = tagOf('Along');
+  assert.match(texts(), /Boyboy/);
+  await session.reviewAction({ type: 'add', text: 'Boyboy', kind: 'PERSON' });
+  const nick = tagOf('Boyboy');
   assert.notEqual(nick, full);
-  assert.equal(session.reviewData().terms.find((t) => t.tag === full).files, 2);
+  assert.equal(session.reviewData().terms.find((t) => t.tag === full).files, 3);
+  assert.equal(session.reviewData().terms.find((t) => t.tag === nick).files, 1);
   const data = await session.reviewAction({ type: 'merge', from: nick, into: full });
   assert.ok(!data.terms.some((t) => t.tag === nick));
   assert.equal(data.terms.find((t) => t.tag === full).files, 3);
   assert.doesNotMatch(texts(), new RegExp(`\\{\\{${nick}[.}]`));
-  assert.doesNotMatch(texts(), /Along/);
-  assert.match(session.run.files.find((f) => f.rel === 'letter two.txt').cloaked, new RegExp(`^\\{\\{${full}\\.ALT\\d*\\}\\} confirmed the meeting`, 'm'));
+  assert.doesNotMatch(texts(), /Along|Boyboy/);
+  assert.match(session.run.files.find((f) => f.rel === 'letter two.txt').cloaked, new RegExp(`signed by \\{\\{${full}\\.ALT\\d*\\}\\}\\.`, 'm'));
+  assert.match(session.run.files.find((f) => f.rel === 'letter two.txt').cloaked, new RegExp(`^\\{\\{${full}\\.ALIAS\\d*\\}\\} confirmed the meeting`, 'm'));
 });
 
 test('split a wrong join: the second person gets their own tag, and keeps it on the next run', async () => {
@@ -189,7 +196,7 @@ test('once everything is decided the review can be signed off, and only then exp
   const names = await readdir(out);
   assert.ok(names.includes('REVIEWED-NOT-DOUBLE-CHECKED.txt'));
   const all = (await Promise.all(names.map((n) => readFile(path.join(out, n), 'utf8')))).join('\n');
-  for (const w of ['Bobby', 'Rahim', 'Osman', 'Along', 'Ah Kow', 'Ah Kaw', '陈文华', '收据']) assert.ok(!all.includes(w), `${w} is in the exported files: …${all.slice(Math.max(0, all.indexOf(w) - 80), all.indexOf(w) + 40)}…`);
+  for (const w of ['Bobby', 'Rahim', 'Osman', 'Along', 'Boyboy', 'Ah Kow', 'Ah Kaw', '陈文华', '收据']) assert.ok(!all.includes(w), `${w} is in the exported files: …${all.slice(Math.max(0, all.indexOf(w) - 80), all.indexOf(w) + 40)}…`);
   assert.match(all, /Hong Seng Trading/);
   const report = JSON.parse(await readFile(path.join(out, 'cloak-report.json'), 'utf8'));
   assert.match(report.review, /^Reviewed by reviewer-one on \d{1,2} [A-Z][a-z]{2} \d{4}, \d{1,2}:\d{2} (?:am|pm)\./);
@@ -221,7 +228,7 @@ test('review decisions are kept in the matter for the next lawyer, and logged wi
   assert.match(log, /"action":"review-completed"/);
   assert.match(log, /"action":"file-checked-by-hand"/);
   assert.match(log, /"action":"exported","only":"all","files_written":5/);
-  assert.doesNotMatch(log, /Bobby|Rahim|Osman|Along|Hong Seng|Tan Ah|Pavilion/);
+  assert.doesNotMatch(log, /Bobby|Rahim|Osman|Along|Boyboy|Hong Seng|Tan Ah|Pavilion/);
   await again.close();
 });
 
