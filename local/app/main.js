@@ -16,6 +16,7 @@ import { assertNotSynced, locate } from '../source.js';
 import { formatDate } from '../dates.js';
 import { checkDraft } from '../draftcheck.js';
 import { extractFile } from '../extract.js';
+import { firstRunApi } from './firstrun.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +28,7 @@ app.commandLine.appendSwitch('disable-sync');
 app.commandLine.appendSwitch('no-pings');
 app.commandLine.appendSwitch('disable-features', 'AutofillServerCommunication,OptimizationHints,MediaRouter,Translate,InterestFeedContentSuggestions');
 if (process.env.CLOAK_TEST_USER_DATA) app.setPath('userData', process.env.CLOAK_TEST_USER_DATA);
+if (process.env.CLOAK_TEST_DOCUMENTS) app.setPath('documents', process.env.CLOAK_TEST_DOCUMENTS);
 
 let win = null;
 let matter = null; // the open matter session
@@ -58,14 +60,15 @@ async function remember(dir, password) {
   await writeFile(rememberedFile(), JSON.stringify(all), { mode: 0o600 });
 }
 
-const needMatter = () => { if (!matter) throw new Error('Open a matter first.'); return matter; };
+const needMatter = () => { if (!matter) throw new Error('No matter is open. Choose the matter folder and open it with its password, then try again.'); return matter; };
+const NOT_IN_RUN = 'That file is not in this run. The list may be out of date: cloak the folder again to see the files as they are now.';
 
 const api = {
   info: async () => ({ version: VERSION, login, fullName, who: who(), canRemember: safeStorage.isEncryptionAvailable() }),
 
   setName: async ({ fullName: name }) => {
     name = String(name || '').replace(/\s+/g, ' ').trim();
-    if (name.split(' ').length < 2 || name.length < 5) throw new Error('Please type your full name (first and last name). It is written next to your sign-offs.');
+    if (name.split(' ').length < 2 || name.length < 5) throw new Error('That is not a full name. Type your first and last name (for example, Siti Aminah binti Yusof): it is written next to your sign-offs.');
     fullName = name;
     await mkdir(path.dirname(profileFile()), { recursive: true });
     await writeFile(profileFile(), JSON.stringify({ fullName }), { mode: 0o600 });
@@ -87,7 +90,7 @@ const api = {
 
   pickFolder: async ({ title }) => {
     if (testPicks) return testPicks.shift() ?? null;
-    const r = await dialog.showOpenDialog(win, { title, properties: ['openDirectory', 'createDirectory'] });
+    const r = await dialog.showOpenDialog(win, { title, defaultPath: firstRun.pickerStart(), properties: ['openDirectory', 'createDirectory'] });
     return r.canceled ? null : r.filePaths[0];
   },
 
@@ -105,7 +108,7 @@ const api = {
   openMatter: async ({ dir, password, recoveryCode, takeOver, rememberIt, useRemembered }) => {
     if (useRemembered) {
       const blob = (await remembered())[dirId(dir)];
-      if (!blob) throw new Error('No password is remembered for this matter on this computer.');
+      if (!blob) throw new Error('No password is remembered for this matter on this computer. Type the matter password instead.');
       password = safeStorage.decryptString(Buffer.from(blob, 'base64'));
     }
     matter = await openMatter({ dir, password, recoveryCode, takeOver, user: who() });
@@ -141,7 +144,7 @@ const api = {
   complete: async () => needMatter().completeReview(),
   fileText: async ({ number }) => {
     const f = needMatter().run?.files.find((x) => x.index === number);
-    if (!f) throw new Error('That file is not in this run.');
+    if (!f) throw new Error(NOT_IN_RUN);
     return { name: f.rel, text: f.cloaked || '', reasons: f.reasons };
   },
   export: async ({ outDir, only }) => needMatter().export({ outDir, only: only === 'chronology' ? 'chronology' : 'all' }),
@@ -164,7 +167,9 @@ const api = {
     const r = await dialog.showOpenDialog(win, { title: 'Choose the draft', properties: ['openFile'], filters: [{ name: 'Drafts', extensions: ['txt', 'md', 'docx'] }] });
     if (r.canceled) return null;
     const file = r.filePaths[0];
-    const parts = (await extractFile(file)).parts || [];
+    const read = await extractFile(file);
+    const parts = read.parts || [];
+    if (!parts.length) throw new Error(`Cloak could not read that file${read.reasons?.length ? ` (${read.reasons[0]})` : ''}. Open it, copy the text and paste it into the box instead.`);
     return { name: path.basename(file), text: parts.map((p) => p.text).join('\n\n') };
   },
   restoreDraft: async ({ draft, folder }) => {
@@ -184,6 +189,10 @@ const api = {
   },
   closeMatter: async () => { await matter?.close(); matter = null; return {}; },
 };
+
+// First run: the sample matter, the help screens and the support file (app/firstrun.js).
+const firstRun = firstRunApi({ app, dialog, getWin: () => win, getMatter: () => matter, setMatter: (s) => { matter = s; }, who, testPicks });
+Object.assign(api, firstRun.api);
 
 ipcMain.handle('cloak', async (event, name, args) => {
   // Only the app's own window may call in.
