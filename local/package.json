@@ -47,11 +47,18 @@
       "main": "app/main.js"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "signtoolOptions": {
+        "signingHashAlgorithms": [
+          "sha256"
+        ]
+      }
     },
     "mac": {
       "target": "dmg",
       "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
       "extraResources": [
         {
           "from": "node_modules/electron/dist/LICENSE",
@@ -64,8 +71,11 @@
       ]
     },
     "nsis": {
-      "oneClick": true,
-      "perMachine": false
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": false
     },
     "extraResources": [
       {
