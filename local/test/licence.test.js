@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { generateKeyPairSync } from 'node:crypto';
 import { existsSync, statSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -383,4 +383,31 @@ test('readable lines with look-alike, unknown, duplicate or stray labels are ref
   assert.equal(check(saved).status, 'valid');
   assert.equal(licenceBlock('not a licence'), null);
   assert.equal(licenceBlock(editDetails(text, (d) => { d.seats = 0; })), null);
+});
+
+test('the licence tool refuses a private key folder that is a link (symlink or junction) into a git repository', async () => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'cloak-link-'));
+  const repo = path.join(base, 'made-up-repo');
+  await mkdir(path.join(repo, '.git'), { recursive: true });
+  await mkdir(path.join(repo, 'secrets'));
+  const outside = path.join(base, 'outside');
+  await mkdir(outside);
+  const link = path.join(outside, 'vendor-keys');
+  await symlink(path.join(repo, 'secrets'), link, 'junction');
+  const twice = path.join(outside, 'second-link');
+  await symlink(link, twice, 'junction');
+  for (const dir of [link, twice, path.join(repo, 'secrets')]) {
+    const r = run(['keygen', dir]);
+    assert.notEqual(r.status, 0, dir);
+    assert.match(r.stderr, /inside the git repository/);
+  }
+  // A link inside the repository that points out of it is refused too (the repository's copy would carry the key).
+  const elsewhere = path.join(base, 'elsewhere');
+  await mkdir(elsewhere);
+  await symlink(elsewhere, path.join(repo, 'keys'), 'junction');
+  assert.notEqual(run(['keygen', path.join(repo, 'keys')]).status, 0);
+  assert.deepEqual(await readdir(path.join(repo, 'secrets')), []);
+  assert.deepEqual(await readdir(elsewhere), []);
+  // A real folder outside any repository is still fine.
+  assert.equal(run(['keygen', elsewhere]).status, 0);
 });
