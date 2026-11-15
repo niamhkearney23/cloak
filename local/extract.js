@@ -455,12 +455,19 @@ async function extractXlsx(buf, result) {
 // ------------------------------------------------------------------- .pdf
 
 let pdfjsReady = null;
+// pdf.js decodes fax (CCITT), JBIG2 and JPEG 2000 pictures, formats many
+// scanners use, only with its own decoders, and reads Chinese, Japanese and
+// Korean text written with Adobe's standard character maps only with those
+// maps. Both ship inside the app and are read from these folders on disk
+// (pdf.js uses fs.readFile in Node, never the network). Without them such
+// pages came out empty with no warning.
+const pdfjsFolder = (sub) => `${path.join(path.dirname(require.resolve('pdfjs-dist/package.json')), sub).split(path.sep).join('/')}/`;
 async function extractPdf(buf, result) {
   pdfjsReady ||= import('pdfjs-dist/legacy/build/pdf.mjs');
   const pdfjs = await pdfjsReady;
   const { createCanvas } = require('@napi-rs/canvas');
   let doc;
-  const task = pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true, isEvalSupported: false, verbosity: 0 });
+  const task = pdfjs.getDocument({ data: new Uint8Array(buf), useSystemFonts: true, isEvalSupported: false, verbosity: 0, wasmUrl: pdfjsFolder('wasm'), cMapUrl: pdfjsFolder('cmaps') });
   try {
     doc = await task.promise;
   } catch (err) {
