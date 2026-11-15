@@ -37,12 +37,16 @@ function pool(size) {
   // The cores are shared out: with one reader (say, one big scanned PDF) it
   // gets all of them for OCR; with several readers each gets its share.
   const ocrThreads = Number(process.env.CLOAK_OCR_THREADS) || Math.max(1, Math.floor(os.availableParallelism() / size));
-  const workers = Array.from({ length: size }, () => new Worker(new URL('./extract-worker.js', import.meta.url), { workerData: { ocrThreads } }));
+  const workers = new Set(); // reader threads still alive
   const waiting = new Map();
-  const idle = [...workers];
+  const idle = [];
   const queue = [];
   let seq = 0;
+  let replacements = 0;
+  const failed = (rel, message) => [{ status: 'unreadable', type: 'unknown', parts: [], reasons: [`The file could not be opened (${message}).`], notes: [], rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }];
   const next = () => {
+    // With no reader left and none to be started, nothing queued can ever be read.
+    if (!workers.size) while (queue.length) { const job = queue.shift(); job.resolve({ results: failed(job.rel, 'the reading thread stopped'), ms: 0 }); }
     while (idle.length && queue.length) {
       const w = idle.pop();
       const job = queue.shift();
@@ -50,8 +54,10 @@ function pool(size) {
       w.postMessage({ id: job.id, file: job.file, rel: job.rel });
     }
   };
-  const failed = (rel, message) => [{ status: 'unreadable', type: 'unknown', parts: [], reasons: [`The file could not be opened (${message}).`], notes: [], rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }];
-  for (const w of workers) {
+  const start = () => {
+    const w = new Worker(new URL('./extract-worker.js', import.meta.url), { workerData: { ocrThreads } });
+    workers.add(w);
+    idle.push(w);
     w.on('message', (msg) => {
       const job = waiting.get(msg.id);
       waiting.delete(msg.id);
@@ -59,14 +65,23 @@ function pool(size) {
       job.resolve({ results: msg.results, ms: msg.ms });
       next();
     });
-    // A crashed reader must not lose a file: it is reported as unreadable.
+    // A crashed reader must not lose a file or stall the run: the file it was
+    // reading is reported as unreadable and a new reader takes its place (a
+    // limited number of times, so a fault that repeats cannot loop for ever).
     w.on('error', (err) => {
+      workers.delete(w);
+      const at = idle.indexOf(w);
+      if (at >= 0) idle.splice(at, 1);
       for (const [id, job] of waiting) if (job.w === w) { waiting.delete(id); job.resolve({ results: failed(job.rel, err.message), ms: 0 }); }
+      if (replacements++ < size * 5 + 5) start();
+      next();
     });
-  }
+    w.on('exit', () => { workers.delete(w); });
+  };
+  for (let i = 0; i < size; i++) start();
   return {
     run: (file, rel) => new Promise((resolve) => { queue.push({ id: ++seq, file, rel, resolve }); next(); }),
-    close: () => Promise.all(workers.map((w) => new Promise((resolve) => { w.once('exit', resolve); w.postMessage({ type: 'close' }); }))),
+    close: () => Promise.all([...workers].map((w) => new Promise((resolve) => { w.once('exit', resolve); w.postMessage({ type: 'close' }); }))),
   };
 }
 

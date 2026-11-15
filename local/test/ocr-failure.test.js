@@ -38,8 +38,8 @@ test('a picture the OCR engine cannot open fails that file with a reason and the
   assert.equal(by['a scan.jpg'].status, 'unreadable');
   assert.match(by['a scan.jpg'].reasons.join(' '), /picture|image/i);
   assert.equal(by['b scan.png'].status, 'unreadable');
-  assert.equal(by['c note.txt'].status, 'ok');
-  assert.equal(by['d note.txt'].status, 'ok');
+  assert.equal(by['c note.txt'].status, 'cloaked');
+  assert.equal(by['d note.txt'].status, 'cloaked');
 });
 
 test('an unreadable picture on its own does not kill the reader', { timeout: 120000 }, async () => {

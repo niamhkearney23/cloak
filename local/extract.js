@@ -119,7 +119,10 @@ async function langDir() {
 async function ocrWorker(langs) {
   const { createWorker } = require('tesseract.js');
   const dir = await langDir();
-  return createWorker(langs, 1, { langPath: dir, cachePath: dir, gzip: true });
+  // Without an errorHandler tesseract.js throws from inside its message
+  // handler when it cannot open a picture, which kills the whole reader
+  // thread. With one, the failure comes back as a rejected recognize().
+  return createWorker(langs, 1, { langPath: dir, cachePath: dir, gzip: true, errorHandler: () => {} });
 }
 
 // A pool of OCR workers. It starts with one and only adds another when a
@@ -134,6 +137,9 @@ function makePool(langs) {
       if (!slot) {
         if (slots.length >= OCR_THREADS) return;
         slot = { busy: false, worker: ocrWorker(langs) };
+        // A worker that could not start (empty language file) is dropped, so
+        // the next page tries a fresh one instead of failing for ever.
+        slot.worker.catch(() => { const i = slots.indexOf(slot); if (i >= 0) slots.splice(i, 1); });
         slots.push(slot);
       }
       const job = waiting.shift();
@@ -158,7 +164,12 @@ const pool = (name, langs) => (pools[name] ||= makePool(langs));
  * own confidence so unclear marks can be told apart from clear print.
  */
 export async function ocrImage(image) {
-  const first = (await pool('latin', ['eng', 'msa']).run(image, { blocks: true })).data;
+  let first;
+  try {
+    first = (await pool('latin', ['eng', 'msa']).run(image, { blocks: true })).data;
+  } catch (err) {
+    throw new Error(`the text reader could not open this picture: ${String(err?.message || err).replace(/^Error:\s*/, '')}`);
+  }
   let text = first.text || '';
   let confidence = first.confidence ?? 0;
   let script = nonLatinCount(text) >= 5 ? 'non-latin' : 'latin';
