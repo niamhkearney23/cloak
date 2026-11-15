@@ -22,7 +22,7 @@ import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:cry
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkLicence, dayOf, issueLicence, keyFingerprint, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
+import { checkLicence, dayOf, issueLicence, keyFingerprint, licenceFileText, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const PRIVATE_NAME = 'cloak-licence-private.pem';
@@ -116,7 +116,7 @@ export const LICENCE_PUBLIC_KEY = \`${clean}\`;
 
   check(o) {
     const file = o._[0] || fail('say which licence file to check: check <file>');
-    const r = checkLicence(readFileSync(file, 'utf8'), o.key ? { publicKey: readFileSync(o.key, 'utf8') } : {});
+    const r = checkLicence(licenceFileText(readFileSync(file)), o.key ? { publicKey: readFileSync(o.key, 'utf8') } : {});
     if (r.licence) console.log(`Licensed to: ${r.licence.firm}\nSeats: ${r.licence.seats}\nIssued: ${r.licence.issued}\nEnds: ${r.licence.expires}\nLicence ID: ${r.licence.id}\nSigned with key: ${r.licence.key}`);
     console.log(`Result: ${r.status}${r.reason ? ` - ${r.reason}` : ''}`);
     process.exit(r.status === 'valid' ? 0 : 1);

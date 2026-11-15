@@ -7,7 +7,7 @@ import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { assertLicenceAllowsExport, checkLicence, findLicence, issueLicence, keyFingerprint, licenceBlock, licenceForReport, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
+import { assertLicenceAllowsExport, checkLicence, findLicence, issueLicence, keyFingerprint, licenceBlock, licenceFileText, licenceForReport, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
 import { LICENCE_PUBLIC_KEY } from '../licence-key.js';
 import { createMatter } from '../matter.js';
 import { checkDraft } from '../draftcheck.js';
@@ -305,4 +305,26 @@ test('a licence inside a long email thread (over 16 KB) still checks; only the l
   assert.equal(check(block).status, 'valid');
   // Far beyond anything an email holds: still refused, with the usual message.
   assert.equal(check(`${text}\n${'x'.repeat(1024 * 1024)}`).code, 'NOT_A_LICENCE');
+});
+
+test('a licence file saved as UTF-16 (Windows PowerShell Out-File) is read; a damaged one is refused without throwing', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'cloak-utf16-'));
+  const text = issue().replace(/\n/g, '\r\n');
+  const le = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
+  const be = Buffer.concat([Buffer.from([0xfe, 0xff]), Buffer.from(text, 'utf16le').swap16()]);
+  const bom8 = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(text, 'utf8')]);
+  const find = async (name, buf) => {
+    const file = path.join(dir, name);
+    await writeFile(file, buf);
+    return findLicence({ files: [{ file, where: 'computer' }], publicKey: vendor.publicKey, today: NOW });
+  };
+  for (const [name, buf] of [['le.txt', le], ['be.txt', be], ['utf8.txt', Buffer.from(text, 'utf8')], ['bom8.txt', bom8]]) {
+    const r = await find(name, buf);
+    assert.equal(r.code, 'VALID', name);
+    assert.equal(licenceFileText(buf).includes('BEGIN CLOAK LICENCE'), true, name);
+  }
+  for (const [name, buf] of [['odd-be.txt', be.subarray(0, be.length - 1)], ['odd-le.txt', le.subarray(0, le.length - 1)], ['bom-only.txt', Buffer.from([0xfe, 0xff, 0])], ['empty.txt', Buffer.alloc(0)]]) {
+    const r = await find(name, buf);
+    assert.ok(['VALID', 'NOT_A_LICENCE', 'CHANGED'].includes(r.code), `${name}: ${r.code}`); // a cut-off last byte (the newline) is harmless
+  }
 });

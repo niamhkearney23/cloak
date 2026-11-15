@@ -186,6 +186,13 @@ export function checkLicence(text, { publicKey = LICENCE_PUBLIC_KEY, today = new
   return { ...licenceState(licence, today), licence };
 }
 
+/** A licence file's text: UTF-8 (BOM or not), or UTF-16 with a BOM (Windows PowerShell 5.1 Out-File and ">"). Never throws. */
+export function licenceFileText(buf) {
+  if (buf[0] === 0xff && buf[1] === 0xfe) return buf.toString('utf16le', 2);
+  if (buf[0] === 0xfe && buf[1] === 0xff) return Buffer.from(buf.subarray(2, buf.length - (buf.length % 2))).swap16().toString('utf16le');
+  return buf.toString('utf8');
+}
+
 /**
  * Look for a licence: the person's own first, then one IT put on the computer
  * for everyone. `files` is a list of { file, where }. Returns the first valid
@@ -195,7 +202,7 @@ export async function findLicence({ files, publicKey = LICENCE_PUBLIC_KEY, today
   let first = null;
   for (const { file, where } of files) {
     let text;
-    try { text = await readFile(file, 'utf8'); } catch { continue; }
+    try { text = licenceFileText(await readFile(file)); } catch { continue; }
     const r = { ...checkLicence(text, { publicKey, today }), file, where };
     if (r.status === 'valid') return r;
     first ||= r;

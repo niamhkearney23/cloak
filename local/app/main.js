@@ -18,7 +18,7 @@ import { formatDate } from '../dates.js';
 import { checkDraft } from '../draftcheck.js';
 import { extractFile } from '../extract.js';
 import { firstRunApi } from './firstrun.js';
-import { checkLicence, findLicence, keyFingerprint, licenceBlock, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
+import { checkLicence, findLicence, keyFingerprint, licenceBlock, licenceFileText, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
 import { LICENCE_PUBLIC_KEY } from '../licence-key.js';
 import { testHooksAllowed } from './testhooks.js';
 
@@ -253,7 +253,7 @@ Object.assign(api, {
     const file = testPicks ? testPicks.shift() : (await dialog.showOpenDialog(win, { title: 'Choose the licence file', properties: ['openFile'], filters: [{ name: 'Licence', extensions: ['txt', 'licence', 'lic'] }, { name: 'All files', extensions: ['*'] }] })).filePaths[0];
     if (!file) return null;
     if ((await stat(file)).size > 2 * 1024 * 1024) throw new Error('That file is too large to be a Cloak licence.');
-    return { text: await readFile(file, 'utf8') };
+    return { text: licenceFileText(await readFile(file)) };
   },
   removeLicence: async () => { await rm(userLicenceFile(), { force: true }); await loadLicence(); return licenceInfo(); },
 });
