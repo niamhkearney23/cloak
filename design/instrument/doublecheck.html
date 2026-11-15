@@ -70,7 +70,7 @@
   
   <header class="topbar">
     <a class="brand" href="home.html" aria-label="Cloak by Lawgistics: home">
-      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect class="m-bg" width="24" height="24" rx="6"/><path class="m-br" d="M5 7.5h2.5V9H6.5v6h1v1.5H5zM19 7.5h-2.5V9h1v6h-1v1.5H19z"/><rect class="m-bar" x="8.75" y="10.25" width="6.5" height="3.5" rx=".6"/></svg>
+      <svg class="mark" viewBox="0 0 24 24" aria-hidden="true"><rect class="m-bg" width="24" height="24" rx="6"/><path class="m-br" d="M4.75 7.25h2.75v1.5H6.25v6.5H7.5v1.5H4.75zM19.25 7.25H16.5v1.5h1.25v6.5H16.5v1.5h2.75z"/><rect class="m-bar" x="8.5" y="10" width="7" height="4" rx=".75"/></svg>
       <span class="wordmark">cloak</span>
       <span class="byline">by Lawgistics</span>
     </a>
@@ -102,7 +102,7 @@
         <li><a class="step done" href="setup.html" aria-label="People, done" title="People"><span class="node" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span><span class="step-label">People</span><span class="step-aside">5</span></a></li>
         <li><a class="step done" href="#" aria-label="Read, done" title="Read"><span class="node" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span><span class="step-label">Read</span><span class="step-aside">48 s</span></a></li>
         <li><a class="step done" href="review.html" aria-label="Review, done" title="Review"><span class="node" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span><span class="step-label">Review</span><span class="step-aside">Done</span></a></li>
-        <li><a class="step current" href="doublecheck.html" aria-label="Double check, current step" title="Double check" aria-current="step"><span class="node" aria-hidden="true"><span>6</span></span><span class="step-label">Double check</span><span class="step-aside">6 to decide</span></a></li>
+        <li><a class="step current" href="doublecheck.html" aria-label="Double check, current step" title="Double check" aria-current="step"><span class="node" aria-hidden="true"><span>6</span></span><span class="step-label">Double check</span><span class="step-aside todo">6 to decide</span></a></li>
         <li><span class="step locked" aria-label="Export, not yet" title="Export"><span class="node" aria-hidden="true"><span>7</span></span><span class="step-label">Export</span><span></span></span></li>
       </ol>
     </div>
@@ -149,8 +149,8 @@
         <div class="page wide">
           <header class="page-head">
             <div>
-              <h1 class="page-title">Double check</h1>
-              <p class="lede">Every cloaked copy was read again from start to finish. A finding is something that still looks like a client detail.</p>
+              <span class="kicker">Step 6 of 7</span><h1 class="page-title">Double check</h1>
+              <p class="lede">Every cloaked copy was read again from start to finish. A finding is something that still looks like a client detail. Each decision is recorded with your name and the time.</p>
             </div>
             <button class="btn sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Run again</button>
           </header>
@@ -190,7 +190,7 @@
                   <p class="quote"><span class="leak">Zulkifli Hamzah</span> | Operations Executive | <span class="tag"><span class="b">{{</span>COMPANY_1<span class="b">}}</span></span> | <span class="tag"><span class="b">{{</span>EMAIL_4<span class="b">}}</span></span></p>
                   <p class="reason"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg><span>Name-like words in an email signature</span></p>
                 </div>
-                <div class="acts"><button class="btn sm primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
+                <div class="acts"><button class="btn sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
               </div>
               <div class="finding is-decided">
                 <div class="loc"><span class="part">Quoted reply</span><span>line 131</span></div>
@@ -217,7 +217,7 @@
                   <p class="quote">Ref: <span class="leak">PMLSB/2023/0412</span></p>
                   <p class="reason"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg><span>A reference that starts with the client’s initials</span></p>
                 </div>
-                <div class="acts"><button class="btn sm primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
+                <div class="acts"><button class="btn sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
               </div>
               <div class="finding">
                 <div class="loc"><span class="part">Comment by T. Lim</span><span>sheet “Summary”</span><span>cell C4</span></div>
@@ -225,7 +225,7 @@
                   <p class="quote">check with <span class="leak">Siew L.</span> before paying <span class="tag"><span class="b">{{</span>AMOUNT_3<span class="b">}}</span></span></p>
                   <p class="reason"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg><span>Part of a name in the key: <span class="tag fixed"><span class="b">{{</span>PERSON_2<span class="b">}}</span></span></span></p>
                 </div>
-                <div class="acts"><button class="btn sm primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
+                <div class="acts"><button class="btn sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
               </div>
             </section>
 
@@ -244,7 +244,7 @@
                   <p class="quote"><span class="leak">BTHB</span>/BOD/09-2023</p>
                   <p class="reason"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg><span>Initials of a company in the key: <span class="tag fixed"><span class="b">{{</span>COMPANY_2<span class="b">}}</span></span></span></p>
                 </div>
-                <div class="acts"><button class="btn sm primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
+                <div class="acts"><button class="btn sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
               </div>
               <div class="finding is-decided">
                 <div class="loc"><span class="part">Body</span><span>paragraph 3</span></div>
@@ -271,7 +271,7 @@
                   <p class="quote"><span class="leak">zulkifli.h</span></p>
                   <p class="reason"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg><span>A computer login name in the file’s properties</span></p>
                 </div>
-                <div class="acts"><button class="btn sm primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
+                <div class="acts"><button class="btn sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-redact"/></svg>Hide it</button><button class="btn sm" type="button">It is fine</button></div>
               </div>
             </section>
 
@@ -282,11 +282,11 @@
         <progress value="2" max="8" aria-label="2 of 8 findings decided">25%</progress>
         <div class="finish-state">
           <span class="finish-title"><span class="led warn" aria-hidden="true"></span>Export opens when every file passes or every finding is decided</span>
-          <span class="blockers"><a class="blocker" href="#"><span class="num">6</span>findings in 4 files</a><span class="xsmall muted">Each decision is recorded with your name and the time.</span></span>
+          <span class="blockers"><a class="blocker" href="#"><span class="num">6</span>findings in 4 files<svg class="ico" aria-hidden="true"><use href="#i-chev-r"/></svg></a></span>
         </div>
         <div class="finish-actions">
           <button class="btn" type="button" disabled>Export all files</button>
-          <button class="btn primary" type="button" disabled>Export the chronology only <span class="keys"><kbd>Ctrl</kbd><kbd>E</kbd></span></button>
+          <button class="btn primary" type="button" disabled>Export the chronology only (recommended)</button>
         </div>
       </div>
     </main>

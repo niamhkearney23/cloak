@@ -7,7 +7,7 @@
 <title>Stop hiding this? &middot; Review &middot; Cloak</title>
 <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="has-dialog">
 <svg class="sprite" aria-hidden="true" focusable="false">
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></symbol>
   <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18.5h10a4 4 0 0 0 .6-8 5.5 5.5 0 0 0-10.7 1.2A3.4 3.4 0 0 0 7 18.5z"/></symbol>
@@ -25,9 +25,8 @@
   <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.4 4.6 2.9 17.6a1.8 1.8 0 0 0 1.6 2.7h15a1.8 1.8 0 0 0 1.6-2.7L13.6 4.6a1.8 1.8 0 0 0-3.2 0z"/><path d="M12 9.5v4.5"/><path d="M12 17.2v.1"/></symbol>
   <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.8-3.8 3.6-5.8 7-5.8s6.2 2 7 5.8"/></symbol>
 </svg>
-<a class="skip" href="#main">Skip to content</a>
 
-<header class="topbar">
+<header class="topbar" inert>
   <a class="brand" href="home.html" aria-label="Cloak by Lawgistics, home">
     <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="mark__tablet" x="1" y="1" width="30" height="30" rx="7.5"/><rect class="mark__bar" x="7" y="13.6" width="14" height="5" rx=".8"/></svg>
     <span class="wordmark">Cloak</span>
@@ -45,7 +44,7 @@
   </div>
 </header>
 
-<main id="main">
+<main id="main" inert>
   <div class="page page--flush-bottom">
     <header class="pagehead">
       <ol class="steps" aria-label="Progress">
@@ -132,7 +131,7 @@
             </tr>
             <tr class="is-target">
               <td><span class="tag"><span class="tag__b">{{</span>NRIC_1<span class="tag__b">}}</span></span></td>
-              <td><span class="term path">820732-10-5523</span></td>
+              <td><span class="term term--mono">820732-10-5523</span></td>
               <td class="how">Pattern rule: NRIC</td>
               <td class="num"><span class="count">23</span></td>
               <td class="num"><span class="count">7</span></td>
@@ -140,7 +139,7 @@
             </tr>
             <tr>
               <td><span class="tag"><span class="tag__b">{{</span>ACCOUNT_1<span class="tag__b">}}</span></span></td>
-              <td><span class="term path">5142 8870 3316</span></td>
+              <td><span class="term term--mono">5142 8870 3316</span></td>
               <td class="how">Pattern rule: bank account</td>
               <td class="num"><span class="count">9</span></td>
               <td class="num"><span class="count">4</span></td>
@@ -166,9 +165,9 @@
       <div class="finishbar__status">
         <span class="finishbar__label">Before you can finish</span>
         <div class="blockers">
-          <button class="blocker" type="button"><b>14</b> words not sure<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
-          <button class="blocker" type="button"><b>6</b> joined names<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
-          <button class="blocker" type="button"><b>2</b> short forms<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+          <button class="blocker" type="button" aria-label="14 words the tool is not sure about still need a decision. Go to Not sure."><b>14</b> words not sure<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+          <button class="blocker" type="button" aria-label="6 joined names need to be confirmed or split. Go to Joined names."><b>6</b> joined names<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
+          <button class="blocker" type="button" aria-label="2 short forms that could be two people need to be confirmed. Go to Joined names."><b>2</b> short forms<svg class="i" aria-hidden="true"><use href="#i-arrow-right"/></svg></button>
         </div>
       </div>
       <div class="finishbar__actions">

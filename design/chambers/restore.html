@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Restore a draft &middot; Cloak</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.4 4.6 2.9 17.6a1.8 1.8 0 0 0 1.6 2.7h15a1.8 1.8 0 0 0 1.6-2.7L13.6 4.6a1.8 1.8 0 0 0-3.2 0z"/><path d="M12 9.5v4.5"/><path d="M12 17.2v.1"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="1.6"/><path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v10.5M7.5 10l4.5 4.5 4.5-4.5"/><path d="M4.5 15.5v3a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+  <symbol id="i-computer" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="1.6"/><path d="M8.5 20h7M12 16.5V20"/><path d="M9.2 10.6l2 2 3.8-3.8"/></symbol>
+</svg>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="home.html" aria-label="Cloak by Lawgistics, home">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="mark__tablet" x="1" y="1" width="30" height="30" rx="7.5"/><rect class="mark__bar" x="7" y="13.6" width="14" height="5" rx=".8"/></svg>
+    <span class="wordmark">Cloak</span>
+    <span class="brand__by">by Lawgistics</span>
+  </a>
+  <div class="topbar__matter">
+    <span class="label">Matter</span>
+    <span class="topbar__matter-name">Teratai Kenanga v Bina Jaya</span>
+    <span class="stamp stamp--ink">Strict</span>
+  </div>
+  <div class="topbar__right">
+    <span class="offline"><svg class="i i--sm" aria-hidden="true"><use href="#i-computer"/></svg><span class="offline__text">On this computer only</span></span>
+    <span class="topbar__sep" aria-hidden="true"></span>
+    <span class="licence"><span class="licence__label">Licensed to</span><span class="licence__firm">Tetuan Adnan Ooi &amp; Raman</span></span>
+  </div>
+</header>
+
+<main id="main">
+  <div class="page">
+    <header class="pagehead">
+      <div class="pagehead__row">
+        <div class="stack-2">
+          <p class="label">After the AI</p>
+          <h1 class="h1">Restore a draft</h1>
+        </div>
+        <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg>Check and restore again</button>
+      </div>
+    </header>
+
+    <section class="inputs sheet" aria-label="What was used">
+      <div class="inputs__item">
+        <span class="inputs__n"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg></span>
+        <div class="inputs__body">
+          <p class="inputs__k">The matter</p>
+          <p class="inputs__v">Teratai Kenanga v Bina Jaya</p>
+          <p class="inputs__s">Opened with the password</p>
+        </div>
+        <button class="btn btn--quiet btn--sm inputs__edit" type="button">Change</button>
+      </div>
+      <div class="inputs__item">
+        <span class="inputs__n"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg></span>
+        <div class="inputs__body">
+          <p class="inputs__k">The draft</p>
+          <p class="inputs__v tnum">Pasted text, 1,912 words</p>
+          <p class="inputs__s tnum">142 tags in it</p>
+        </div>
+        <button class="btn btn--quiet btn--sm inputs__edit" type="button">Change</button>
+      </div>
+      <div class="inputs__item">
+        <span class="inputs__n"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg></span>
+        <div class="inputs__body">
+          <p class="inputs__k">Documents folder</p>
+          <p class="inputs__v">OneDrive &rsaquo; Teratai Kenanga v Bina Jaya</p>
+          <p class="inputs__s tnum">214 files, for the source check</p>
+        </div>
+        <button class="btn btn--quiet btn--sm inputs__edit" type="button">Change</button>
+      </div>
+    </section>
+
+    <div class="restore">
+      <section class="restore__doc" aria-labelledby="doc-h">
+        <div class="doc-tools">
+          <h2 class="label" id="doc-h">The restored draft</h2>
+          <div class="legend">
+            <span><i class="swatch swatch--restored" aria-hidden="true"></i>Put back from the key</span>
+            <span><i class="swatch swatch--flag" aria-hidden="true"></i>Flagged by a check</span>
+          </div>
+        </div>
+        <article class="doc">
+          <p class="doc__title">Payment Response</p>
+          <p class="doc__sub">under section 6 of the Construction Industry Payment and Adjudication Act 2012</p>
+          <p><span class="pn">1</span>We act for <span class="restored">Teratai Kenanga Development Sdn Bhd</span> (&ldquo;our client&rdquo;), the employer under the construction agreement dated <span class="restored nb">17 February 2023</span> (&ldquo;the Agreement&rdquo;) with <span class="restored">Bina Jaya Construction Sdn Bhd</span> (&ldquo;the Claimant&rdquo;).</p>
+          <p><span class="pn">2</span>We refer to the Claimant&rsquo;s payment claim dated <span class="restored nb">12 March 2024</span> for <span class="restored nb">RM 1,284,600.00</span> for additional works at Block C (&ldquo;the Payment Claim&rdquo;).</p>
+          <p><span class="pn">3</span>Our client disputes the Payment Claim in full, for the reasons set out below.</p>
+          <p><span class="pn">4</span>The additional works were never instructed in writing by our client&rsquo;s representative, <span class="restored">Mohd Faizal bin Ismail</span>, as clause 4.2 of the Agreement requires.</p>
+          <p><span class="pn">5</span>The Claimant&rsquo;s own email of <span class="restored nb">12 March 2024</span>, sent by <span class="restored">Lee Chee Keong</span>, puts the same claim at <span class="restored nb">RM 1,248,600.00</span>. The two figures cannot both be right.</p>
+          <p><span class="pn">6</span>The valuation by <span class="restored">Priya a/p Raghavan</span> has not been served on our client, and no sum can be due on it.</p>
+          <p id="p7"><span class="pn pn--warn">7</span>Our client has in any event paid <span class="flagged nb">RM 1,250,000.00</span> on account, which the Claimant has not credited.</p>
+          <p><span class="pn">8</span>The performance bond of <span class="restored nb">RM 922,500.00</span> remains in force and is not affected by this response.</p>
+          <p id="p9"><span class="pn pn--warn">9</span>The minutes of site meeting 23 record a delay of <span class="flagged nb">46 days</span> between <span class="restored nb">12 March 2024</span> and <span class="restored nb">23 April 2024</span>, for which the Claimant alone is responsible.</p>
+          <p><span class="pn">10</span>Our client reserves its right to claim liquidated damages under clause 22 of the Agreement.</p>
+          <p><span class="pn">11</span>Nothing in this Payment Response is an admission that any sum is due to the Claimant.</p>
+          <p id="p12"><span class="pn pn--warn">12</span>All correspondence should be sent to our client&rsquo;s site office at <span class="flagged">Kuala Kubu Bharu</span>, marked for the attention of <span class="restored">Mohd Faizal bin Ismail</span>.</p>
+        </article>
+      </section>
+
+      <aside class="restore__side" aria-label="Result">
+        <section class="sheet">
+          <div class="result">
+            <div class="result__head">
+              <h2 class="result__title">Result</h2>
+              <span class="stamp stamp--warn stamp--lg"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>Warnings</span>
+            </div>
+            <div class="tally">
+              <div class="tally__row"><span class="tally__n tnum">142</span><span class="tally__t">tags put back, 38 different tags</span></div>
+              <div class="tally__row"><span class="tally__n tally__n--warn tnum">6</span><span class="tally__t">tags in the key are not in the draft
+                <span class="taglist">
+                  <span class="tag"><span class="tag__b">{{</span>PERSON_6<span class="tag__b">}}</span></span><span class="tag"><span class="tag__b">{{</span>PERSON_7<span class="tag__b">}}</span></span><span class="tag"><span class="tag__b">{{</span>DATE_9<span class="tag__b">}}</span></span><span class="tag"><span class="tag__b">{{</span>AMOUNT_11<span class="tag__b">}}</span></span><span class="tag"><span class="tag__b">{{</span>PLACE_2<span class="tag__b">}}</span></span><span class="tag"><span class="tag__b">{{</span>REF_4<span class="tag__b">}}</span></span>
+                </span></span></div>
+              <div class="tally__row"><span class="tally__n tnum">0</span><span class="tally__t">tag-like text that is not in the key</span></div>
+            </div>
+          </div>
+          <div class="checks">
+            <div class="check-row">
+              <div class="check-row__head"><p class="check-row__name">Restore check</p><span class="stamp stamp--ok"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg>Passed</span></div>
+              <p class="small muted">No tag left behind, none invented or damaged, no real value written in by the AI.</p>
+            </div>
+            <div class="check-row">
+              <div class="check-row__head"><p class="check-row__name">Source check <span class="tnum">2</span></p><span class="stamp stamp--warn">Warnings</span></div>
+              <ul class="issues">
+                <li class="issue issue--warn"><a class="issue__p" href="#p7">&para; 7</a><span><b>RM 1,250,000.00</b> is not in the documents.</span></li>
+                <li class="issue issue--warn"><a class="issue__p" href="#p12">&para; 12</a><span><b>Kuala Kubu Bharu</b> is not in the documents.</span></li>
+              </ul>
+            </div>
+            <div class="check-row">
+              <div class="check-row__head"><p class="check-row__name">Arithmetic and timeline <span class="tnum">1</span></p><span class="stamp stamp--warn">Warnings</span></div>
+              <ul class="issues">
+                <li class="issue issue--warn"><a class="issue__p" href="#p9">&para; 9</a><span>&ldquo;46 days&rdquo; between 12 March 2024 and 23 April 2024: those dates are 42 days apart.</span></li>
+              </ul>
+            </div>
+          </div>
+          <div class="result__actions">
+            <button class="btn btn--primary" type="button"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg>Copy</button>
+            <button class="btn" type="button"><svg class="i" aria-hidden="true"><use href="#i-save"/></svg>Save as&hellip;</button>
+            <p class="small muted">Plain text, without the marks.</p>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </div>
+</main>
+</body>
+</html>
