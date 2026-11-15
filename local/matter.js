@@ -27,6 +27,11 @@ import { assertNotSynced, locate } from './source.js';
 import { Chronology } from './chronology.js';
 import { contextSheet } from './context.js';
 import { keySweep } from './doublecheck.js';
+import { assertLicenceAllowsExport, licenceForReport } from './licence.js';
+import { READER_VERSION } from './extract.js';
+
+// Which readings in a matter's cache may be used again (see cache below).
+const READER = `${VERSION}/reader-${READER_VERSION}`;
 
 const LOCK_NAME = 'matter.lock';
 export const APPROVE_WORD = 'APPROVE';
@@ -103,19 +108,20 @@ class Session {
   }
 
   // What was read from a file, kept encrypted so an unchanged file is not
-  // read (or put through OCR) again.
+  // read (or put through OCR) again. A reading made by another version of
+  // Cloak, or of its readers, is not used: the file is read again.
   cache = {
     get: async (fileHash) => {
       try {
         const entry = this.crypto.decrypt(await readFile(path.join(this.dir, 'cache', `${this.crypto.name(fileHash)}.enc`)));
-        return entry.reader === VERSION ? entry.results : null;
+        return entry.reader === READER ? entry.results : null;
       } catch {
         return null;
       }
     },
     put: async (fileHash, results) => {
       await mkdir(path.join(this.dir, 'cache'), { recursive: true });
-      await writeFile(path.join(this.dir, 'cache', `${this.crypto.name(fileHash)}.enc`), this.crypto.encrypt({ reader: VERSION, results }), { mode: 0o600 });
+      await writeFile(path.join(this.dir, 'cache', `${this.crypto.name(fileHash)}.enc`), this.crypto.encrypt({ reader: READER, results }), { mode: 0o600 });
     },
   };
 
@@ -364,6 +370,11 @@ class Session {
     if (!this.review.complete) throw new Error('Nothing can be exported until the review is finished.');
     // Until the double checker exists, only matters marked as made-up test documents can be exported.
     if (!this.testMatter) throw Object.assign(new Error('Export is limited to test matters until the double checker is built. If this matter holds made-up test documents only, tick that box on the setup screen.'), { code: 'TEST_MATTER_ONLY' });
+    // The licence, a rule of its own: an evaluation copy (no licence, or one
+    // that has ended) exports test matters only, whatever any other check
+    // says. The app sets this.licence from the licence on this computer;
+    // unset means an evaluation copy. Restoring a draft never asks.
+    assertLicenceAllowsExport({ licence: this.licence, testMatter: this.testMatter });
     if (only === 'chronology' && !this.chronology?.confirmed) throw new Error('Confirm the chronology first.');
     outDir = path.resolve(outDir);
     if (inside(this.dir, outDir) || inside(outDir, this.dir)) throw new Error('The cloaked copies must not go into the matter folder. The key must never sit with the cloaked files.');
@@ -393,6 +404,7 @@ class Session {
     const note = `Reviewed by ${this.review.complete.by} on ${formatDate(this.review.complete.when)}. NOT YET DOUBLE-CHECKED.`;
     const report = buildReport({ matter: this.matter, files, total: this.run.total, user: this.user, seconds: this.run.seconds, cached: this.run.cached, source: this.run.source.cloaked, review: note });
     report.level = this.matter.options.level;
+    report.licence = licenceForReport(this.licence); // the licensee and licence ID, or "evaluation copy"
     if (strict) report.facts = { dates_version: this.matter.facts.datesVersion, un_blurred: this.matter.facts.unblurred.map((u) => ({ kind: u.kind, by: u.by, when: u.when })) };
     const written = await writeOutput(outDir, [...files, ...extra], report, `Cloak ${VERSION}\n\n${note}\nThe double checker has not been run on these copies.\n`, 'REVIEWED-NOT-DOUBLE-CHECKED.txt', (f) => extra.includes(f) || allowed(f));
     await this.log('exported', { only, files_written: written.length, files_held_back: only === 'chronology' ? 0 : files.filter((f) => f.cloaked && !allowed(f)).length });

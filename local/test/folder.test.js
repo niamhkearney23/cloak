@@ -23,7 +23,9 @@ function realValuesIn(text) {
 }
 
 async function walk(dir, out = []) {
-  for (const e of await readdir(dir, { withFileTypes: true })) {
+  // A folder another test removes while this one walks it has nothing left in it.
+  const entries = await readdir(dir, { withFileTypes: true }).catch((err) => { if (err.code === 'ENOENT') return []; throw err; });
+  for (const e of entries) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) await walk(full, out); else out.push(full);
   }
@@ -187,7 +189,12 @@ test('nothing real is left in temp or cache locations', async () => {
       assert.match(path.basename(f), /^[a-z_]+\.traineddata(?:\.gz)?$/, `unexpected file in the OCR data folder: ${f}`);
       continue;
     }
-    const text = (await readFile(f)).toString('latin1');
+    // The window tests run at the same time: Chromium's temp folders come and
+    // go, and its lock files are links to nothing. A file that is gone, or a
+    // link to nothing, holds no text to leave behind.
+    const buf = await readFile(f).catch((err) => { if (err.code === 'ENOENT') return null; throw err; });
+    if (!buf) continue;
+    const text = buf.toString('latin1');
     assert.deepEqual(realValuesIn(text), [], `real value left in ${f}`);
   }
 });

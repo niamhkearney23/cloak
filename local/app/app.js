@@ -74,11 +74,12 @@
         <button class="choice" id="go-restore"><b>Restore a draft</b>Put the real details back into a draft, and check it.</button>
       </div>
       ${homeExtras()}
-      <p class="small muted" style="margin-top:26px">Signed in as <b>${esc(state.info.who)}</b> · <button class="link" id="change-name">Change name</button></p>
+      <p class="small muted" style="margin-top:26px">Signed in as <b>${esc(state.info.who)}</b> · <button class="link" id="change-name">Change name</button> · <button class="link" id="go-licence">Licence</button></p>
     </div>`);
     on('#go-cloak', 'click', () => { state.afterOpen = null; setup(); });
     on('#go-restore', 'click', () => restoreStart());
     on('#change-name', 'click', () => nameScreen());
+    on('#go-licence', 'click', () => licenceScreen());
   }
 
   // ----------------------------------------------------------------- setup
@@ -886,9 +887,69 @@
     else sampleScreen();
   });
 
+  // ---------------------------------------------------------------- licence
+  // The licence is checked by the app on this computer. Without one (or after
+  // it ends) this is an evaluation copy: export is limited to test matters.
+  // Restoring drafts always works.
+
+  function licenceBar(v) {
+    const el = document.getElementById('licence-bar');
+    if (!el || !v) return;
+    el.textContent = v.licensed ? `Licensed to ${v.firm}` : 'Evaluation copy';
+    el.title = v.licensed ? `Licence ${v.id}. Ends ${v.expires}.` : 'No licence: cloaked copies can be exported only from test matters. Restoring drafts always works.';
+  }
+
+  async function licenceScreen(error, note) {
+    let v = null;
+    try { v = await call('licence'); } catch (err) { error = error || err.message; }
+    licenceBar(v);
+    const ends = v?.licensed && v.daysLeft <= 30 ? ` <span class="chip manual">${v.daysLeft ? `in ${plural(v.daysLeft, 'day', 'days')}` : 'today'}</span>` : '';
+    show(`<div class="narrow">
+      <h1>Licence</h1>
+      ${error ? message(error) : ''}${note ? message(note, 'ok') : ''}
+      ${v?.developmentKey ? message('This copy of Cloak was built for testing. It has the development licence key, so no licence will work in it. Ask your supplier for the copy built for sale.', 'warn') : ''}
+      <div class="card" id="licence-status">${v?.licensed ? `
+        <h2>Licensed to ${esc(v.firm)}</h2>
+        <p class="small">Licence ID: <b>${esc(v.id)}</b><br>Seats: <b>${esc(v.seats)}</b> <span class="muted">(for your records: Cloak does not count or limit seats)</span><br>Issued: ${esc(v.issued)}<br>Ends: <b>${esc(v.expires)}</b>${ends}</p>
+        <p class="small muted">${v.where === 'computer' ? 'Installed for everyone on this computer.' : 'Kept in your own user folder on this computer.'} It was checked on this computer. Nothing is sent anywhere.</p>`
+    : `<h2>Evaluation copy</h2>
+        <p>Everything works, but cloaked copies can be exported only from matters ticked as made-up test documents. Restoring drafts always works, with or without a licence.</p>
+        ${v && v.status !== 'none' ? `<div class="msg warn" id="licence-problem">${esc(v.reason)}</div>` : ''}`}
+      </div>
+      <div class="card">
+        <h2>${v?.licensed ? 'Replace the licence' : 'Add the licence'}</h2>
+        <p class="muted small">Paste the licence text, from BEGIN CLOAK LICENCE to END CLOAK LICENCE, or choose the licence file. It is checked on this computer. Nothing is sent anywhere.</p>
+        <div class="field"><textarea id="licence-text" rows="7" aria-label="Licence text" autocomplete="off" spellcheck="false" placeholder="-----BEGIN CLOAK LICENCE-----"></textarea></div>
+        <div class="row"><button class="btn primary" id="licence-use">Use this licence</button><button class="btn" id="licence-file">Choose the licence file…</button></div>
+      </div>
+      <div class="row"><button class="btn" id="licence-back">Back</button>${v?.licensed && v.where === 'user' ? '<button class="link" id="licence-remove">Remove the licence from this computer</button>' : ''}</div>
+    </div>`);
+    const install = async (text) => {
+      try {
+        const r = await call('installLicence', { text });
+        licenceScreen(null, `Licence added. Cloak is licensed to ${r.firm} until ${r.expires}.`);
+      } catch (err) { licenceScreen(err.message); }
+    };
+    on('#licence-use', 'click', () => {
+      const text = document.getElementById('licence-text').value;
+      if (!text.trim()) return licenceScreen('Paste the licence text first, or choose the licence file.');
+      install(text);
+    });
+    on('#licence-file', 'click', async () => {
+      try { const f = await call('pickLicenceFile'); if (f) install(f.text); } catch (err) { licenceScreen(err.message); }
+    });
+    on('#licence-back', 'click', () => home());
+    on('#licence-remove', 'click', async () => {
+      const yes = await confirmDialog({ title: 'Remove the licence?', body: 'Cloak goes back to being an evaluation copy for you on this computer: cloaked copies can then be exported only from test matters. Restoring drafts keeps working.', yes: 'Remove the licence' });
+      if (!yes) return;
+      try { await call('removeLicence'); licenceScreen(null, 'The licence was removed from this computer.'); } catch (err) { licenceScreen(err.message); }
+    });
+  }
+
   call('info').then((info) => {
     state.info = info;
     document.getElementById('version').textContent = `Version ${info.version}`;
     if (info.fullName) home(); else nameScreen();
+    call('licence').then(licenceBar, () => {});
   });
 })();
