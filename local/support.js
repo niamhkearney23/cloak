@@ -80,7 +80,7 @@ export async function selfTest({ session = null, ocr = ocrImage, stopOcr = close
     results.push({ check: 'Backup of the matter key', ok: true, what: `matter.cloakkey.bak opened too (${b.tags} tags).` });
   } catch (err) {
     const none = /no matter key/i.test(err.message);
-    results.push({ check: 'Backup of the matter key', ok: none ? null : false, what: none ? 'There is no backup yet (it is made the second time the matter is saved).' : noPaths(err.message, session.dir) });
+    results.push({ check: 'Backup of the matter key', ok: none ? null : false, what: none ? 'There is no backup yet: Cloak makes one the next time it saves the matter.' : noPaths(err.message, session.dir) });
   }
   return results;
 }
