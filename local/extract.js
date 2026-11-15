@@ -791,7 +791,8 @@ export async function extractBuffer(name, buf) {
   try {
     if (TEXT_TYPES.has(ext)) {
       const utf16 = buf[0] === 0xff && buf[1] === 0xfe ? 'utf-16le' : buf[0] === 0xfe && buf[1] === 0xff ? 'utf-16be' : null;
-      add(result, 'Text', (utf16 ? new TextDecoder(utf16).decode(buf) : buf.toString('utf8')).replace(/^\uFEFF/, ''));
+      // Windows line endings (CRLF, and a lone CR) are read as one line break, so every rule that works by lines sees the same text.
+      add(result, 'Text', (utf16 ? new TextDecoder(utf16).decode(buf) : buf.toString('utf8')).replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n'));
       result.proof.found = result.proof.read = 1;
     }
     else if (HTML_TYPES.has(ext)) { add(result, 'Text', htmlToText(buf.toString('utf8'))); result.proof.found = result.proof.read = 1; }

@@ -116,8 +116,9 @@ These are known and measured. None of them is fixed by the rules above.
 - **A lowercase ordinary-word name in a place that does not read as a name**
   ("by hakim", "he mentioned that may from accounts called"): silent miss.
 - **The "not sure" list cannot hide one place.** If a reviewer chooses to
-  hide a flagged lowercase word such as "may" or "bill", every place that
-  word appears in the matter is hidden, ordinary uses included. The tool to
+  hide a flagged word such as "may", "bill" or "Abu", the word written
+  exactly like that is hidden in every place in the matter, ordinary uses
+  included (the same word written another way is judged on its own). The tool to
   hide one highlighted place is not built. For now, leave such a word as it
   is and correct the cloaked copy by hand, or edit the source.
 - **More reading on the "not sure" list.** Ordinary words that may be names

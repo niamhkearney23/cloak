@@ -166,6 +166,8 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   const tLearn = Date.now();
   // The client and the other parties typed at setup are hidden in every form before anything is read.
   matter.addSetupParties();
+  // How words are written is counted for this folder only, once: cloaking the same folder again must give the same counts.
+  matter.resetSeen();
   const candidates = [];
   for (const f of readable) candidates.push(...matter.learn(whole(f)));
   for (const f of files) if (!f.parts.length) candidates.push(...matter.learn(nameText(f)));
@@ -213,6 +215,13 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
 export const nameText = (f) => f.rel.replace(/\.[A-Za-z0-9]{1,5}(?=\/|$)/g, '').replace(/[_/\\]+/g, ' ');
 
 /** Build the cloaked text of one file from what was read. */
+/** The "not sure" words of one cloaked file, with those in its file and folder names. */
+export function listUnsure(matter, f, safeWords = []) {
+  f.unsure = matter.unsure(f.cloaked, safeWords);
+  // Words in file and folder names go on the "not sure" list too.
+  for (const u of matter.unsureFromNames(f.name, safeWords)) if (!f.unsure.some((x) => x.text.toLowerCase() === u.text.toLowerCase())) f.unsure.push(u);
+}
+
 export function renderFile(matter, f, safeWords = []) {
   f.name = matter.apply(nameText(f));
   if (!f.parts.length) return;
@@ -222,9 +231,7 @@ export function renderFile(matter, f, safeWords = []) {
   const prepare = (t) => (f.hideNonLatin ? hidePassages(matter, t) : t);
   const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${matter.apply(p.label)}]\n`) + matter.apply(prepare(p.text))).join('\n\n');
   f.cloaked = `File: ${f.name}.${f.type}\n\n${body}\n`;
-  f.unsure = matter.unsure(f.cloaked, safeWords);
-  // Words in file and folder names go on the "not sure" list too.
-  for (const u of matter.unsureFromNames(f.name, safeWords)) if (!f.unsure.some((x) => x.text.toLowerCase() === u.text.toLowerCase())) f.unsure.push(u);
+  listUnsure(matter, f, safeWords);
   f.tags = {};
   for (const m of f.cloaked.matchAll(TAG)) f.tags[`${m[1]}_${m[2]}`] = (f.tags[`${m[1]}_${m[2]}`] || 0) + 1;
 }

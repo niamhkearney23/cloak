@@ -103,6 +103,7 @@ export const ORDINARY = words(`
   biru hijau merah putih hitam kuning ungu emas delima cinta rindu harapan ceria riang suka nur hari bala suri maya nila raja kala
   mala ram guru bagus sentosa utama lestari amin sultan dan
   said page case law bond day love fine wall bakar abu mat rahim puteri putri gill
+  low saw son sun wee woo hew lye ting yam sue chew chow
 `);
 
 // Words that often come straight after a person's name ("Mark said", "May is
@@ -127,6 +128,8 @@ export const LABEL_WORDS = words(`
   client customer supplier sales marketing ops operations work home rumah mobile hp personal new old baru lama landlord tenant cook
   chef cleaner maid helper guard security worker foreman qs pm engineer architect hq branch company ent enterprise trading
   property properties realty agency
+  delivery kantin legal support info helpdesk enquiries enquiry billing secretariat hello contact careers noreply postmaster webmaster service services reception
+  mention hearing trial incident transfer meeting call outgoing incoming missed visit appointment
 `);
 
 // Words for a person's role. "the lorry driver, Ah Seng," and "Joko, another
@@ -184,4 +187,10 @@ export const NOT_NAMES = words(`
   aidilfitri aidiladha ramadan ramadhan raya deepavali diwali christmas krismas merdeka thaipusam wesak lunar
   indonesian bangladeshi nepali nepalese filipino myanmar burmese thai vietnamese cambodian pakistani indian chinese malay
   american australian japanese korean foreigner foreign undersigned bertandatangan later earlier meanwhile afterwards
+  tunggal beradik mati bendahari
+  bro sis akak bruh dude mate guys
+  tiada kosong illegible vacant nil none blank pending unknown
+  muslim buddhist hindu sikh catholic
+  thereupon hereupon whereupon alamak aiyo aiyoh aduh adoi
+  lot unit plot parcel
 `);

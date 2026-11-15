@@ -17,12 +17,15 @@ function cloak(texts, options = {}) {
 const people = (text) => findNames(text).filter((c) => c.kind === 'PERSON').map((c) => c.text);
 
 test('a title only claims a name in the same sentence and on the same line', () => {
-  for (const text of ['Thank you Puan. Cabinets done today.', 'Terima kasih Encik. Jubin baru minggu depan.', 'Please call Madam. Delivery is late.', 'Noted, Puan\nCabinets done today.']) {
+  for (const text of ['Thank you Puan. Cabinets done today.', 'Terima kasih Encik. Jubin baru minggu depan.', 'Please call Madam. Delivery is late.']) {
     assert.deepEqual(people(text), [], text);
     const { out, unsure } = cloak([text]);
     assert.equal(out[0], text);
     assert.ok(!unsure[0].some((u) => /Cabinets|Jubin|Delivery/.test(u)), `${text}: ${unsure[0]}`);
   }
+  // A title at the end of a line may have its name on the next line, so that is flagged for a decision, not hidden.
+  assert.deepEqual(people('Noted, Puan\nCabinets done today.'), []);
+  assert.ok(cloak(['Noted, Puan\nCabinets done today.']).unsure[0].includes('Cabinets'));
   // Abbreviations still take their dot.
   const { out } = cloak(['Dr. Kavitha Nair and Mr. Lim Ah Kow came. En. Zulhilmi too.']);
   assert.doesNotMatch(out[0], /Kavitha|Nair|Lim|Kow|Zulhilmi/);
