@@ -780,7 +780,7 @@
   const isSample = () => !!state.sample && state.matterDir === state.sample.matterDir;
   // The matter is closed. If it was the sample, nothing of it (its folders, its parties, the "made-up test documents" tick) carries into the next matter.
   function matterClosed() {
-    if (isSample()) Object.assign(state, { folder: null, matterDir: null, client: '', others: '', testMatter: false, level: 'strict', manualSource: '', location: null, sample: null, review: null, chrono: null, exported: null });
+    if (isSample()) Object.assign(state, { folder: null, matterDir: null, client: '', others: '', testMatter: false, level: 'strict', manualSource: '', location: null, review: null, chrono: null, exported: null });
     state.matter = null;
   }
   function screenNote(id) {
