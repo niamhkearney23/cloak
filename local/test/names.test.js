@@ -143,3 +143,10 @@ test('a firm whose name starts with initials is one company', () => {
   const { out } = cloak(['Messrs K.S. Rao & Co act for the landlord. K.S. Rao & Co wrote again.']);
   assert.doesNotMatch(out[0], /K\.S\.|Rao/);
 });
+
+test('a one-word name written in lowercase in many files is an ordinary word in that matter', () => {
+  const { out } = cloak(['Mr Kenny Gate (NRIC No. 800101-10-5555) owns the lot.', 'The gate was locked. kenny called.', 'Open the gate at 9.', 'The main gate is broken.']);
+  assert.match(out[1], /^The gate was locked\. \{\{PERSON_\d+\.FIRST\}\} called\.$/);
+  assert.match(out[2], /^Open the gate at 9\.$/);
+  assert.doesNotMatch(out[0], /Kenny|Gate/);
+});

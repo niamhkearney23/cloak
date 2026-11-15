@@ -102,6 +102,7 @@ export const ORDINARY = words(`
   batin aman damai mulia budi budiman bunga mawar melati kenanga cempaka melur dahlia anggerik orkid ros kemboja seroja laut ombak
   biru hijau merah putih hitam kuning ungu emas delima cinta rindu harapan ceria riang suka nur hari bala suri maya nila raja kala
   mala ram guru bagus sentosa utama lestari amin sultan dan
+  said page case law bond day love fine wall bakar abu mat rahim puteri putri gill
 `);
 
 // Words that often come straight after a person's name ("Mark said", "May is

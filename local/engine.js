@@ -720,7 +720,7 @@ function lowerNameContext(text, start, end) {
  * lowercase, and known names that are ordinary words only where they read as
  * a name. Without ctx this is exactly the one-by-one search of the website.
  */
-function replaceKnown(text, root, ctx = false) {
+function replaceKnown(text, root, ctx = null) {
   const spans = []; // text that must not be touched: tags already in the text
   for (const m of text.matchAll(TOKEN_RE)) spans.push([m.index, m.index + m[0].length]);
   const toks = [...text.matchAll(TOKENS)].map((m) => ({ s: m[0], i: m.index, key: tokenKey(m[0]) }));
@@ -737,13 +737,14 @@ function replaceKnown(text, root, ctx = false) {
       if (end < text.length && WORD.test(text[end])) continue;
       const slice = text.slice(toks[a].i, end);
       for (const e of node.ends) {
+        const ordinary = ctx && e.name && (e.ordinary || (!/\s/.test(e.value) && ctx.ordinaryHere(e.value)));
         if (!e.lower && slice === slice.toLowerCase()) {
           // "may" or "wood" in ordinary prose is not the surname May / Wood. A
           // name that is not an ordinary word is the person in any case
           // ("darsono", "ah seng"), and so is an ordinary one after a title ("kak ros").
           if (!ctx || !e.name) continue;
-          if (e.ordinary ? !afterTitle(text, toks[a].i) : (!e.lowerOk || inLink(text, toks[a].i, end))) continue;
-        } else if (ctx && e.name && e.ordinary && ordinaryUse(text, toks[a].i, end)) continue;
+          if (ordinary ? !afterTitle(text, toks[a].i) : (!e.lowerOk || inLink(text, toks[a].i, end))) continue;
+        } else if (ordinary && ordinaryUse(text, toks[a].i, end)) continue;
         found.push({ start: toks[a].i, end, e });
       }
     }
@@ -794,6 +795,33 @@ export class Matter {
     this.safeWords = [];         // "not sure" words a reviewer marked as fine
     this.setup = { client: '', others: '' }; // typed at setup
     this.roles = {};             // roles a reviewer wrote for the context sheet: tag -> { roles, relationships }
+    this.seen = { files: 0, lower: new Map(), lowerFiles: new Map(), cap: new Map(), last: new Map() }; // how words are written in this folder (not saved)
+  }
+
+  /** Count how each word is written in one file: lowercase or capitalised. */
+  countWords(text) {
+    const s = this.seen;
+    s.files++;
+    for (const m of String(text || '').matchAll(/\p{L}{3,}/gu)) {
+      const w = m[0];
+      const low = w.toLowerCase();
+      if (w === low) {
+        s.lower.set(low, (s.lower.get(low) || 0) + 1);
+        if (s.last.get(low) !== s.files) { s.last.set(low, s.files); s.lowerFiles.set(low, (s.lowerFiles.get(low) || 0) + 1); }
+      } else if (/^\p{Lu}\p{Ll}/u.test(w)) s.cap.set(low, (s.cap.get(low) || 0) + 1);
+    }
+  }
+
+  /**
+   * A one-word name that is an ordinary word here: on the list in names.js, or
+   * written in lowercase in at least three files of this folder and more often
+   * than with a capital ("said" when someone is called Said).
+   */
+  ordinaryHere(word) {
+    const low = plainWord(word);
+    if (ORDINARY.has(low)) return true;
+    const s = this.seen;
+    return (s.lowerFiles.get(low) || 0) >= 3 && (s.lower.get(low) || 0) > (s.cap.get(low) || 0);
   }
 
   /**
@@ -841,15 +869,15 @@ export class Matter {
     if (!this.trie || this.trie.cloak !== this.cloak || this.trie.size !== entries.length) {
       this.trie = { root: buildTrie(entries), cloak: this.cloak, size: entries.length };
     }
-    return replaceKnown(text, this.trie.root, context);
+    return replaceKnown(text, this.trie.root, context ? { ordinaryHere: (w) => this.ordinaryHere(w) } : null);
   }
 
   /** Known one-word people whose name is also an ordinary word, as one pattern. */
   ordinaryNames() {
     const entries = this.cloak.entries;
-    if (!this.ordinaryCache || this.ordinaryCache.cloak !== this.cloak || this.ordinaryCache.size !== entries.length) {
-      const values = [...new Set(entries.filter((e) => e.match !== false && /^PERSON_/.test(e.token) && !/\s/.test(e.value) && ORDINARY.has(plainWord(e.value))).map((e) => e.value.toLowerCase()))];
-      this.ordinaryCache = { cloak: this.cloak, size: entries.length, re: values.length ? new RegExp(`(?<![\\p{L}\\p{N}_])(?:${values.map(escapeRe).join('|')})(?![\\p{L}\\p{N}_])`, 'giu') : null };
+    if (!this.ordinaryCache || this.ordinaryCache.cloak !== this.cloak || this.ordinaryCache.size !== entries.length || this.ordinaryCache.files !== this.seen.files) {
+      const values = [...new Set(entries.filter((e) => e.match !== false && /^PERSON_/.test(e.token) && !/\s/.test(e.value) && this.ordinaryHere(e.value)).map((e) => e.value.toLowerCase()))];
+      this.ordinaryCache = { cloak: this.cloak, size: entries.length, files: this.seen.files, re: values.length ? new RegExp(`(?<![\\p{L}\\p{N}_])(?:${values.map(escapeRe).join('|')})(?![\\p{L}\\p{N}_])`, 'giu') : null };
     }
     return this.ordinaryCache.re;
   }
@@ -1125,6 +1153,7 @@ export class Matter {
    * key (what is already known is blanked out), then the name rules.
    */
   learn(text) {
+    this.countWords(text);
     this.facts.learn(text);
     const { text: safe } = this.protect(String(text || '').replace(TOKEN_RE, ' '));
     let rest = safe;
