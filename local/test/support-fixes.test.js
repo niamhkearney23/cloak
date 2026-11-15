@@ -1,16 +1,44 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, stat } from 'node:fs/promises';
+import { mkdtemp, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { makeMatter } from './matter.js';
 import { createMatter, openMatter } from '../matter.js';
-import { redactLog, selfTest, noPaths } from '../support.js';
+import { redactLog, selfTest, noPaths, supportFile } from '../support.js';
+import { readZip } from '../zip.js';
 
 // Fixes found in review (support and sample areas). Made-up data only.
 const FAST = { N: 2 ** 12, r: 8, p: 1 };
 const PASSWORD = 'a long test password';
 const exists = (p) => stat(p).then(() => true, () => false);
+
+test('the support file leaves Cloak\'s own times and words alone, and every count agrees', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'cloak-log-'));
+  const lines = [
+    { t: '2026-11-15T05:58:00.000Z', when: '15 Nov 2026, 1:58 pm', by: 'Reviewer Example (rex)', action: 'review-change', change: 'confirm', tag: 'DATE_1' },
+    { t: '2026-11-15T05:59:00.000Z', by: 'Kemas Jaya', action: 'closed', note: 'a real name by mistake' },
+  ];
+  await writeFile(path.join(dir, 'log.jsonl'), `${lines.map((l) => JSON.stringify(l)).join('\n')}\n`);
+  const session = {
+    dir, matterId: 'm1', openedWith: 'password', testMatter: true, files: {}, review: null, chronology: null,
+    matter: { options: { level: 'strict' }, cloak: { entries: [{ value: '15 Nov 2026', token: 'DATE_1' }, { value: 'Action', token: 'COMPANY_1' }, { value: 'Kemas Jaya', token: 'COMPANY_2' }] } },
+  };
+  const now = new Date(2026, 10, 15, 13, 58);
+  const zip = await supportFile({ session, test: [], now });
+  const files = readZip(zip.buffer);
+  const log = files.text('matter-log.jsonl').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  assert.equal(log[0].when, '15 Nov 2026, 1:58 pm', 'its own time is kept');
+  assert.equal(log[0].action, 'review-change', 'its own words are kept');
+  assert.ok('action' in log[0] && !Object.keys(log[0]).some((k) => k.includes('{{')));
+  assert.equal(log[1].by, '{{COMPANY_2}}', 'a client value in a free-text field is still replaced');
+  const info = JSON.parse(files.text('support-info.json'));
+  assert.equal(info.made, '15 Nov 2026, 1:58 pm');
+  assert.equal(zip.replaced, 1);
+  assert.equal(info.values_replaced_by_tags, 1);
+  assert.match(files.text('README.txt'), /Made on 15 Nov 2026, 1:58 pm by Cloak/);
+  assert.match(files.text('README.txt'), /Values replaced: 1\./);
+});
 
 test('the self-test writes its result even if the OCR engine never answers', async () => {
   const never = new Promise(() => {});

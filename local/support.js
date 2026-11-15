@@ -168,10 +168,17 @@ export function redactText(text, values) {
 }
 
 /** The same for a JSON value: every string in it, at any depth. */
-function redactJson(value, values, tally) {
-  if (typeof value === 'string') { const r = redactText(value, values); tally.count += r.count; return r.text; }
-  if (Array.isArray(value)) return value.map((v) => redactJson(v, values, tally));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [redactJson(k, values, tally), redactJson(v, values, tally)]));
+// Cloak's own fields: times, the version, and the words it writes itself. They are not looked at, so a date or a
+// short form in the key (such as "Action") does not blank out the log's own times or field values.
+// Object keys are Cloak's own words too and are never changed.
+const OWN_FIELDS = new Set(['t', 'when', 'made', 'cloak_version', 'action', 'change', 'tag']);
+function redactJson(value, values, tally, key = '') {
+  if (typeof value === 'string') {
+    if (OWN_FIELDS.has(key)) return value;
+    const r = redactText(value, values); tally.count += r.count; return r.text;
+  }
+  if (Array.isArray(value)) return value.map((v) => redactJson(v, values, tally, key));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactJson(v, values, tally, k)]));
   return value;
 }
 
@@ -267,12 +274,14 @@ export async function supportFile({ session = null, test = [], system = systemIn
   const tally = { count: 0 };
   const info = redactJson({ made, cloak_version: VERSION, system, self_test: test, matter: session ? matterSummary(session) : null }, values, tally);
   replaced += tally.count;
+  // The README is built from the checked self-test, and checked once more as a whole. The time it was made, the
+  // version and the count are Cloak's own words: they go in after the check, and the count includes the README's own hits.
+  const text = redactText(readme({ made: '\u0001MADE\u0001', session, test: info.self_test, replaced: '\u0001COUNT\u0001' }), values);
+  replaced += text.count;
   files['support-info.json'] = `${JSON.stringify({ ...info, values_replaced_by_tags: replaced }, null, 2)}\n`;
-  // The README is built from the checked self-test, and checked once more as a whole.
-  const text = redactText(readme({ made, session, test: info.self_test, replaced }), values);
   // README first, so it is the first thing a person sees when they open the zip.
-  const ordered = { 'README.txt': text.text, ...files };
-  return { buffer: writeZip(ordered), names: Object.keys(ordered), replaced: replaced + text.count };
+  const ordered = { 'README.txt': text.text.split('\u0001MADE\u0001').join(made).split('\u0001COUNT\u0001').join(String(replaced)), ...files };
+  return { buffer: writeZip(ordered), names: Object.keys(ordered), replaced };
 }
 
 /** A file name for the support file: cloak-support-2026-11-15-0919.zip */
