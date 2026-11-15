@@ -22,17 +22,40 @@ const { Cloak, findSuspects, isCommonWord, TOKEN_RE, DETECTORS } = require('../p
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+/** Windows line endings (CRLF, a lone CR) read as one line break, so every rule that works by lines treats them as LF. */
+const lf = (s) => String(s || '').replace(/\r\n?/g, '\n');
 const alt = (list) => list.slice().sort((a, b) => b.length - a.length).map((t) => escapeRe(t).replace(/\\?'|’/g, "['’]?").replace(/ /g, '\\s+')).join('|');
 
 // A capitalised or ALL-CAPS word, as found in names.
 const W = String.raw`\p{Lu}[\p{L}'’-]*`;
 const PARTICLE = String.raw`(?:bin|binti|bt\.?|bte\.?|b\.|ibni|a\/l|a\/p|s\/o|d\/o|anak|BIN|BINTI|BT\.?|BTE\.?|IBNI|A\/L|A\/P|S\/O|D\/O|ANAK)`;
 const PARTICLE_WORD = /^(?:bin|binti|bt\.?|bte\.?|b\.|ibni|a\/l|a\/p|s\/o|d\/o|anak|al|ap)$/i;
-const TITLE_RE = alt([...GENERIC_TITLES, ...HONOURS]);
-const HONOUR_RE = alt(HONOURS);
+// A list of titles as one pattern in which every run of titles can be read in
+// one way only. "Mak Cik" is one title and also "Mak" followed by "Cik", and
+// "Toh Puan" is "Toh" followed by "Puan"; with both readings a run of n titles
+// has 2^n ways to match, and a document of repeated titles could freeze a cloak.
+// A title that begins a longer title made of two titles is not read on its own
+// where the rest of the longer one follows.
+const titlePattern = (t) => escapeRe(t).replace(/\\?'|’/g, "['’]?").replace(/ /g, '\\s+');
+function titleAlt(list, universe = list) {
+  const all = new Set(universe);
+  return [...new Set(list)].sort((a, b) => b.length - a.length).map((t) => {
+    let p = titlePattern(t);
+    if (!/\s/.test(t)) {
+      for (const longer of all) {
+        const rest = longer.startsWith(`${t} `) ? longer.slice(t.length + 1) : null;
+        if (rest && all.has(rest)) p += `(?!\\s+${titlePattern(rest)})`;
+      }
+    }
+    return p;
+  }).join('|');
+}
+const EVERY_TITLE = [...GENERIC_TITLES, ...HONOURS, ...KIN_TITLES];
+const TITLE_RE = titleAlt([...GENERIC_TITLES, ...HONOURS], EVERY_TITLE);
+const HONOUR_RE = titleAlt(HONOURS, EVERY_TITLE);
 // Informal titles (Kak, Pak, Uncle, Ah...): titles too, with extra care (names.js).
-const KIN_RE = alt(KIN_TITLES);
-const ALL_TITLES_RE = alt([...GENERIC_TITLES, ...HONOURS, ...KIN_TITLES]);
+const KIN_RE = titleAlt(KIN_TITLES, EVERY_TITLE);
+const ALL_TITLES_RE = titleAlt(EVERY_TITLE);
 const KIN_START = new RegExp(`^(?:${KIN_RE})(?![\\p{L}])`, 'u');
 // One-word titles. Not the words of two-word titles: "Tan" (Tan Sri) and "Toh" (Toh Puan) are common surnames.
 const TITLE_WORDS = new Set([...GENERIC_TITLES, ...HONOURS, ...KIN_TITLES].filter((t) => !/\s/.test(t)).map((t) => t.toLowerCase().replace(/['’]/g, '')).filter((t) => t !== 'toh'));
@@ -146,7 +169,7 @@ export function findAddresses(text) {
 
 const LAND_TAIL = String.raw`(?:\s*,?\s*(?:Lot|PT|Plot)\s*(?:No\.?\s*)?\d[\w\/-]*)?(?:\s*,?\s*(?:Seksyen|Section)\s*\d+[A-Z]?)?(?:\s*,?\s*(?:Mukim|Bandar|Pekan|Daerah|District\s+of|Town\s+of|Tempat|Locality\s+of)\s+(?:of\s+)?\p{Lu}[\p{L}]*(?:\s+\p{Lu}[\p{L}]*){0,2})*`;
 const RAW_PATTERNS = [
-  { type: 'EMAIL', re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
+  { type: 'EMAIL', re: /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
   // Where a photo was taken.
   { type: 'LOCATION', re: /(?<=GPS(?: location)?:\s*)-?\d{1,3}\.\d+,\s*-?\d{1,3}\.\d+/gi },
   // Land titles: Geran 12345, GM 678, HS(D) 12345, PN 4321, Lot 1234 Mukim X.
@@ -190,7 +213,7 @@ const idKey = {
 // ----------------------------------------------------------- name keys
 
 const MOHD = /^(?:mohd|mohamad|mohamed|mohammad|mohammed|muhammad|muhamad|muhammed|md|mohd\.|md\.)$/;
-const titleStrip = new RegExp(`^(?:(?:${TITLE_RE}|${KIN_RE})\\.?\\s+)+`, 'iu');
+const titleStrip = new RegExp(`^(?:(?:${ALL_TITLES_RE})\\.?\\s+)+`, 'iu');
 
 function nameWords(name) {
   return norm(name).replace(titleStrip, '').split(/[\s]+/).filter(Boolean);
@@ -247,7 +270,7 @@ function tidyCompany(raw) {
   return words.join(' ');
 }
 
-const ROLE_ALIAS = /^(?:the\s+)?(?:(?:1st|2nd|3rd|first|second|third|said|pertama|kedua|ketiga)\s+)?(?:plaintiff|plaintif|defendant|defendan|claimant|respondent|responden|appellant|perayu|applicant|pemohon|company|syarikat|bank|vendor|purchaser|pembeli|penjual|landlord|tenant|penyewa|borrower|peminjam|lender|employer|majikan|employee|pekerja|contractor|kontraktor|client|deceased|si mati|property|hartanah|land|tanah|premises|premis|agreement|perjanjian|vehicle|kenderaan|deponent|witness|saksi|director|pengarah|owner|pemilik|guarantor|penjamin|developer|pemaju|parties|party|pihak)s?$/i;
+const ROLE_ALIAS = /^(?:the\s+)?(?:(?:1st|2nd|3rd|first|second|third|said|pertama|kedua|ketiga)\s+)?(?:plaintiff|plaintif|defendant|defendan|claimant|respondent|responden|appellant|perayu|applicant|pemohon|company|syarikat|bank|vendor|purchaser|pembeli|penjual|landlord|tenant|penyewa|borrower|peminjam|lender|employer|majikan|employee|pekerja|contractor|kontraktor|client|deceased|si mati|property|hartanah|land|tanah|premises|premis|agreement|perjanjian|vehicle|kenderaan|deponent|witness|saksi|director|pengarah|owner|pemilik|guarantor|penjamin|developer|pemaju|parties|party|pihak|waris|beneficiary|nominee|spouse|wife|husband|isteri|suami|executor|administrator|trustee|wasi|pentadbir|pelaksana|penerima|recipient|assignee|assignor|chargor|chargee|lessor|lessee|tuan tanah|pemegang|petitioner|pempetisyen|intervener|pencelah|surety|penjaga|guardian|insured|insurer|payer|payee|seller|buyer|licensor|licensee|principal|agent|ejen|supplier|pembekal|customer|pelanggan|member|ahli|shareholder|pemegang saham|sub-contractor|subcontractor|sub-kontraktor|pihak\s+(?:pertama|kedua|ketiga))s?$/i;
 
 // A capitalised first word of a sentence that is a verb or adverb, not a name.
 const VERBISH = /(?:ed|ing|ly|tion|ment|ence|ance|ity|ous|ive|ise|ize|ify|ate|ct|pt)$|^(?:Call|Contact|Email|Phone|Meet|Met|Saw|Told|Asked|Ask|Spoke|Speak|Wrote|Write|Sent|Send|Paid|Pay|Per|Via|Note|See|Cc|Attn|Attention|Present|Signed|Witnessed|Between|Both|Then|When|Where|After|Before|Also|Only)$/i;
@@ -257,7 +280,8 @@ const VERBISH = /(?:ed|ing|ly|tion|ment|ence|ance|ity|ous|ive|ise|ize|ify|ate|ct
 // Cabinets done today." names nobody. A title and its name are always on one
 // line.
 const ABBREV_TITLES = ['Mr', 'Mrs', 'Ms', 'Mdm', 'Dr', 'Prof', 'En', 'Pn', 'Hj', 'Hjh', 'Ir', 'Ar', 'Ts', 'Insp', 'Sgt', 'Sjn', 'Kpl', 'Cpl', 'Supt', 'YB', 'YBhg', 'YM', 'YAB', 'Abg'];
-const TITLE_TOKEN = String.raw`(?:(?:${alt(ABBREV_TITLES)})\.?|(?:${ALL_TITLES_RE}))`;
+// A word that is both an abbreviation and a title (Mr, Abg) is in the first branch only, so each title word can be read in one way.
+const TITLE_TOKEN = String.raw`(?:(?:${alt(ABBREV_TITLES)})\.?|(?:${titleAlt(EVERY_TITLE.filter((t) => !ABBREV_TITLES.includes(t)), EVERY_TITLE)}))`;
 const TITLE_LEAD = new RegExp(`^(?:${TITLE_TOKEN}[ \\t]+)+`, 'u');
 const GREETING_WORD = /^(?:hi|hello|hey|hai|dear|salam|assalamualaikum|thanks|thank|morning|ok|okay|noted|tq|thx|cc|attn|attention|to|for|from)$/i;
 // Words after a heading that are not a name: "AFIDAVIT SOKONGAN" is a supporting affidavit.
@@ -280,8 +304,12 @@ function looksLikeName(value, { strong = false, single = true } = {}) {
 // The date may already have been set aside (a private-use character) before the name rules run.
 const CHAT_DATE = String.raw`(?:\d{1,4}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|[\u{f0000}-\u{ffffd}])`;
 const CHAT_TIME = String.raw`\d{1,2}[:.]\d{2}(?:[:.]\d{2})?(?:[   ]?[AaPp]\.?[   ]?[Mm]\.?)?`;
-const CHAT_HEAD = String.raw`[ \t‎‏]*(?:\[${CHAT_DATE},?[ \t ]+${CHAT_TIME}\][ \t]*|${CHAT_DATE},?[ \t ]+${CHAT_TIME}[ \t]+[-–—][ \t]+)[~‎‏  \t]*`;
-const CHAT_LINE = new RegExp(String.raw`^${CHAT_HEAD}([^:\n]{1,60}?)[ \t]*:[ \t]`, 'gmu');
+// Each run of white space is matched by one part of the pattern only, and the label
+// starts with a letter or digit: a line of 50,000 spaces after a time stamp must
+// not make the search try every way of splitting them.
+const CHAT_GAP = String.raw`[ \t‎‏ ~]`;
+const CHAT_HEAD = String.raw`[ \t‎‏]*(?:\[${CHAT_DATE},?[ \t ]+${CHAT_TIME}\]${CHAT_GAP}*|${CHAT_DATE},?[ \t ]+${CHAT_TIME}[ \t]+[-–—][ \t]${CHAT_GAP}*)`;
+const CHAT_LINE = new RegExp(String.raw`^${CHAT_HEAD}([^\s:~‎‏][^:\n]{0,59}?)[ \t]*:[ \t]`, 'gmu');
 export const CHAT_LABEL_BEFORE = new RegExp(String.raw`(?:^|\n)${CHAT_HEAD}$`, 'u');
 
 const CLOSINGS = ['Best regards', 'Kind regards', 'Warm regards', 'Warmest regards', 'With best regards', 'Thanks and regards', 'Thanks & regards', 'Regards', 'Rgds', 'Brgds', 'Many thanks', 'Thank you', 'Thanks', 'Cheers', 'Best wishes', 'Best', 'Yours sincerely', 'Yours faithfully', 'Yours truly', 'Sincerely', 'Sekian, terima kasih', 'Sekian terima kasih', 'Terima kasih', 'Wassalam', 'Salam', 'Tq', 'Thx'];
@@ -292,6 +320,7 @@ const NAME_RUN = String.raw`(?:${TITLE_TOKEN}[ \t]+)*${W}(?:[ \t]+(?:${W}|${PART
 
 /** Collect people and companies named in one text. Returns [{kind, text}]. */
 export function findNames(text) {
+  text = lf(text);
   const found = [];
   const add = (kind, value, why, extra = {}) => { value = norm(value).replace(/['’]s$/i, ''); if (value.length > 1) found.push({ kind, text: value, why, ...extra }); };
   const blank = (s) => s.replace(/[^\n]/g, ' ');
@@ -322,8 +351,14 @@ export function findNames(text) {
   // 0. Chat exports: the name before the colon is a person. What is a name and
   // what describes the person ("Kala Manager") is sorted out when the folder
   // is registered, once company names are known.
+  // A diary or a log has lines that start the same way ("14/02/2025, 9.00 - Mention: ...").
+  // A file is read as a chat export when it has several such lines with at least two
+  // speakers; in a shorter file a label counts only when a word of it is a name word or a title.
+  const chatLabels = [...rest.matchAll(CHAT_LINE)].map((c) => norm(c[1]).toLowerCase());
+  const chatExport = chatLabels.length >= 3 && new Set(chatLabels).size >= 2;
   rest = rest.replace(CHAT_LINE, (m, label) => {
     if (/\d{3}/.test(label) || !/\p{L}/u.test(label)) return m;
+    if (!chatExport && !norm(label).split(' ').some((w) => isNameWord(w) || TITLE_WORDS.has(plainWord(w)))) return m;
     add('PERSON', label, 'chat speaker', { chat: true });
     return m.slice(0, m.lastIndexOf(label)) + blank(label) + m.slice(m.lastIndexOf(label) + label.length);
   });
@@ -340,16 +375,26 @@ export function findNames(text) {
   // 2. Names after a title: Dato' Sri Lim, Encik Ahmad, Dr. Kavitha Nair, and
   // the informal ones: Kak Ros, Pak Darsono, Uncle Mani, Ah Seng. The title and
   // the name are in the same sentence and on the same line.
-  const titled = new RegExp(String.raw`(?<![\p{L}])((?:${TITLE_TOKEN} +)+)(${W}(?: +(?:${W}|${PARTICLE})){0,5})`, 'gu');
+  // A title at the end of a line (a wrapped PDF or scan) may have its name on the next line,
+  // but a full stop after a whole-word title still ends the sentence. Across a line break
+  // only a name from the word lists is hidden; any other capitalised word is left to the
+  // not-sure list (findSuspects), because a title can also end a paragraph.
+  const titled = new RegExp(String.raw`(?<![\p{L}])((?:${TITLE_TOKEN}(?: +|[ \t]*\n[ \t]*))+)(${W}(?: +(?:${W}|${PARTICLE})){0,5})`, 'gu');
   rest = rest.replace(titled, (m, title, name, offset, whole) => {
     const kin = KIN_START.test(title);
     let words = name.split(/\s+/);
+    if (/\n/.test(title) && !(isNameWord(words[0]) && !AMBIGUOUS.has(words[0].toLowerCase()))) return m;
     if (kin) {
       // An informal title starts a name; it is not inside one ("Tan Ah Kow").
       const before = /([\p{L}'’-]+)[ \t]+$/u.exec(whole.slice(Math.max(0, offset - 40), offset));
       if (before && /^\p{Lu}/u.test(before[1]) && (isNameWord(before[1]) || GENERIC_PARTS.has(before[1].toLowerCase())) && !GREETING_WORD.test(before[1])) return m;
-      // "Mak Long", "Pak Ngah": a birth-order word belongs to the title.
-      while (words.length && BIRTH_ORDER.has(words[0].toLowerCase())) words.shift();
+      // "Mak Long", "Pak Ngah": a birth-order word belongs to the title. After Ah, Uncle
+      // or Aunty a word that is also a Chinese surname is the name ("Uncle Teh").
+      const chineseTitle = /^(?:ah|uncle|aunty|auntie)$/i.test(norm(title).split(' ').pop().replace(/\.$/, ''));
+      while (words.length && BIRTH_ORDER.has(words[0].toLowerCase()) && !(chineseTitle && CHINESE_SURNAMES.has(words[0].toLowerCase()))) words.shift();
+      // A word that describes a person or a job is not their name: "Abang Grab", "Pak Guard", "Kak Kantin", "Ibu Tunggal".
+      const cut = words.findIndex((w) => (stopish(w) && !isNameWord(w) && !PARTICLE_WORD.test(w)) || (/^\p{Lu}{2,3}$/u.test(w) && !isNameWord(w)));
+      if (cut !== -1) words = words.slice(0, cut);
     }
     words = trim(words);
     if (!words.length || (kin && !strongNameLike(words[0]))) return m;
@@ -404,7 +449,7 @@ export function findNames(text) {
   // Khoo", "a worker called Rubel", "seorang pencuci bernama Rubel". Each is
   // a person here; they are joined to the person they belong to once the
   // whole folder is known (learnDefinitions).
-  const alias = new RegExp(String.raw`(?:(?<![\p{L}])(?:also |juga |lebih )?(?:known(?: in the family| to (?:everyone|all|us|them|the staff|his friends|her friends|the family))? as|a\.?k\.?a\.?|dikenali sebagai|dipanggil|nicknamed|alias)|(?<![\p{L}])(?:calls?|called) (?:him|her|me)|(?<![\p{L}])whom (?:[\p{Ll}'’]+ ){0,3}calls?|(?<![\p{L}])(?:[Aa]n?|[Tt]he|one|[Aa]nother|[Ss]eorang|a certain) (?:[\p{Ll}'’-]+ ){0,3}(?:called|named|bernama))[ \t]+["“'‘]?(${NAME_RUN})`, 'gu');
+  const alias = new RegExp(String.raw`(?:(?<![\p{L}])(?:also |juga |lebih )?(?:known(?: in the family| to (?:everyone|all|us|them|the staff|his friends|her friends|the family))? as|a\.?k\.?a\.?|dikenali sebagai|nicknamed|alias)|(?<![\p{L}])(?:calls?|called) (?:him|her|me)|(?<![\p{L}])whom (?:[\p{Ll}'’]+ ){0,3}calls?|(?<![\p{L}])(?:[Aa]n?|[Tt]he|one|[Aa]nother|[Ss]eorang|a certain) (?:[\p{Ll}'’-]+ ){0,3}(?:called|named|bernama))[ \t]+["“'‘]?(${NAME_RUN})(?![\p{L}'’-]|[ \t]+\d)`, 'gu');
   rest = rest.replace(alias, (m, name) => {
     const words = trim(name.split(/\s+/));
     if (!words.length || !looksLikeName(words.join(' '), { strong: true })) return m;
@@ -511,7 +556,7 @@ export function findNames(text) {
   // "Our cook, Margono,", "Joko, another worker,", "Pembantu saya ialah
   // Sutinah", "The workers under me are Ani, Budi and Wati".
   const appos = new RegExp(String.raw`(?<![\p{L}])(?:[Tt]he|[Oo]ur|[Mm]y|[Hh]is|[Hh]er|[Tt]heir|[Yy]our|[Aa]n?|[Aa]nother|[Ss]eorang)[ \t]+(?:[\p{L}'’-]+[ \t]+){0,3}?(?:${ROLE_ALT})[ \t]*,[ \t]*(${NAME_RUN})(?=[ \t]*(?:[,.;)\n]|$))`, 'gu');
-  const apposAfter = new RegExp(String.raw`(?<![\p{L}])(${W}(?:[ \t]+(?:${W}|${PARTICLE})){0,3})[ \t]*,[ \t]*(?:the|our|my|his|her|their|your|an?|another)[ \t]+(?:[\p{L}'’-]+[ \t]+){0,3}?(?:${ROLE_ALT})(?![\p{L}])`, 'gu');
+  const apposAfter = new RegExp(String.raw`(?<![\p{L}])(${W}(?:[ \t]+(?:${W}|${PARTICLE})){0,3})[ \t]*,[ \t]*(?:the|our|my|his|her|their|your|an?|another)[ \t]+(?:[\p{L}'’-]+[ \t]+){0,3}?(?:${ROLE_ALT})(?=[ \t]*(?:[,.;:)\n]|$)|[ \t]+(?:of|from|at|in|for|on|with|who|that|and|dan|yang|dari|di|untuk|and)(?![\p{L}]))`, 'gu');
   const NAME_LIST = String.raw`${W}(?:[ \t]+${W}){0,3}(?:[ \t]*,[ \t]*${W}(?:[ \t]+${W}){0,3})*(?:[ \t]*,?[ \t]+(?:and|dan|&)[ \t]+${W}(?:[ \t]+${W}){0,3})?`;
   const copula = new RegExp(String.raw`(?<![\p{L}])(?:${ROLE_ALT})(?:[ \t]+(?:saya|kami|dia|under me|under him|under her|in charge))?[ \t]+(?:is|was|are|were|ialah|adalah)[ \t]+(${NAME_LIST})`, 'gu');
   for (const re of [appos, apposAfter, copula]) {
@@ -580,11 +625,22 @@ export function findNames(text) {
       let run = [];
       let lastEnd = -1;
       const flush = () => {
-        const words = trim(run);
+        const raw = run;
+        const words = trim(raw);
         run = [];
+        // A word that says what the person is or does ("Grab", "Manager", "Lorry") at either end is not part of the name:
+        // "Abang Grab" is nobody; "Ali Manager" is Ali.
+        const describes = (w) => (LABEL_WORDS.has(plainWord(w)) || ROLE_NOUNS.has(plainWord(w))) && !isNameWord(w) && !ORDINARY.has(plainWord(w)) && !PARTICLE_WORD.test(w);
+        const before = words.length;
+        while (words.length && describes(words[0])) words.shift();
+        while (words.length && describes(words[words.length - 1])) words.pop();
+        if (words.length === 1 && words.length < before && isNameWord(words[0]) && !AMBIGUOUS.has(words[0].toLowerCase()) && !GENERIC_PARTS.has(words[0].toLowerCase()) && !TITLE_WORDS.has(plainWord(words[0])) && raw.length > 1) {
+          add('PERSON', words[0], 'name list');
+          return;
+        }
         if (words.length < 2 || words.length > 6) return;
         // "Mak Long", "Pak Ngah": a family title and a birth-order word, not a name.
-        if (words.length === 2 && KIN_START.test(words[0]) && BIRTH_ORDER.has(words[1].toLowerCase())) return;
+        if (words.length === 2 && KIN_START.test(words[0]) && BIRTH_ORDER.has(words[1].toLowerCase()) && !(/^(?:ah|uncle|aunty|auntie)$/i.test(words[0]) && CHINESE_SURNAMES.has(words[1].toLowerCase()))) return;
         if (words.some((w, i) => isStop(w) && !isNameWord(w) && !PARTICLE_WORD.test(w) && !(i === 0 && ordinaryFirst(w, words[1])))) return;
         const hits = words.filter((w) => isNameWord(w));
         const strong = hits.filter((w) => !AMBIGUOUS.has(w.toLowerCase()));
@@ -683,10 +739,17 @@ export function ordinaryUse(text, start, end) {
   const next = nm[2] || null;
   const spaced = (gap) => /^[ \t]+$/.test(gap);
   if (prev && TITLE_WORDS.has(lowPrev) && /^[ \t.]*$/.test(gapBefore)) return null;
+  // A title at the end of the line before (a wrapped PDF or scan) is still the title of this name.
+  const wrapped = /([\p{L}'’]+)\.?[ \t]*\n[ \t]*$/u.exec(before);
+  if (wrapped && TITLE_WORDS.has(wrapped[1].toLowerCase().replace(/['’]/g, ''))) return null;
   if (CHAT_LABEL_BEFORE.test(before)) return null;
   if (word.length > 1 && word === word.toUpperCase()) {
     const caps = (w, gap) => w && spaced(gap) && w === w.toUpperCase() && /\p{L}/u.test(w) && !isStop(w);
-    return caps(next, gapAfter) || caps(prev, gapBefore) ? null : 'capitals';
+    if (caps(next, gapAfter) || caps(prev, gapBefore)) return null;
+    if (MONTH_NAMES.has(word.toLowerCase()) && ((next && /^\d/.test(next) && /^[ \t,]+$/.test(gapAfter)) || (prev && spaced(gapBefore) && MONTH_PREP.has(lowPrev)))) return 'month';
+    // A word of the name lists that is not an English word ("LOH", "ABU") is the name when it stands alone in capitals.
+    if (isNameWord(word) && !AMBIGUOUS.has(word.toLowerCase())) return null;
+    return 'capitals';
   }
   if (prev && spaced(gapBefore) && DETERMINERS.has(lowPrev)) return 'after a determiner';
   if (MONTH_NAMES.has(word.toLowerCase())) {
@@ -796,6 +859,12 @@ export class Matter {
     this.setup = { client: '', others: '' }; // typed at setup
     this.roles = {};             // roles a reviewer wrote for the context sheet: tag -> { roles, relationships }
     this.seen = { files: 0, lower: new Map(), lowerFiles: new Map(), cap: new Map(), last: new Map() }; // how words are written in this folder (not saved)
+  }
+
+  /** Forget how words were written: called when a new folder starts being read. */
+  resetSeen() {
+    this.seen = { files: 0, lower: new Map(), lowerFiles: new Map(), cap: new Map(), last: new Map() };
+    this.ordinaryCache = null;
   }
 
   /** Count how each word is written in one file: lowercase or capitalised. */
@@ -1060,6 +1129,8 @@ export class Matter {
     }
     const value = norm(String(text || '').replace(TITLE_LEAD, ''));
     if (!value || !looksLikeName(value, { strong: true })) return;
+    // "(Pemohon)", "(Waris)": a party's role in brackets is not another name for the person.
+    if (ROLE_ALIAS.test(value) || value.split(' ').every((w) => ROLE_NOUNS.has(plainWord(w)))) return;
     const existing = this.cloak.byValue.get(value.toLowerCase());
     if (existing) {
       if (existing.startsWith('PERSON_') && existing.split('.')[0] !== base && !existing.includes('.')) this.mergeInto(existing, base, 'the text gives it as another name for the same person');
@@ -1152,8 +1223,10 @@ export class Matter {
    * Step 1 for one text: learn what is in it. Pattern rules first, then the
    * key (what is already known is blanked out), then the name rules.
    */
-  learn(text) {
-    this.countWords(text);
+  learn(text, { count = true } = {}) {
+    text = lf(text);
+    // Counting is part of reading a folder: learning the same text again (after a review change, or for a chronology) must not count its words twice.
+    if (count) this.countWords(text);
     this.facts.learn(text);
     const { text: safe } = this.protect(String(text || '').replace(TOKEN_RE, ' '));
     let rest = safe;
@@ -1232,8 +1305,16 @@ export class Matter {
     const titles = [];
     while (words.length > 1 && TITLE_WORDS.has(plainWord(words[0]))) titles.push(words.shift());
     const many = words.length > 1;
-    words = words.filter((w) => !(LABEL_WORDS.has(plainWord(w)) || ROLE_NOUNS.has(plainWord(w)) || (many && /^\p{Lu}{2,4}$/u.test(w)) || (isStop(w) && !isNameWord(w) && !ORDINARY.has(plainWord(w)))));
-    if (!words.length || words.length > 4 || !words.every((w) => strongNameLike(w) || PARTICLE_WORD.test(w))) return null;
+    // A short word in capitals after a name is usually a place or a department ("Jeremy HQ"); in a label that is all capitals
+    // ("LEE KHENG WAI") capitals say nothing, and a word of the name lists is a name in any case.
+    const allCaps = words.every((w) => w === w.toUpperCase());
+    words = words.filter((w) => !(LABEL_WORDS.has(plainWord(w)) || ROLE_NOUNS.has(plainWord(w)) || (many && !allCaps && /^\p{Lu}{2,4}$/u.test(w) && !isNameWord(w) && !GENERIC_PARTS.has(plainWord(w))) || (isStop(w) && !isNameWord(w) && !ORDINARY.has(plainWord(w)))));
+    // A word this folder writes in lowercase as an ordinary word ("hearing", "mention") is not a speaker's name.
+    words = words.filter((w) => isNameWord(w) || !this.ordinaryHere(w) || ORDINARY.has(plainWord(w)));
+    // One word that ends like a verb or a noun made from one ("Hearing", "Mention", "Payment") is a heading in a log, not a contact name; short ones ("Ming") are names.
+    if (words.length === 1 && words[0].length >= 6 && NOT_ONE_NAME.test(words[0]) && !isNameWord(words[0])) return null;
+    // "Ah" inside a name ("TAN AH KOW") is a name part, as it is in the lists.
+    if (!words.length || words.length > 4 || !words.every((w, i) => strongNameLike(w) || PARTICLE_WORD.test(w) || (i > 0 && GENERIC_PARTS.has(plainWord(w))))) return null;
     return this.addPerson([...titles, ...words].join(' '), 'chat speaker');
   }
 
@@ -1297,7 +1378,7 @@ export class Matter {
 
   /** Step 2 for one text: replace everything known with tags. */
   apply(text) {
-    const { text: safe, restore } = this.protect(String(text || ''));
+    const { text: safe, restore } = this.protect(lf(text));
     // Honours are lifted out before the key search, so "Tan Sri" is never
     // read as the surname Tan.
     const honours = [];
@@ -1355,7 +1436,7 @@ export class Matter {
       for (const m of plain.matchAll(ordinary)) {
         const end = m.index + m[0].length;
         const lower = m[0] === m[0].toLowerCase();
-        if (lower ? lowerNameContext(plain, m.index, end) : ordinaryUse(plain, m.index, end) === 'start') counts.set(m[0], (counts.get(m[0]) || 0) + 1);
+        if (lower ? lowerNameContext(plain, m.index, end) : ['start', 'capitals'].includes(ordinaryUse(plain, m.index, end))) counts.set(m[0], (counts.get(m[0]) || 0) + 1);
       }
       for (const [t, count] of counts) if (!safe.has(t.toLowerCase()) && !list.some((s) => s.text === t)) list.push({ text: t, count });
     }

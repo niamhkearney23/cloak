@@ -223,3 +223,9 @@ Puan. Cabinets done today." and the same with "Encik.".
   (see `names.md`).
 - The made-up names avoid real people and real disputes; real documents have
   more variety (spellings, OCR errors, mixed scripts) than either matter.
+
+## After the review fixes (names items 19 to 33)
+
+Same method, same matters, no change to `test/heldout/` or its marks, run before and after the fixes. Names table of the held-out matter: identical (266 hidden, 5 flagged, 1 partly, 6 missed of 278). Traps: 58 kept and 10 flagged before; 57 kept and 11 flagged after. The one change is "DAN" alone in capitals (a heading): it was kept silently and is now kept and flagged, because an all-capitals ordinary word that is a known name must be hidden or flagged, never silently left (cost: one more decision for a reviewer). Over-hiding of ordinary words: 0 before, 0 after. Development matter: no change. Miss rate on made-up names: no change.
+
+Not done on purpose: lowercase matching was not switched off for one-word names learned by context rules, because that would bring back silent misses of lowercase names such as "joko"; the rules were narrowed instead.

@@ -16,9 +16,9 @@
 import { appendFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { Matter } from './engine.js';
+import { Matter, TOKEN_RE, norm } from './engine.js';
 import { KEY_FILE_NAME, cacheCrypto, createKeyFile, openKeyFile, replaceRecoveryCode, saveKeyFile, setPassword } from './keyfile.js';
-import { buildReport, cloakFolder, renderFile, writeOutput } from './run.js';
+import { buildReport, cloakFolder, listUnsure, renderFile, writeOutput } from './run.js';
 import * as review from './review.js';
 import { VERSION } from './version.js';
 import { formatDate } from './dates.js';
@@ -87,6 +87,7 @@ function refusal(result) {
 const surfaces = (group) => [...new Set(group.places.map((p) => p.excerpt.slice(p.mark[0], p.mark[1])).filter(Boolean))];
 
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const wholeWord = (w) => new RegExp(`(?<![\\p{L}\\p{N}_])${escapeRe(w)}(?![\\p{L}\\p{N}_])`, 'u');
 /** Whole words, exactly as written, outside tags, replaced by their tag. */
 function replaceExact(text, list) {
   const re = new RegExp(`(?<![\\p{L}\\p{N}_])(?:${list.map((h) => escapeRe(h.value)).join('|')})(?![\\p{L}\\p{N}_])`, 'gu');
@@ -238,7 +239,7 @@ class Session {
     this.chronologyFile = null;
     if (this.chronology) {
       const text = this.chronology.document({ forExport: true });
-      this.matter.register(this.matter.learn(text));
+      this.matter.register(this.matter.learn(text, { count: false }));
     }
     this.matter.facts.finalize();
     this.matter.facts.syncInto(this.matter.cloak);
@@ -284,7 +285,14 @@ class Session {
   async reviewAction(action) {
     const m = this.matter;
     const done = {
-      add: () => review.addTerm(m, action.text, action.kind),
+      add: () => {
+        const written = norm(action.text);
+        const had = m.cloak.byValue.get(written.toLowerCase());
+        review.addTerm(m, action.text, action.kind);
+        // A word the key already holds, but which was left readable where it may be an ordinary word
+        // ("Abu drove the lorry", "bill was wrong"), is hidden as written: the person said to hide it.
+        if (had && /^(?:PERSON|COMPANY)_/.test(had) && this.run?.files.some((f) => f.cloaked && wholeWord(written).test(f.cloaked.replace(TOKEN_RE, ' ')))) this.addExactHide(written, had);
+      },
       remove: () => {
         // "Don't hide" must be confirmed; twice for numbers and IDs found by a pattern rule.
         const term = this.reviewData().terms.find((t) => t.tag === action.tag.split('.')[0]);
@@ -639,6 +647,8 @@ class Session {
       if (f.name) f.name = replaceExact(f.name, list);
       if (!f.cloaked) continue;
       f.cloaked = replaceExact(f.cloaked, list);
+      // What was hidden as written no longer waits on the "not sure" list.
+      listUnsure(this.matter, f);
       f.tags = {};
       for (const t of f.cloaked.matchAll(/\{\{([A-Z][A-Z0-9_]*?)_(\d+)(?:\.[A-Z0-9_]+)?\}\}/g)) f.tags[`${t[1]}_${t[2]}`] = (f.tags[`${t[1]}_${t[2]}`] || 0) + 1;
     }
