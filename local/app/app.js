@@ -323,7 +323,7 @@
     const c = d.doubleCheck || { ran: false };
     const passed = c.ran && c.passed;
     const note = !c.ran ? '<span id="check-state">Next: the double check. It also runs when you export.</span>'
-      : passed ? `<span class="chip cloaked" id="check-state">Double check passed</span> ${esc(c.whenText)}. ${plural(c.counts.places, 'finding', 'findings')}${c.counts.places ? `, every one decided (${c.counts.markedFine} marked fine${c.hidden ? `, ${c.hidden} hidden` : ''})` : ''}.`
+      : passed ? `<span class="chip cloaked" id="check-state">Double check passed</span> ${esc(c.whenText)}.${c.counts.places ? ` ${plural(c.counts.places, 'finding', 'findings')} marked fine by a person.` : ' Nothing left to decide.'}${c.hidden ? ` ${plural(c.hidden, 'finding', 'findings')} hidden during the check.` : ''}`
         : `<span class="chip partial" id="check-state">Double check: ${c.counts.undecided} to decide</span> in ${plural(c.counts.filesFailing, 'file', 'files')}.`;
     const exporting = state.chrono?.confirmed
       ? `<button class="btn ${passed ? 'primary' : ''}" id="export-chrono">Export the chronology only (recommended)</button><button class="btn" id="export">Export all files…</button>`
@@ -614,18 +614,20 @@
     }
     const where = (p) => `<div class="example">${esc(p.title)} · ${esc(p.part)} · line ${p.line}</div><div class="small">${tags(p.excerpt.slice(0, p.mark[0]))}<span class="found">${esc(p.excerpt.slice(p.mark[0], p.mark[1]))}</span>${tags(p.excerpt.slice(p.mark[1]))}</div>`;
     const decided = (g) => g.places.find((p) => p.decided)?.decided;
+    // Files that fail come first; the findings come before the list of files.
+    const units = [...c.units.filter((u) => u.status === 'fail'), ...c.units.filter((u) => u.status !== 'fail')];
     panel(`${intro}
       <p id="check-summary">${c.passed ? '<span class="chip cloaked">Passed</span>' : '<span class="chip partial">Not passed yet</span>'} Checked ${esc(c.whenText)} by ${esc(c.by)}: ${plural(c.counts.files, 'file', 'files')}, ${plural(c.counts.places, 'finding', 'findings')}${c.counts.undecided ? `, <b>${c.counts.undecided} still to decide</b>` : ''}.</p>
-      <table id="check-files"><thead><tr><th>File</th><th>Result</th><th class="num">Findings</th></tr></thead><tbody>${c.units.map((u) => `<tr>
-        <td>${esc(u.id)}<div class="reason">${esc(u.title)}</div></td>
-        <td>${u.status === 'pass' ? `<span class="chip cloaked">Passed</span>${u.findings ? ' <span class="small muted">every finding decided</span>' : ''}` : `<span class="chip partial">Failed</span> <span class="small">${plural(u.undecided, 'finding', 'findings')} to decide</span>`}</td>
-        <td class="num">${u.findings}</td></tr>`).join('')}</tbody></table>
-      ${c.groups.length ? `<h2 style="margin-top:18px">Findings</h2>
-      <table id="check-findings"><thead><tr><th>Found</th><th>Where</th><th></th></tr></thead><tbody>${c.groups.map((g, i) => `<tr data-finding="${i}">
+      ${c.groups.length ? `<table id="check-findings"><thead><tr><th>Found</th><th>Where</th><th></th></tr></thead><tbody>${c.groups.map((g, i) => `<tr data-finding="${i}">
         <td><span class="chip ${g.undecided ? 'manual' : ''}">${esc(CHECK_WORDS[g.check] || g.check)}</span><br><b>${esc(g.value)}</b><div class="reason">${tags(g.what)}</div></td>
         <td>${g.places.map(where).join('')}${g.more ? `<div class="reason">and ${g.more} more</div>` : ''}</td>
         <td>${g.undecided ? `<div class="row">${g.fixable ? `${g.check === 'name' ? `<select class="merge" data-dc-kind="${i}" aria-label="Hide it as"><option value="PERSON" ${g.hideAs === 'PERSON' ? 'selected' : ''}>as a person</option><option value="COMPANY" ${g.hideAs === 'COMPANY' ? 'selected' : ''}>as a company</option><option value="OTHER" ${g.hideAs === 'OTHER' ? 'selected' : ''}>as something else</option></select>` : ''}<button class="btn small primary" data-dc-hide="${i}">Hide it</button>` : ''}<button class="btn small" data-dc-fine="${i}">It is fine</button></div>`
-    : `<span class="chip cloaked">Marked fine</span>${decided(g) ? `<div class="reason">by ${esc(decided(g).by)}<br>${esc(decided(g).whenText)}</div>` : ''}`}</td></tr>`).join('')}</tbody></table>` : '<div class="msg ok" id="check-clean">Nothing was found. Every file passes.</div>'}`);
+    : `<span class="chip cloaked">Marked fine</span>${decided(g) ? `<div class="reason">by ${esc(decided(g).by)}<br>${esc(decided(g).whenText)}</div>` : ''}`}</td></tr>`).join('')}</tbody></table>` : '<div class="msg ok" id="check-clean">Nothing was found. Every file passes.</div>'}
+      <h2 style="margin-top:18px">Each file</h2>
+      <table id="check-files"><thead><tr><th>File</th><th>Result</th><th class="num">Findings</th></tr></thead><tbody>${units.map((u) => `<tr>
+        <td>${esc(u.id)}<div class="reason">${esc(u.title)}</div></td>
+        <td>${u.status === 'pass' ? `<span class="chip cloaked">Passed</span>${u.findings ? ' <span class="small muted">every finding decided</span>' : ''}` : `<span class="chip partial">Failed</span> <span class="small">${plural(u.undecided, 'finding', 'findings')} to decide</span>`}</td>
+        <td class="num">${u.findings}</td></tr>`).join('')}</tbody></table>`);
     on('[data-dc-hide]', 'click', (e) => {
       const i = +e.currentTarget.dataset.dcHide;
       decide(c.groups[i].key, 'hide', main.querySelector(`[data-dc-kind="${i}"]`)?.value);

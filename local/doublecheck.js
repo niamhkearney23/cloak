@@ -619,8 +619,13 @@ function excerptOf(text, starts, line, s, e) {
   const from = starts[line - 1];
   const to = line < starts.length ? starts[line] - 1 : text.length;
   const lineText = text.slice(from, to);
-  const a = Math.max(0, s - from - 50);
-  const b = Math.min(lineText.length, e - from + 50);
+  let a = Math.max(0, s - from - 50);
+  let b = Math.min(lineText.length, e - from + 50);
+  // The excerpt never cuts a tag in half.
+  for (const t of lineText.matchAll(/\{\{[^{}]*\}\}/g)) {
+    if (t.index < a && t.index + t[0].length > a) a = t.index;
+    if (t.index < b && t.index + t[0].length > b) b = t.index + t[0].length;
+  }
   const before = (a > 0 ? '…' : '') + lineText.slice(a, s - from);
   const found = text.slice(s, Math.min(e, to));
   return { excerpt: `${before}${found}${lineText.slice(e - from, b)}${b < lineText.length ? '…' : ''}`.replace(/\t/g, ' '), mark: [before.length, before.length + found.length], lineText };
@@ -682,8 +687,9 @@ const WHAT = {
 const keyOfFind = (f) => (f.check === 'tag' ? `tag|${f.kind}|${f.value}` : f.check === 'pattern' ? `pattern|${norm(f.value).toLowerCase()}` : `${f.check}|${norm(f.value).toLowerCase()}`);
 // Where an approval applies. In a copy, the line; in the report and marker, whose lines move as files are added, the text of the line.
 export const placeOf = (f) => (f.unitKind === 'report' || f.unitKind === 'marker' || f.unitKind === 'names' ? `${f.unit}|${norm(f.lineText)}` : `${f.unit}#${f.line}`);
-// Hiding cannot change what Cloak writes about who did the work, nor fix a tag.
-const fixable = (f) => f.check !== 'tag' && !f.who;
+// Hiding cannot change what Cloak writes about who did the work, nor fix a tag, nor change the context sheet or the
+// list of file names, which Cloak writes from tags and numbers: those can only be marked as fine.
+const fixable = (f) => f.check !== 'tag' && !f.who && f.unitKind !== 'generated' && f.unitKind !== 'names';
 const hideAs = (f) => (f.check === 'name' ? (COMPANY_WORD.test(f.value) ? 'COMPANY' : f.rule === 'caps' ? 'OTHER' : 'PERSON') : null);
 
 /** One real value never sits under two different tags (honours and facts aside: many people are Dato' Sri, and the same figure can be two facts). */
@@ -741,7 +747,8 @@ export function verdict(matter, inspections, { approvals = {} } = {}) {
     passed: undecided === 0,
     units: perUnit,
     groups: list.sort((a, b) => (b.undecided > 0) - (a.undecided > 0) || CHECKS.indexOf(a.check) - CHECKS.indexOf(b.check) || a.value.localeCompare(b.value)),
-    counts: { files: perUnit.length, places, groups: list.length, undecided, markedFine: places - undecided, filesFailing: perUnit.filter((u) => u.status === 'fail').length },
+    // The list of file names is checked too, but it is not a file.
+    counts: { files: perUnit.filter((u) => u.kind !== 'names').length, places, groups: list.length, undecided, markedFine: places - undecided, filesFailing: perUnit.filter((u) => u.status === 'fail').length },
   };
 }
 
