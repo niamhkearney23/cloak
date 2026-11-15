@@ -29,7 +29,7 @@ const want = process.argv.slice(2);
     const out = path.join(DIR, 'shots', `${screen}${suffix}-${theme}.png`);
     await page.screenshot({ path: out });
     let wrote = [out];
-    if (full) {
+    if (full && !(await page.$('.overlay'))) {
       const extra = await page.evaluate(() => { const m = document.querySelector('main'); return m ? m.scrollHeight - m.clientHeight : 0; });
       if (extra > 4) {
         await page.setViewportSize({ width, height: height + extra });

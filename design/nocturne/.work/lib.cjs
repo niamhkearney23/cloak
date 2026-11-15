@@ -50,8 +50,11 @@ const ICONS = {
 };
 const icon = (name, cls = '') => `<svg class="i${cls ? ' ' + cls : ''}" viewBox="0 0 20 20" aria-hidden="true" focusable="false">${ICONS[name]}</svg>`;
 
-// The Cloak mark: a lacquer tile with three lines of text, one name sealed under a gold bar.
-const mark = (cls = 'mark') => `<svg class="${cls}" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect class="m-tile" width="32" height="32" rx="9"/><rect class="m-line" x="7" y="8.6" width="18" height="2.4" rx="1.2"/><rect class="m-line" x="7" y="14.8" width="4.4" height="2.4" rx="1.2"/><rect class="m-bar" x="13.4" y="13.3" width="11.6" height="5.4" rx="1.7"/><rect class="m-line" x="7" y="21" width="12.4" height="2.4" rx="1.2"/></svg>`;
+// The Cloak mark: a lacquer tile with three lines of text; one name is sealed under a gold bar.
+// Each instance gets its own gradient ids (k), so two marks can share a page.
+const SQUIRCLE = 'M10.7 0h10.6C28.8 0 32 3.2 32 10.7v10.6C32 28.8 28.8 32 21.3 32H10.7C3.2 32 0 28.8 0 21.3V10.7C0 3.2 3.2 0 10.7 0z';
+const SQUIRCLE_IN = 'M10.9.55h10.2c7.3 0 10.35 3.05 10.35 10.35v10.2c0 7.3-3.05 10.35-10.35 10.35H10.9C3.6 31.45.55 28.4.55 21.1V10.9C.55 3.6 3.6.55 10.9.55z';
+const mark = (cls = 'mark', k = 'a') => `<svg class="${cls}" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><defs><linearGradient id="mk-t-${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="m-t1"/><stop offset="1" class="m-t2"/></linearGradient><linearGradient id="mk-b-${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="m-b1"/><stop offset="1" class="m-b2"/></linearGradient></defs><path class="m-tile" fill="url(#mk-t-${k})" d="${SQUIRCLE}"/><path class="m-edge" d="${SQUIRCLE_IN}"/><rect class="m-line" x="7.4" y="8.9" width="17.2" height="2.2" rx="1.1"/><rect class="m-line m-word" x="7.4" y="14.9" width="4.1" height="2.2" rx="1.1"/><rect class="m-bar" fill="url(#mk-b-${k})" x="13.4" y="13.3" width="11.2" height="5.4" rx="1.7"/><rect class="m-line m-last" x="7.4" y="20.9" width="11.6" height="2.2" rx="1.1"/></svg>`;
 
 // {{PERSON_1.SURNAME}} -> sealed tag markup (braces and form suffix dimmed). Text is escaped first.
 const tagHtml = (inner) => {
@@ -62,7 +65,7 @@ const tagHtml = (inner) => {
 const t = (s) => String(s).replace(/\{\{([^}]+)\}\}/g, (_, inner) => tagHtml(inner));
 
 const bar = ({ matter = '', level = 'Strict', licence = 'Cempaka Wong &amp; Partners' } = {}) => `<header class="bar">
-  <div class="brand">${mark()}<span class="wordmark">Cloak</span><span class="by">by Lawgistics</span></div>
+  <div class="brand">${mark('mark', 'bar')}<span class="wordmark">Cloak</span><span class="by">by Lawgistics</span></div>
   ${matter ? `<div class="crumb" id="matter-name"><span class="crumb-name">${matter}</span><span class="level${level === 'Standard' ? ' standard' : ''}">${level}</span></div>` : ''}
   <div class="bar-right">
     <span class="licence-bar" id="licence-bar" title="Licence CW-2026-0412. Ends 31 Dec 2027.">${icon('seal')}<span>Licensed to <b>${licence}</b></span></span>
@@ -74,7 +77,7 @@ const bar = ({ matter = '', level = 'Strict', licence = 'Cempaka Wong &amp; Part
 
 const foot = () => `<footer class="foot">${icon('shield')}<span>Everything runs on this computer. Nothing is sent anywhere.</span></footer>`;
 
-const page = ({ title, body, cls = '', matter = '', level, extra = '' }) => `<!doctype html>
+const page = ({ title, body, cls = '', matter = '', level, extra = '', mainAttrs = '' }) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -86,7 +89,7 @@ const page = ({ title, body, cls = '', matter = '', level, extra = '' }) => `<!d
 </head>
 <body${cls ? ` class="${cls}"` : ''}>
 ${bar({ matter, level })}
-<main id="main">
+<main id="main"${mainAttrs}>
 ${body}
 </main>
 ${foot()}

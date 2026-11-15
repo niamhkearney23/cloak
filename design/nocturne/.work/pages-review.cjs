@@ -4,12 +4,10 @@ const { icon, t, page, flow } = require('./lib.cjs');
 const MATTER = 'Seri Kembara v Teratai Jaya';
 
 const head = () => `<div class="page-head">
-    <div>
-      ${flow('Review')}
-      <h1>Review</h1>
-      <p class="lede">20 files read in 48.2 seconds. Nothing has been exported. Check the lists below, then finish the review.</p>
-      <p class="meta"><span class="meta-item">${icon('cloud')}Source: <b>OneDrive</b>, read only</span><span class="meta-item">${icon('key')}Matter key: <b>\\\\fileserver\\matters\\SK-2026-014</b></span></p>
-    </div>
+    <h1>Review</h1>
+    ${flow('Review')}
+    <p class="lede optional">20 files read in 48.2 seconds. Nothing has been exported. Check the lists below, then finish the review.</p>
+    <p class="meta"><span class="meta-item">${icon("cloud")}<span>Source: <b>OneDrive</b>, read only</span></span><span class="meta-item">${icon("clock")}<span>Read <b>15 Nov 2026, 3:12 pm</b></span></span></p>
     <div class="head-side">
       <span class="chip cloaked">18 files ready</span>
       <span class="chip manual">2 held back</span>
@@ -101,14 +99,13 @@ const chronoRows = [
 
 const chronoPanel = () => `<section class="panel" id="panel" role="tabpanel" aria-labelledby="tab-chrono">
     <div class="msg warn" id="chrono-missing"><div><b>Events in these files are missing from this chronology.</b>
-      <ul>
+      <ul class="inline-list">
         <li><span class="file-name">07 சாட்சி அறிக்கை - ராஜேஷ்.docx</span> <span class="faint">(held back: needs a manual check)</span></li>
         <li><span class="file-name">10 Site photos (scanned).pdf</span> <span class="faint">(partly read, blocked)</span></li>
       </ul></div></div>
-    <div class="chrono-summary"><span><b class="tnum">86</b> rows with a date</span><span class="sep" aria-hidden="true"></span><span><b class="tnum">1</b> row whose date Cloak could not read (read it by hand)</span><span class="sep" aria-hidden="true"></span><span><b class="tnum">2</b> rows that may conflict</span></div>
     <div class="toolbar">
       <div class="row"><button class="btn small" type="button" id="chrono-merge">${icon('merge')}Merge selected rows <span class="faint">(2)</span></button><button class="btn small" type="button" id="chrono-add">${icon('plus')}Add a row</button></div>
-      <span class="count">Sorted by date · undated rows last</span>
+      <div class="chrono-summary"><span><b class="tnum">86</b> rows with a date</span><span class="sep" aria-hidden="true"></span><span><b class="tnum">1</b> date Cloak could not read (read it by hand)</span><span class="sep" aria-hidden="true"></span><span><b class="tnum">2</b> rows that may conflict</span></div>
     </div>
     <div class="card flush">
     <table class="chrono-table" id="chrono-table">
@@ -128,7 +125,7 @@ const chronoPanel = () => `<section class="panel" id="panel" role="tabpanel" ari
     <div class="undated"><span><b class="tnum">23</b> rows with no date are hidden.</span><button class="btn small" type="button" id="toggle-undated">Show the 23 rows with no date</button></div>
     <div class="card confirm-card" id="chrono-confirm">
       <div class="cc-copy"><span class="seal-ico">${icon('seal', 'lg')}</span><div><h2>Confirm the chronology</h2><p>When the table is right, confirm it. The confirmed table is exported as its own cloaked document, and is the recommended thing to send for drafting. Any change takes the confirmation away.</p></div></div>
-      <button class="btn primary" type="button" id="chrono-confirm-go">${icon('check')}Confirm the chronology</button>
+      <button class="btn tonal" type="button" id="chrono-confirm-go">${icon('check')}Confirm the chronology</button>
     </div>
   </section>`;
 
@@ -164,7 +161,7 @@ const terms = [
   ['ADDRESS_1', 'Lot 12, Jalan Perusahaan 3, Kawasan Perindustrian Bukit Raja', 'address pattern', 18, 7, 0],
 ];
 const termsPanel = () => `<section class="panel" id="panel" role="tabpanel" aria-labelledby="tab-terms">
-    <div class="toolbar"><div class="input-icon">${icon('search')}<input type="search" id="filter" placeholder="Search by name or tag" aria-label="Search by name or tag"></div><span class="count">Showing 300 of 1,284 · search to find the rest</span></div>
+    <div class="toolbar"><div class="input-icon">${icon('search')}<input type="search" id="filter" placeholder="Search by name or tag" aria-label="Search by name or tag"></div><span class="toolbar-note">Showing <b>300</b> of <b>1,284</b>. Search to find the rest.</span></div>
     <div class="card flush">
     <table class="terms">
       <thead><tr><th>Tag</th><th>Real value</th><th>Found by</th><th class="num">Places</th><th class="num">Files</th><th class="tight"><span class="sr-only">Actions</span></th></tr></thead>
@@ -187,7 +184,7 @@ const dialogOverlay = () => `<div class="overlay">
     <div class="reveal">${t('{{NRIC_4}}')}${icon('arrowRight', 'arrow')}<span class="real">760101-14-5501<span class="real-sub">31 places in 9 files</span></span></div>
     <p id="dlg-body"><b>760101-14-5501</b> will be shown as written in every place it appears, and it will be in the exported copies.</p>
     <p class="dlg-note">${icon('alert')}<span>Cloak found this because it looks like an NRIC or ID number. Numbers and IDs are asked about twice.</span></p>
-    <div class="dlg-actions"><button class="btn" type="button" id="no" autofocus>Cancel</button><button class="btn primary" type="button" id="yes">Yes, stop hiding it</button></div>
+    <div class="dlg-actions"><button class="btn" type="button" id="no" autofocus>Cancel</button><button class="btn danger-soft" type="button" id="yes">Yes, stop hiding it</button></div>
   </div>
 </div>`;
 

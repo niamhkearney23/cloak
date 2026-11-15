@@ -58,7 +58,7 @@
 <div class="app">
   <header class="topbar">
     <a class="brand" href="home.html" aria-label="Cloak by Lawgistics: home"><svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x="0.5" y="0.5" width="27" height="27" rx="7.5"/><rect class="mark-bar" x="6" y="9.25" width="16" height="5.25" rx="1.3"/><rect class="mark-line" x="6" y="17.25" width="9.5" height="2.25" rx="1.1"/></svg><span class="wordmark">Cloak</span><span class="by">by Lawgistics</span></a>
-    <div class="crumb"><span class="crumb-sep" aria-hidden="true">/</span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-lock"/></svg><span class="crumb-name">Seroja Kencana v Arus Gemilang</span></div>
+    <div class="crumb"><span class="crumb-sep" aria-hidden="true"></span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-lock"/></svg><span class="crumb-name">Seroja Kencana v Arus Gemilang</span></div>
     <div class="topbar-right">
       <span class="licence" title="Licence LG-2026-0142, 25 seats. Ends 31 Dec 2027. Checked on this computer."><svg class="ico ico-sm" aria-hidden="true"><use href="#i-seal"/></svg><span>Licensed to <b>Kenari Lim &amp; Partners</b></span></span>
       <button class="tb-btn" type="button"><svg class="ico" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></button>
@@ -106,7 +106,7 @@
         </header>
 
         <div class="addbar">
-          <label class="addbar-label" for="add-text"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg>Add a word or name the tool missed</label>
+          <label class="addbar-label" for="add-text"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span class="lbl-long">Add a word or name the tool missed</span><span class="lbl-short">Add a missed word</span></label>
           <input class="input" id="add-text" type="text" placeholder="Type it exactly as it appears" autocomplete="off">
           <select class="select" aria-label="What it is"><option>A person</option><option>A company</option><option>Something else</option></select>
           <button class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-bar"/></svg>Hide it in every file</button>
@@ -130,7 +130,7 @@
             </ul>
           </div></div>
 
-          <p class="small muted"><b>96</b> rows with a date, <b>2</b> whose date Cloak could not read (read them by hand), <b>2</b> that may conflict. No AI is used: rows come from sentences with a date, an amount or a named party.</p>
+          <p class="small muted"><b>96</b> rows with a date, <b>2</b> whose date Cloak could not read (read them by hand), <b>2</b> that may conflict. Built by rules from the documents, without AI.</p>
 
           <div class="toolbar">
             <button class="btn btn-sm btn-primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-merge"/></svg>Merge the 2 selected rows</button>
@@ -143,14 +143,14 @@
 
           <div class="table-wrap">
             <table class="table chrono-table">
-              <thead><tr><th scope="col" class="c-pick"><span class="sr-only">Select</span></th><th scope="col">Date</th><th scope="col">What happened</th><th scope="col">People</th><th scope="col">Source</th><th scope="col"><span class="sr-only">Edit or delete</span></th></tr></thead>
+              <thead><tr><th scope="col" class="c-pick"><span class="sr-only">Select</span></th><th scope="col" class="c-date">Date</th><th scope="col">What happened</th><th scope="col" class="c-people">People</th><th scope="col" class="c-source">Source</th><th scope="col" class="c-acts"><span class="sr-only">Edit or delete</span></th></tr></thead>
               <tbody>
                 <tr>
                   <td class="c-pick"><input type="checkbox" aria-label="Select this row"></td>
                   <td class="c-date"><span class="date-main">3 Mar 2025</span></td>
                   <td><p class="event">Seroja Kencana and Arus Gemilang signed the subcontract for the Seri Melur Logistics Hub, for RM 4,317,250.00.</p><p class="event-chips"><span class="chip chip-group" title="Rows about the same event"><svg class="ico" aria-hidden="true"><use href="#i-merge"/></svg>Same event A</span></p></td>
                   <td class="c-people"><span class="people-list"><span>Seroja Kencana Engineering Sdn Bhd</span><span>Arus Gemilang Builders Berhad</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>003 Perjanjian Kontraktor Kecil, page 1</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">003 Perjanjian Kontraktor Kecil</span><span class="src-part">page 1</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr>
@@ -158,7 +158,7 @@
                   <td class="c-date"><span class="date-main">3 Mac 2025</span></td>
                   <td><p class="event">Perjanjian subkontrak ditandatangani oleh Lim Wei Jie bagi pihak Arus Gemilang.</p><p class="event-chips"><span class="chip chip-group" title="Rows about the same event"><svg class="ico" aria-hidden="true"><use href="#i-merge"/></svg>Same event A</span></p></td>
                   <td class="c-people"><span class="people-list"><span>Lim Wei Jie</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>003 Perjanjian Kontraktor Kecil, page 14</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">003 Perjanjian Kontraktor Kecil</span><span class="src-part">page 14</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr class="is-selected">
@@ -166,7 +166,7 @@
                   <td class="c-date"><span class="date-main">14 Mar 2025</span></td>
                   <td><p class="event">Site meeting: Lim Wei Jie accepted variation order VO-14 for the additional piling works.</p><p class="event-chips"><span class="chip chip-group" title="Rows about the same event"><svg class="ico" aria-hidden="true"><use href="#i-merge"/></svg>Same event B</span></p></td>
                   <td class="c-people"><span class="people-list"><span>Lim Wei Jie</span><span>Kavitha a/p Raman</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>006 会议记录 2025年3月 (minutes), page 2</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">006 会议记录 2025年3月 (minutes)</span><span class="src-part">page 2</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr class="is-selected">
@@ -174,7 +174,7 @@
                   <td class="c-date"><span class="date-main">14 Mar 2025</span></td>
                   <td><p class="event">Kavitha confirmed by email that VO-14 was accepted at the meeting.</p><p class="event-chips"><span class="chip chip-group" title="Rows about the same event"><svg class="ico" aria-hidden="true"><use href="#i-merge"/></svg>Same event B</span></p></td>
                   <td class="c-people"><span class="people-list"><span>Kavitha a/p Raman</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>009 Email re variation order, body</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">009 Email re variation order</span><span class="src-part">body</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr>
@@ -182,7 +182,7 @@
                   <td class="c-date"><span class="date-main">2 Apr 2025</span></td>
                   <td><p class="event">Progress Claim No. 7 for RM 1,250,000.00 submitted to Arus Gemilang.</p><p class="event-chips"><span class="chip chip-sq chip-decide"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg>Possible conflict</span></p><span class="conflict-why">The amount differs from the next row.</span></td>
                   <td class="c-people"><span class="people-list"><span>Seroja Kencana Engineering Sdn Bhd</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>010 Invoice INV-2025-0117, page 1</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">010 Invoice INV-2025-0117</span><span class="src-part">page 1</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr>
@@ -190,7 +190,7 @@
                   <td class="c-date"><span class="date-main">2 Apr 2025</span></td>
                   <td><p class="event">Claim 7 sent. RM 1,520,000.00 now due from them.</p><p class="event-chips"><span class="chip chip-sq chip-decide"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg>Possible conflict</span></p><span class="conflict-why">The amount differs from the row above.</span></td>
                   <td class="c-people"><span class="people-list"><span>Mohd Faizal bin Abdullah</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>005 WhatsApp - Encik Lim, line 344</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">005 WhatsApp - Encik Lim</span><span class="src-part">line 344</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr>
@@ -198,7 +198,7 @@
                   <td class="c-date"><span class="date-main">5 June</span><span class="date-chips"><span class="chip chip-sq chip-decide">No year</span></span></td>
                   <td><p class="event">Ravi&rsquo;s crew left the site without notice.</p></td>
                   <td class="c-people"><span class="people-list"><span>Ravi</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>005 WhatsApp - Encik Lim, line 512</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">005 WhatsApp - Encik Lim</span><span class="src-part">line 512</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr>
@@ -206,7 +206,7 @@
                   <td class="c-date"><span class="date-main">31/06/2025</span><span class="date-chips"><span class="chip chip-sq chip-decide">Date not understood</span></span></td>
                   <td><p class="event">Payment certificate 7 due under the payment schedule.</p></td>
                   <td class="c-people"><span class="people-list"><span class="faint">&ndash;</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>004 Payment schedule Q1-Q3 2025, sheet Schedule, row 18</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">004 Payment schedule Q1-Q3 2025</span><span class="src-part">sheet Schedule row 18</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr>
@@ -214,7 +214,7 @@
                   <td class="c-date"><span class="date-main">1&ndash;15 Jul 2025</span><span class="date-chips"><span class="chip chip-sq">Range</span></span></td>
                   <td><p class="event">Piling rig on standby at the Seri Melur site; standby charges claimed.</p></td>
                   <td class="c-people"><span class="people-list"><span>Arus Gemilang Builders Berhad</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>012 Notice of arbitration (draft v3), paragraph 22</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">012 Notice of arbitration (draft v3)</span><span class="src-part">paragraph 22</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
                 <tr>
@@ -222,7 +222,7 @@
                   <td class="c-date"><span class="date-main">18 Aug 2025</span></td>
                   <td><p class="event">Letter of demand sent for the unpaid claims.</p><span class="cell-sub">Relative date, kept as written: &ldquo;within 14 days&rdquo;</span></td>
                   <td class="c-people"><span class="people-list"><span>Seroja Kencana Engineering Sdn Bhd</span><span>Syarikat Pengangkutan Cahaya Timur Utara (M) Sdn Bhd</span></span></td>
-                  <td class="c-source"><span class="source-list"><span>002 Surat Tuntutan - Arus Gemilang 18.08.2025, page 1</span></span></td>
+                  <td class="c-source"><span class="source-list"><span class="src"><span class="src-file">002 Surat Tuntutan - Arus Gemilang 18.08.2025</span><span class="src-part">page 1</span></span></span></td>
                   <td class="c-acts"><div class="row-acts"><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Edit this row"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg></button><button class="btn btn-sm btn-quiet btn-icon" type="button" aria-label="Delete this row"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></button></div></td>
                 </tr>
               </tbody>

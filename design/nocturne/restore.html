@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Cloak · Restore a draft</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><defs><linearGradient id="mk-t-bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="m-t1"/><stop offset="1" class="m-t2"/></linearGradient><linearGradient id="mk-b-bar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="m-b1"/><stop offset="1" class="m-b2"/></linearGradient></defs><path class="m-tile" fill="url(#mk-t-bar)" d="M10.7 0h10.6C28.8 0 32 3.2 32 10.7v10.6C32 28.8 28.8 32 21.3 32H10.7C3.2 32 0 28.8 0 21.3V10.7C0 3.2 3.2 0 10.7 0z"/><path class="m-edge" d="M10.9.55h10.2c7.3 0 10.35 3.05 10.35 10.35v10.2c0 7.3-3.05 10.35-10.35 10.35H10.9C3.6 31.45.55 28.4.55 21.1V10.9C.55 3.6 3.6.55 10.9.55z"/><rect class="m-line" x="7.4" y="8.9" width="17.2" height="2.2" rx="1.1"/><rect class="m-line m-word" x="7.4" y="14.9" width="4.1" height="2.2" rx="1.1"/><rect class="m-bar" fill="url(#mk-b-bar)" x="13.4" y="13.3" width="11.2" height="5.4" rx="1.7"/><rect class="m-line m-last" x="7.4" y="20.9" width="11.6" height="2.2" rx="1.1"/></svg><span class="wordmark">Cloak</span><span class="by">by Lawgistics</span></div>
+  <div class="crumb" id="matter-name"><span class="crumb-name">Seri Kembara v Teratai Jaya</span><span class="level">Strict</span></div>
+  <div class="bar-right">
+    <span class="licence-bar" id="licence-bar" title="Licence CW-2026-0412. Ends 31 Dec 2027."><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="8.4" r="4.8"/><path d="M7.3 12.4l-.9 4.8 3.6-1.8 3.6 1.8-.9-4.8"/><path d="M8.2 8.5l1.2 1.2 2.4-2.5"/></svg><span>Licensed to <b>Cempaka Wong &amp; Partners</b></span></span>
+    <button class="bar-link" type="button" id="bar-home"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M3.6 9.1 10 3.8l6.4 5.3v6.7c0 .6-.4 1-1 1h-3.2v-4.4H7.8v4.4H4.6c-.6 0-1-.4-1-1z"/></svg><span>Home</span></button>
+    <button class="bar-link" type="button" id="bar-help"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7.3"/><path d="M7.9 7.8a2.2 2.2 0 014.3.6c0 1.6-2.2 1.8-2.2 3.3M10 14.1v.1"/></svg><span>Help</span></button>
+    <span class="version" id="version">Version 0.9.4</span>
+  </div>
+</header>
+<main id="main">
+<div class="wide">
+  <div class="page-head">
+    <p class="eyebrow"><svg class="i sm" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="7" cy="12.6" r="3.4"/><path d="M9.5 10.1l6.3-6.3M13.4 6.2l2 2M11.9 7.7l1.5 1.5"/></svg>Matter open · Seri Kembara v Teratai Jaya</p>
+    <h1>Restore a draft</h1>
+    <div class="head-side top"><button class="btn ghost" type="button" id="restore-back"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M4.6 10.4l3.4 3.4 7.4-7.8"/></svg>Done</button></div>
+    <p class="lede optional">Put the real details back into a draft that has tags in it. This runs on this computer only.</p>
+  </div>
+  <div class="restore-grid">
+    <section class="card draft-box" aria-labelledby="draft-t">
+      <h2 id="draft-t">The draft</h2>
+      <p class="hint draft-hint">Paste the draft the AI wrote, with its tags, or choose a file (.txt, .md or .docx).</p>
+      <div class="field"><textarea id="draft" rows="9" aria-labelledby="draft-t" spellcheck="false">1. I, {{PERSON_2}} (NRIC No. {{NRIC_4}}), a director of {{COMPANY_1}}, the Plaintiff, affirm and say as follows.
+
+3. By a tenancy agreement dated {{DATE_1.B}}, {{COMPANY_2}}, the Defendant, let to the Plaintiff the warehouse at {{ADDRESS_1}} for three years.
+
+4. The Defendant agreed to repair the roof within 14 days of {{DATE_1.B}}, that is, by {{DATE_2}}. It did not do so.</textarea></div>
+      <div class="row draft-row"><button class="btn small" type="button" id="pick-draft"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M5.6 2.8h5.6L15 6.6v8.9c0 .9-.7 1.6-1.6 1.6H5.6c-.9 0-1.6-.7-1.6-1.6V4.4c0-.9.7-1.6 1.6-1.6z"/><path d="M11 2.8v4h4"/></svg>Choose a file…</button><span class="xs faint tnum">11 paragraphs · 212 tags</span></div>
+      <div class="divider"></div>
+      <div class="field"><span class="label">The documents folder <span class="opt">(optional)</span></span>
+        <div class="path" id="docs-path"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M2.6 6.1c0-.95.77-1.7 1.7-1.7h3.5l1.8 1.9h6.1c.95 0 1.7.77 1.7 1.7v6.6c0 .95-.77 1.7-1.7 1.7H4.3c-.95 0-1.7-.77-1.7-1.7z"/></svg><span>…\SK-2026-014 Seri Kembara\<b>Documents</b></span></div>
+        <span class="hint">Lets Cloak check the draft against the documents. Without it, that check is skipped.</span>
+        <div><button class="btn small" type="button" id="pick-docs">Choose the documents folder…</button></div>
+      </div>
+      <div class="row"><button class="btn" type="button" id="do-restore"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M5.6 2.8h5.6L15 6.6v8.9c0 .9-.7 1.6-1.6 1.6H5.6c-.9 0-1.6-.7-1.6-1.6V4.4c0-.9.7-1.6 1.6-1.6z"/><path d="M11 2.8v4h4"/><path d="M7 11.2h6M7 13.8h3.4"/><path d="M9.2 7.6 7.4 9.2l1.8 1.6" /></svg>Check and restore again</button></div>
+    </section>
+
+    <section class="card result" id="restore-report" aria-labelledby="verdict-t">
+      <div class="result-head">
+        <div class="verdict"><span class="verdict-ico"><svg class="i lg" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 3.3l7.2 12.5H2.8z"/><path d="M10 8.2v3.4M10 14v.1"/></svg></span><div><div class="verdict-t" id="verdict-t">Warnings</div><div class="verdict-s">Restored. Read the 3 issues below before you use the draft.</div></div></div>
+        <span class="xs faint tnum">Checked 15 Nov 2026, 3:52 pm</span>
+      </div>
+      <div class="counts">
+        <div class="count"><div class="cn">212</div><div class="cl">tags put back<br>64 different tags</div></div>
+        <div class="count"><div class="cn">3</div><div class="cl">tags in the key are not in the draft</div><div class="tags-line"><span class="tag"><span class="b">{{</span>PERSON_7<span class="b">}}</span></span><span class="tag"><span class="b">{{</span>DATE_12<span class="b">}}</span></span><span class="tag"><span class="b">{{</span>AMOUNT_9<span class="b">}}</span></span></div></div>
+        <div class="count"><div class="cn">0</div><div class="cl">tag-like text that is not in the key</div></div>
+      </div>
+      <ol class="checks">
+        <li class="check-row"><div class="check-row-head"><span class="t"><span class="k">1</span>Restore check</span><span class="chip pass">Passed</span></div><p class="note">No tag left over, none made up or damaged, no real value written in. 4 forms put back in the language of their sentence.</p></li>
+        <li class="check-row"><div class="check-row-head"><span class="t"><span class="k">2</span>Source check</span><span class="chip warn">Warnings</span></div>
+          <ul class="issues"><li><span class="para">Paragraph 6</span><span>RM 48,500.00 is not found in the documents.</span></li><li><span class="para">Paragraph 10</span><span>“Taman Seri Kenanga” is not found in the documents.</span></li></ul></li>
+        <li class="check-row"><div class="check-row-head"><span class="t"><span class="k">3</span>Arithmetic and timeline</span><span class="chip warn">Warnings</span></div>
+          <ul class="issues"><li><span class="para">Paragraph 4</span><span>14 days after 3 March 2023 is 17 March 2023, not 21 March 2023.</span></li></ul></li>
+      </ol>
+    </section>
+  </div>
+
+  <section class="card restored" aria-labelledby="restored-t">
+    <div class="card-head">
+      <div><h2 id="restored-t">The restored draft</h2><p>The real details are back. It is not encrypted: keep it with the matter’s other documents.</p></div>
+      <div class="row"><button class="btn primary" type="button" id="copy-restored"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><rect x="7.2" y="7.2" width="9.6" height="9.6" rx="2"/><path d="M12.8 7.2V5.2c0-1.1-.9-2-2-2H5.2c-1.1 0-2 .9-2 2v5.6c0 1.1.9 2 2 2h2"/></svg>Copy</button><button class="btn" type="button" id="save-restored"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 3.2v9.2M6.2 8.8 10 12.6l3.8-3.8"/><path d="M3.6 13.4v1.9c0 .9.8 1.7 1.7 1.7h9.4c.9 0 1.7-.8 1.7-1.7v-1.9"/></svg>Save as…</button></div>
+    </div>
+    <div class="legend"><span><span class="sw put"></span>Put back from the key</span><span><span class="sw iss"></span>A check has a question about this paragraph</span></div>
+    <div class="reader" id="restored-text">
+      <p><span class="pn">1</span><span>I, <span class="put-back">Nurul Huda binti Rahman</span> (NRIC No. <span class="put-back">760101-14-5501</span>), a director of <span class="put-back">Seri Kembara Logistics Sdn Bhd</span>, the Plaintiff, affirm and say as follows.</span><span class="flag" aria-hidden="true"></span></p>
+      <p><span class="pn">2</span><span>I am authorised to make this affidavit on behalf of the Plaintiff. The facts below are within my own knowledge, or come from the Plaintiff’s records, which I believe to be true.</span><span class="flag" aria-hidden="true"></span></p>
+      <p><span class="pn">3</span><span>By a tenancy agreement dated <span class="put-back">3 March 2023</span>, <span class="put-back">Teratai Jaya Properties Berhad</span>, the Defendant, let to the Plaintiff the warehouse at <span class="put-back">Lot 12, Jalan Perusahaan 3, Kawasan Perindustrian Bukit Raja</span> for three years.</span><span class="flag" aria-hidden="true"></span></p>
+      <p class="has-issue"><span class="pn">4</span><span>The Defendant agreed to repair the roof within 14 days of <span class="put-back">3 March 2023</span>, that is, by <span class="put-back">21 March 2023</span>. It did not do so.</span><span class="flag" title="Arithmetic and timeline: 14 days after 3 March 2023 is 17 March 2023"><span class="sr-only">Arithmetic and timeline: 14 days after 3 March 2023 is 17 March 2023</span></span></p>
+      <p><span class="pn">5</span><span>On <span class="put-back">15 April 2023</span> the Plaintiff paid the Defendant a security deposit of <span class="put-back">RM 250,000.00</span> by cheque.</span><span class="flag" aria-hidden="true"></span></p>
+      <p class="has-issue"><span class="pn">6</span><span>On <span class="put-back">5 June 2024</span> water entered the warehouse during heavy rain and damaged stock worth RM 48,500.00.</span><span class="flag" title="Source check: RM 48,500.00 is not found in the documents"><span class="sr-only">Source check: RM 48,500.00 is not found in the documents</span></span></p>
+      <p><span class="pn">7</span><span>The Plaintiff’s operations manager, <span class="put-back">Lim Wei Jie</span>, reported the damage to the Defendant the same day by WhatsApp message.</span><span class="flag" aria-hidden="true"></span></p>
+      <p><span class="pn">8</span><span>Between January and March 2024 the Plaintiff withheld rent pending the repairs, as clause 7.2 of the tenancy allows.</span><span class="flag" aria-hidden="true"></span></p>
+      <p><span class="pn">9</span><span>On <span class="put-back">14 November 2024</span> the Plaintiff’s board resolved to end the tenancy and to claim <span class="put-back">RM 4,317,250.00</span> for loss of stock and business.</span><span class="flag" aria-hidden="true"></span></p>
+      <p class="has-issue"><span class="pn">10</span><span>The Plaintiff moved its remaining stock to a temporary store in Taman Seri Kenanga on <span class="put-back">2 December 2024</span>.</span><span class="flag" title="Source check: “Taman Seri Kenanga” is not found in the documents"><span class="sr-only">Source check: “Taman Seri Kenanga” is not found in the documents</span></span></p>
+      <p><span class="pn">11</span><span>I affirm this affidavit in support of the Plaintiff’s claim.</span><span class="flag" aria-hidden="true"></span></p>
+    </div>
+  </section>
+</div>
+</main>
+<footer class="foot"><svg class="i" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.6l5.8 2.1v4.6c0 3.9-2.5 6.5-5.8 8.1-3.3-1.6-5.8-4.2-5.8-8.1V4.7z"/><path d="M7.4 10l1.8 1.8 3.4-3.6"/></svg><span>Everything runs on this computer. Nothing is sent anywhere.</span></footer>
+
+</body>
+</html>
