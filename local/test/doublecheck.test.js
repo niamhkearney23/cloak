@@ -280,6 +280,14 @@ test('key sweep: three-letter short forms are swept when written with a capital 
   assert.equal(keySweep(m, 'LATER ONG CALLED.').length, 1);
   assert.equal(keySweep(m, 'The song was long.').length, 0, 'inside a word, or a different word');
   assert.equal(keySweep(m, 'His login on the old system was ong.kc for years.').length, 1, 'lower case joined by a dot: a user name');
+  // "Toh" is a surname as well as part of the honour "Toh Puan". (The first pass takes "Toh" in "Mr Toh Ah Kow" for
+  // the honour, so it is not in the key; the double check's name look still finds it on its own.)
+  const t = matterOf('Mr Toh Ah Kow signed.');
+  assert.deepEqual(doubleCheck(t, [unitOf('Later Toh called.')]).groups.map((g) => `${g.check}:${g.value}`), ['name:Toh']);
+  assert.deepEqual(doubleCheck(t, [unitOf('A Toh Puan was present.')]).groups, []);
+  t.cloak.register('PERSON_5.SURNAME', 'Toh');
+  assert.equal(keySweep(t, 'Later Toh called.').length, 1, 'swept as a key value when it is one');
+  assert.deepEqual(keySweep(t, 'A Toh Puan was present.'), []);
 });
 
 test('key sweep: an ordinary word wrongly taken for a name counts only when written the way the key has it, and each hit names the word', () => {

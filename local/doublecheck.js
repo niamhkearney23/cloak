@@ -35,7 +35,7 @@ import { AI_RULES } from './context.js';
 const TAG = /\{\{[A-Z][A-Z0-9_]*_\d+(?:\.[A-Z0-9_]+)?\}\}/g;
 const WELL_FORMED = /^\{\{[A-Z][A-Z0-9_]*_\d+(?:\.[A-Z0-9_]+)?\}\}$/;
 // Stands in for a tag or a masked phrase. It keeps every offset, so a finding's line is the line in the copy.
-const HOLD = '￼';
+const HOLD = '\uFFFC';
 const FACT_TYPES = new Set(['DATE', 'AMOUNT', 'PERCENT', 'REF', 'PLACE', 'PROJECT', 'JOB', 'COURT']);
 const KIND_TAG = { date: 'DATE', amount: 'AMOUNT', percent: 'PERCENT', ref: 'REF', place: 'PLACE', project: 'PROJECT', job: 'JOB', court: 'COURT' };
 const CHECKS = ['key', 'fact', 'pattern', 'name', 'tag'];
@@ -132,23 +132,32 @@ function occurrences(text, root) {
   return found;
 }
 
-/** The longest first, then the earliest; anything overlapping one already kept is dropped. */
-function longestFirst(list) {
-  const sorted = list.slice().sort((x, y) => (y.end - y.start) - (x.end - x.start) || x.start - y.start);
+/**
+ * Keep finds in the order given, dropping any that overlaps one already kept
+ * (`dropped(find, keptFind)` hears of each). One pass over the characters, so
+ * thousands of finds cost no more than the text is long.
+ */
+function keepApart(list, dropped = () => {}) {
+  const owner = new Int32Array(list.reduce((n, f) => Math.max(n, f.end), 0) + 1).fill(-1);
   const kept = [];
-  const taken = [];
-  for (const f of sorted) {
-    if (taken.some(([s, e]) => f.start < e && f.end > s)) continue;
-    taken.push([f.start, f.end]);
+  for (const f of list) {
+    let hit = -1;
+    for (let i = f.start; i < f.end && hit === -1; i++) hit = owner[i];
+    if (hit !== -1) { dropped(f, kept[hit]); continue; }
+    owner.fill(kept.length, f.start, f.end);
     kept.push(f);
   }
   return kept.sort((x, y) => x.start - y.start);
 }
 
+/** The longest first, then the earliest; anything overlapping one already kept is dropped. */
+const longestFirst = (list) => keepApart(list.slice().sort((x, y) => (y.end - y.start) - (x.end - x.start) || x.start - y.start));
+
 // ---------------------------------------------------------------- 1. the key sweep
 
 // Honours and joining words: a key value that is only one of these is not swept on its own.
-const HONOUR_ONLY = new Set(['sri', 'seri', 'dato', 'datuk', 'datin', 'tun', 'toh', 'haji', 'hajah', 'raja', 'tengku', 'tunku', 'syed', 'sharifah', 'encik', 'puan', 'cik', 'tuan', 'bin', 'binti', 'anak']);
+// ("Tan" and "Toh" are swept: they are common surnames, and "Tan Sri" and "Toh Puan" are recognised as honours below.)
+const HONOUR_ONLY = new Set(['sri', 'seri', 'dato', 'datuk', 'datin', 'tun', 'haji', 'hajah', 'raja', 'tengku', 'tunku', 'syed', 'sharifah', 'encik', 'puan', 'cik', 'tuan', 'bin', 'binti', 'anak']);
 // Short surnames that are also everyday English words: counted only when written with a capital, and not at the start of a sentence.
 const ALSO_ENGLISH = new Set('low saw sin see son sun tee wee woo hew lye ting tong long law man may sum yam pan hong kong mark will bill rose hope grace joy'.split(' '));
 // "Tan" in "Tan Sri" is the honour, not the surname.
@@ -221,7 +230,8 @@ function caseFits(o, text) {
   const { item } = o;
   const slice = text.slice(o.start, o.end);
   const form = shape(slice);
-  if (item.sameCase) return form === item.shape && !(item.english && sentenceStart(text, o.start));
+  // An ordinary word counts only written as in the key, and not where any word has a capital (the start of a sentence).
+  if (item.sameCase) return form === item.shape && !(form === 'title' && sentenceStart(text, o.start));
   if (!item.capital) return true;
   if (form === 'title' || form === 'upper') return !(item.english && form === 'title' && sentenceStart(text, o.start));
   // Three letters in lower case joined by a dot to another word: part of a user name (lim.meiling).
@@ -319,7 +329,7 @@ function patternFinds(text, ctx) {
 
 // Titles that come before a name. Two-word titles first.
 const TITLES = ['Tan Sri', 'Puan Sri', 'Toh Puan', "Dato' Seri", "Dato' Sri", 'Dato Seri', 'Dato Sri', 'Datuk Seri', 'Datuk Sri', 'Datin Seri', 'Datin Sri', 'Yang Berhormat', 'Yang Mulia', 'Yang Berbahagia', 'Mak Cik', 'Pak Cik',
-  "Dato'", 'Dato', 'Datuk', 'Datin', 'Tun', 'Toh', 'Encik', 'En', 'Puan', 'Pn', 'Cik', 'Tuan', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mdm', 'Madam', 'Dr', 'Prof', 'Professor', 'Haji', 'Hajah', 'Hj', 'Hjh', 'Ir', 'Ts',
+  "Dato'", 'Dato', 'Datuk', 'Datin', 'Tun', 'Encik', 'En', 'Puan', 'Pn', 'Cik', 'Tuan', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mdm', 'Madam', 'Dr', 'Prof', 'Professor', 'Haji', 'Hajah', 'Hj', 'Hjh', 'Ir', 'Ts',
   'Kak', 'Kakak', 'Abang', 'Pak', 'Pakcik', 'Mak', 'Makcik', 'Uncle', 'Aunty', 'Auntie', 'Cikgu', 'Ustaz', 'Ustazah', 'Sir', 'Dame', 'Lady', 'Lord', 'Tengku', 'Tunku', 'Syed', 'Sharifah',
   'YB', 'YBhg', 'YM', 'YAB', 'Inspector', 'Insp', 'ASP', 'DSP', 'Supt', 'Sgt', 'Sjn', 'Sarjan', 'Kpl', 'Cpl', 'Koperal', 'Konstabel', 'Constable'];
 const titleWords = (t) => t.toLowerCase().replace(/’/g, "'").replace(/\.$/, '').split(/\s+/);
@@ -371,10 +381,10 @@ function runsIn(text) {
       };
       if (tok.text.length < t.length) tok.end = tok.start + tok.text.length;
       const sep = prev ? line.slice(prev.end - lineStart, local) : null;
-      const joined = prev && (sep === ' ' || sep === ' ' || (/^\.[  ]$/.test(sep) && (ABBREV.has(prev.plain) || prev.plain.length === 1)));
+      const joined = prev && (sep === ' ' || sep === '\u00a0' || (/^\.[ \u00a0]$/.test(sep) && (ABBREV.has(prev.plain) || prev.plain.length === 1)));
       if (!joined) flush();
       if (tok.cap) run.push(tok);
-      else if (tok.particle && (run.length || /￼[  ]$/.test(line.slice(0, local)))) { if (!run.length) run.afterTag = true; run.push(tok); }
+      else if (tok.particle && (run.length || /\uFFFC[ \u00a0]$/.test(line.slice(0, local)))) { if (!run.length) run.afterTag = true; run.push(tok); }
       else flush();
       prev = tok;
     }
@@ -452,7 +462,9 @@ function nameFinds(text, ctx, { prose }) {
     });
     if (sub.length) subs.push(sub);
     for (const s0 of subs) {
-      const s = trimEnds(s0);
+      let s = trimEnds(s0);
+      // The first word of a sentence has a capital anyway: unless it is a name word, it is not part of the name ("Later Toh").
+      if (s.length > 1 && s[0].initial && !nameKind(s[0])) s = s.slice(1);
       if (!s.length) continue;
       const from = s[0].at;
       const to = s[s.length - 1].at;
@@ -476,10 +488,7 @@ function nameFinds(text, ctx, { prose }) {
   }
   // One finding per place: a title or particle find wins over a list or capitals find on the same words.
   const rank = { title: 0, particle: 1, list: 2, caps: 3 };
-  const sorted = finds.sort((a, b) => rank[a.rule] - rank[b.rule] || (b.end - b.start) - (a.end - a.start));
-  const kept = [];
-  for (const f of sorted) if (!kept.some((k) => f.start < k.end && f.end > k.start)) kept.push(f);
-  return kept.sort((a, b) => a.start - b.start);
+  return keepApart(finds.sort((a, b) => rank[a.rule] - rank[b.rule] || (b.end - b.start) - (a.end - a.start)));
 }
 
 // ---------------------------------------------------------------- 5. tags
@@ -651,12 +660,9 @@ export function inspect(matter, units) {
     // Words found by two checks are listed once: the longer find wins, so hiding it covers the whole name
     // ("Lim Kah Wai", not just "Lim"); on the same words a key value comes first, then a fact, a pattern, a possible name.
     const rank = { key: 0, fact: 1, pattern: 2, name: 3 };
-    const values = [];
-    for (const f of own.sort((a, b) => (b.end - b.start) - (a.end - a.start) || rank[a.check] - rank[b.check] || a.start - b.start)) {
-      const over = values.find((v) => f.start < v.end && f.end > v.start);
-      if (!over) values.push(f);
-      else if (f.check === 'key' && over.check !== 'key') (over.inKey ||= []).push(f.token);
-    }
+    const values = keepApart(own.sort((a, b) => (b.end - b.start) - (a.end - a.start) || rank[a.check] - rank[b.check] || a.start - b.start), (f, over) => {
+      if (f.check === 'key' && over.check !== 'key') (over.inKey ||= []).push(f.token);
+    });
     const tags = tagFinds(matter, forCheck(unit.text, unit, 'tag'), { bare: unit.kind !== 'report', usage, unit: unit.id });
     for (const b of unit.bareTags || []) {
       // Tag names counted in the report ("PERSON_1": 3) must be tags of this matter.
