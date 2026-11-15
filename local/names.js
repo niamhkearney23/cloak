@@ -181,4 +181,7 @@ export const NOT_NAMES = words(`
   re ref no nos tel fax hp mobile email website tetuan messrs sirs menurut merujuk sila adalah bahawa
   staff team group chat whatsapp telegram admin dapur kedai restoran kota bapa menteri polis klinik sekolah pejabat ibu
   everyone everybody all colleagues there folks guys
+  aidilfitri aidiladha ramadan ramadhan raya deepavali diwali christmas krismas merdeka thaipusam wesak lunar
+  indonesian bangladeshi nepali nepalese filipino myanmar burmese thai vietnamese cambodian pakistani indian chinese malay
+  american australian japanese korean foreigner foreign undersigned bertandatangan later earlier meanwhile afterwards
 `);

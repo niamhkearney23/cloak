@@ -81,12 +81,13 @@ test('other names a person goes by are joined to that person, and listed for rev
 });
 
 test('greetings and sign-offs name the writer and the reader; "Dear Sirs" names nobody', () => {
-  const texts = ['Hi Bernice,\n\nPlease send the receipts.\n\nThank you,\nAdlina', 'Salam Aiman,\nMotor sudah ditukar.\nTerima kasih,\nKok Wah', 'Dear Sirs,\n\nHi all,\nNoted. Thanks, Ray\n\nRegards,\nAccounts Department'];
+  const texts = ['Hi Bernice,\n\nPlease send the receipts.\n\nThank you,\nAdlina', 'Salam Aiman,\nMotor sudah ditukar.\nTerima kasih,\nKok Wah', 'Dear Sirs,\n\nHi all,\nNoted. Thanks, Ray\n\nRegards,\nAccounts Department', 'Salam Aidilfitri,\nSalam Hari Raya,\nHi Team,'];
   const { out } = cloak(texts);
   assert.doesNotMatch(out.join('\n'), /Bernice|Adlina|Aiman|Kok Wah|Ray\b/);
   assert.match(out[2], /^Dear Sirs,$/m);
   assert.match(out[2], /^Hi all,$/m);
   assert.match(out[2], /^Accounts Department$/m);
+  assert.equal(out[3], texts[3]);
 });
 
 test('"one X", a name next to a person-only role, lists of those present, columns of names, tasks and form lines', () => {
@@ -96,12 +97,12 @@ test('"one X", a name next to a person-only role, lists of those present, column
     'Present: Puan Mazlina, Jeremy (us); Kala (client)',
     'Sheet name: Pekerja\nBil\tNama\tJawatan\tPenyelia\n1\tMARGONO\tTukang masak\tKak Mala\nPrepared by\tBernice T.\t\t',
     'Farah to get the notice. Sharon to open a new file.\nTandatangan: Margono',
-    'Our client is Seri Kembara. Unfortunately, the driver left.',
+    'Our client is Seri Kembara. Unfortunately, the driver left. The lorry was driven by one Indonesian worker.',
   ]);
   assert.doesNotMatch(out.slice(0, 5).join('\n'), /Rubel|Wah|Joko|Sutinah|Mazlina|Jeremy|Kala\b|MARGONO|Margono|Mala|Bernice|Farah|Sharon/);
   // A company can be a client; a sentence adverb is not a name.
-  assert.ok(!candidates.some((c) => c.kind === 'PERSON' && /Kembara|Unfortunately/.test(c.text)));
-  assert.match(out[5], /Seri Kembara\. Unfortunately, the driver left\./);
+  assert.ok(!candidates.some((c) => c.kind === 'PERSON' && /Kembara|Unfortunately|Indonesian/.test(c.text)));
+  assert.match(out[5], /Seri Kembara\. Unfortunately, the driver left\. The lorry was driven by one Indonesian worker\./);
 });
 
 test('known names are also hidden in lowercase, except names that are ordinary words', () => {
