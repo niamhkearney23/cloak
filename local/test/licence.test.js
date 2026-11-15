@@ -293,3 +293,16 @@ test('test licence settings are honoured only for the source folder run by Elect
   assert.equal(pkg.build.extraMetadata.cloakRelease, true);
   assert.equal(pkg.cloakRelease, undefined);
 });
+
+test('a licence inside a long email thread (over 16 KB) still checks; only the licence block itself is limited', () => {
+  const thread = (n) => `${'On Mon, a colleague wrote: > Please keep this message confidential. This email is for the named reader only.\n'.repeat(n)}`;
+  const text = `${thread(100)}\n> ${issue().trim().split('\n').join('\n> ')}\n\n${thread(100)}`;
+  assert.ok(text.length > 16 * 1024 && text.length < 64 * 1024);
+  assert.equal(check(text).status, 'valid');
+  assert.equal(check(text.replace(/\n/g, '\r\n')).status, 'valid');
+  const block = licenceBlock(text);
+  assert.ok(block.length < 2000);
+  assert.equal(check(block).status, 'valid');
+  // Far beyond anything an email holds: still refused, with the usual message.
+  assert.equal(check(`${text}\n${'x'.repeat(1024 * 1024)}`).code, 'NOT_A_LICENCE');
+});

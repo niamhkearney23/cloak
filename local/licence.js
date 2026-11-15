@@ -28,7 +28,8 @@ const BEGIN = '-----BEGIN CLOAK LICENCE-----';
 const END = '-----END CLOAK LICENCE-----';
 // Signed together with the details, so a signature made for a licence means nothing anywhere else.
 const CONTEXT = Buffer.from('cloak-licence-v1\n');
-const MAX_TEXT = 16 * 1024;
+const MAX_TEXT = 16 * 1024; // the licence block itself
+const MAX_LOOKED_AT = 1024 * 1024; // all the text it is looked for in
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const NO_LICENCE = 'There is no licence on this computer.';
 
@@ -105,11 +106,13 @@ export function issueLicence({ privateKey, firm, seats, issued = dayOf(), expire
 // The lines of the licence block, with email quoting ("> ") and stray spaces taken off.
 function blockLines(text) {
   const t = String(text ?? '');
-  if (t.length > MAX_TEXT) return null;
+  if (t.length > MAX_LOOKED_AT) return null; // a generous bound on the text looked through at all (a long email thread)
   const lines = t.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split('\n').map((l) => l.replace(/^\s*(?:>\s?)+/, '').trim());
   const a = lines.indexOf(BEGIN);
   const b = a < 0 ? -1 : lines.indexOf(END, a + 1);
-  return a < 0 || b < 0 ? null : lines.slice(a, b + 1);
+  if (a < 0 || b < 0) return null;
+  const block = lines.slice(a, b + 1);
+  return block.join('\n').length > MAX_TEXT ? null : block; // the 16 KB limit is for the licence itself
 }
 
 /** The licence block on its own, tidied, for saving. */

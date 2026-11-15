@@ -252,7 +252,7 @@ Object.assign(api, {
   pickLicenceFile: async () => {
     const file = testPicks ? testPicks.shift() : (await dialog.showOpenDialog(win, { title: 'Choose the licence file', properties: ['openFile'], filters: [{ name: 'Licence', extensions: ['txt', 'licence', 'lic'] }, { name: 'All files', extensions: ['*'] }] })).filePaths[0];
     if (!file) return null;
-    if ((await stat(file)).size > 64 * 1024) throw new Error('That file is too large to be a Cloak licence.');
+    if ((await stat(file)).size > 2 * 1024 * 1024) throw new Error('That file is too large to be a Cloak licence.');
     return { text: await readFile(file, 'utf8') };
   },
   removeLicence: async () => { await rm(userLicenceFile(), { force: true }); await loadLicence(); return licenceInfo(); },
