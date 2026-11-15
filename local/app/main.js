@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMatter, openMatter } from '../matter.js';
-import { KEY_FILE_NAME } from '../keyfile.js';
+import { KEY_FILE_NAME, MIN_PASSWORD_LENGTH } from '../keyfile.js';
 import { VERSION } from '../version.js';
 import { assertNotSynced, locate } from '../source.js';
 import { formatDate } from '../dates.js';
@@ -51,20 +51,25 @@ async function remembered() {
   try { return JSON.parse(await readFile(rememberedFile(), 'utf8')); } catch { return {}; }
 }
 // "Remember on this computer": the password is kept by the operating
-// system's own protected store (Windows DPAPI, macOS Keychain).
+// system's own protected store (Windows DPAPI, macOS Keychain). With no
+// password, or where that store is missing, any password kept for the matter
+// is forgotten instead. Returns whether a password is now kept.
 async function remember(dir, password) {
-  if (!safeStorage.isEncryptionAvailable()) return;
   const all = await remembered();
-  if (password) all[dirId(dir)] = safeStorage.encryptString(password).toString('base64'); else delete all[dirId(dir)];
+  const id = dirId(dir);
+  if (password && safeStorage.isEncryptionAvailable()) all[id] = safeStorage.encryptString(password).toString('base64');
+  else if (id in all) delete all[id];
+  else return false;
   await mkdir(path.dirname(rememberedFile()), { recursive: true });
   await writeFile(rememberedFile(), JSON.stringify(all), { mode: 0o600 });
+  return id in all;
 }
 
 const needMatter = () => { if (!matter) throw new Error('No matter is open. Choose the matter folder and open it with its password, then try again.'); return matter; };
 const NOT_IN_RUN = 'That file is not in this run. The list may be out of date: cloak the folder again to see the files as they are now.';
 
 const api = {
-  info: async () => ({ version: VERSION, login, fullName, who: who(), canRemember: safeStorage.isEncryptionAvailable() }),
+  info: async () => ({ version: VERSION, login, fullName, who: who(), canRemember: safeStorage.isEncryptionAvailable(), minPasswordLength: MIN_PASSWORD_LENGTH }),
 
   setName: async ({ fullName: name }) => {
     name = String(name || '').replace(/\s+/g, ' ').trim();
@@ -111,12 +116,38 @@ const api = {
       if (!blob) throw new Error('No password is remembered for this matter on this computer. Type the matter password instead.');
       password = safeStorage.decryptString(Buffer.from(blob, 'base64'));
     }
-    matter = await openMatter({ dir, password, recoveryCode, takeOver, user: who() });
+    try {
+      matter = await openMatter({ dir, password, recoveryCode, takeOver, user: who() });
+    } catch (err) {
+      // Someone changed the matter password since it was remembered here: forget it, so the window asks for the new one.
+      if (useRemembered && err.code === 'WRONG_SECRET') {
+        await remember(dir, null);
+        throw new Error('The password remembered on this computer no longer opens this matter. Someone may have changed it. Cloak has forgotten it on this computer: type the new matter password.');
+      }
+      throw err;
+    }
     if (rememberIt && password) await remember(dir, password);
     return { name: matter.name, openedWith: matter.openedWith, level: matter.matter.options.level, setup: matter.matter.setup, testMatter: matter.testMatter };
   },
 
   forgetPassword: async ({ dir }) => { await remember(dir, null); return {}; },
+
+  // Matter settings. Each needs the open matter, and each is recorded in the
+  // matter's log without the password or the recovery code.
+  changePassword: async ({ password, again }) => {
+    const m = needMatter();
+    if (String(password ?? '') !== String(again ?? '')) throw new Error('The two passwords do not match. Type the same password in both boxes.');
+    await m.changePassword(password);
+    // A password remembered on this computer would no longer open the matter: it is updated, or forgotten if it cannot be kept safely.
+    if (!(dirId(m.dir) in (await remembered()))) return { remembered: null };
+    return { remembered: (await remember(m.dir, password)) ? 'updated' : 'forgotten' };
+  },
+  newRecoveryCode: async () => {
+    const m = needMatter();
+    const recoveryCode = await m.newRecoveryCode();
+    return { recoveryCode, name: m.name, replacedText: formatDate(new Date()), who: who() };
+  },
+  clearCache: async () => { await needMatter().clearCache(); return {}; },
 
   cloak: async ({ folder, options, manualSource, setup }) => {
     const m = needMatter();

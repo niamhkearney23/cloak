@@ -150,7 +150,8 @@
   }
 
   function matterOpenNote() {
-    document.getElementById('matter-form').innerHTML = `<div class="msg ok">Matter open${state.matter.name ? `: <b>${esc(state.matter.name)}</b>` : ''}.</div>`;
+    document.getElementById('matter-form').innerHTML = `<div class="msg ok">Matter open${state.matter.name ? `: <b>${esc(state.matter.name)}</b>` : ''}.</div>${settingsLink()}`;
+    on('[data-matter-settings]', 'click', () => matterSettings({ back: () => setup() }));
   }
 
   async function matterForm(error, mode) {
@@ -192,7 +193,9 @@
         state.level = r.level || 'strict';
         if (r.setup) { state.client = r.setup.client || ''; state.others = r.setup.others || ''; }
         state.testMatter = !!r.testMatter;
-        (state.afterOpen || setup)();
+        const next = state.afterOpen || setup;
+        // Opened with the recovery code: offer to set a new password before anything else.
+        if (r.openedWith === 'recovery') matterSettings({ back: next, recovered: true }); else next();
       } catch (err) {
         if (err.code !== 'LOCKED') return matterForm(err.message, mode);
         await matterForm(err.message, mode);
@@ -211,20 +214,23 @@
 
   function recoveryCode(made) {
     state.recovery = made;
+    // A new code for a matter that is already open (Matter settings), rather than for a new matter.
+    const replaced = !!made.replacedText;
     show(`<div class="narrow">
-      <h1>Write down the recovery code</h1>
+      <h1>Write down the ${replaced ? 'new ' : ''}recovery code</h1>
       <p>This code opens the matter if the password is forgotten. <b>It is shown only once.</b> Print it or write it down, and keep it on the paper file or in the safe.</p>
-      <p class="small"><b>Matter:</b> ${esc(made.name || '(no name)')}<br><b>Created:</b> ${esc(made.createdText)} by ${esc(made.who)}</p>
+      ${replaced ? '<div class="msg ok no-print" id="old-code-gone"><b>The old recovery code no longer works.</b> Destroy the old sheet.</div>' : ''}
+      <p class="small"><b>Matter:</b> ${esc(made.name || '(no name)')}<br>${replaced ? `<b>Replaced:</b> ${esc(made.replacedText)}` : `<b>Created:</b> ${esc(made.createdText)}`} by ${esc(made.who)}</p>
       <div class="code" id="recovery-code">${esc(made.recoveryCode)}</div>
       <p class="msg warn">If both the password and this code are lost, the key cannot be opened by anyone. There is no back door.</p>
       <p class="print-only small">Do not keep this sheet with the cloaked copies or in the matter folder on the computer.</p>
       <div class="row no-print"><button class="btn" id="print">Print this page</button></div>
-      <label class="check no-print"><input type="checkbox" id="wrote"> I have written the recovery code down</label>
+      <label class="check no-print"><input type="checkbox" id="wrote"> I have written the ${replaced ? 'new ' : ''}recovery code down</label>
       <p class="no-print"><button class="btn primary" id="continue" disabled>Continue</button></p>
     </div>`);
     on('#print', 'click', () => window.print());
     on('#wrote', 'change', (e) => { document.getElementById('continue').disabled = !e.target.checked; });
-    on('#continue', 'click', () => { state.recovery = null; (state.afterOpen || setup)(); });
+    on('#continue', 'click', () => { state.recovery = null; (made.then || state.afterOpen || setup)(); });
   }
 
   // --------------------------------------------------------------- running
@@ -281,6 +287,7 @@
       ${screenNote('review')}
       <p class="muted">${plural(d.files.length, 'file', 'files')} read in ${state.seconds.toFixed(1)} seconds. Nothing has been exported. Check the lists below, then finish the review.</p>
       ${d.source && d.source.label ? `<p class="small muted">Source: <b>${esc(d.source.kind)}</b>${d.source.workspace_path ? ` · workspace path <b>${esc(d.source.workspace_path)}</b>` : ''}. Read only.</p>` : ''}
+      ${settingsLink()}
       ${error ? message(error) : ''}
       <div class="card">
         <h2>Add a word or name the tool missed</h2>
@@ -301,6 +308,7 @@
       ${state.exported ? `<div class="msg ok" id="exported">${plural(state.exported.written.length, 'cloaked copy', 'cloaked copies')} written to <b>${esc(state.exported.outDir)}</b>.${state.exported.heldBack ? ` ${plural(state.exported.heldBack, 'file was', 'files were')} held back.` : ''} The double checker is not built yet, so treat these as <b>not double-checked</b>.</div>` : ''}
     </div>`);
     on('.tab', 'click', (e) => { state.tab = e.currentTarget.dataset.tab; review(); });
+    on('[data-matter-settings]', 'click', () => matterSettings({ back: () => review() }));
     const add = () => { const text = document.getElementById('add-text').value.trim(); if (text) act({ type: 'add', text, kind: document.getElementById('add-kind').value }); };
     on('#add-go', 'click', add);
     on('#add-text', 'keydown', (e) => { if (e.key === 'Enter') add(); });
@@ -580,6 +588,7 @@
     show(`<div class="wide">
       <h1>Restore a draft</h1>
       ${screenNote('draft')}
+      ${settingsLink()}
       ${error ? message(error) : ''}
       <div class="card">
         <h2>The draft</h2>
@@ -592,6 +601,7 @@
       <div id="restore-result">${r ? restoreResultHtml(r) : ''}</div>
     </div>`);
     on('#draft', 'input', (e) => { state.draft = e.target.value; });
+    on('[data-matter-settings]', 'click', () => matterSettings({ back: () => restoreScreen() }));
     on('#restore-back', 'click', async () => { await call('closeMatter').catch(() => {}); state.matter = null; state.afterOpen = null; state.restoreResult = null; state.draft = ''; home(); });
     on('#pick-draft', 'click', async () => {
       try { const f = await call('pickDraftFile'); if (f) { state.draft = f.text; restoreScreen(); } } catch (err) { restoreScreen(err.message); }
@@ -626,6 +636,90 @@
       ${r.checks[0].translated?.length ? `<p class="small muted">${plural(r.checks[0].translated.length, 'form', 'forms')} put back in the language of their sentence (month names, job titles, court names).</p>` : ''}
     </div>
     <div class="card white"><h2>The restored draft</h2><pre class="filetext" id="restored-text">${esc(r.restored)}</pre><div class="row"><button class="btn primary" id="copy-restored">Copy</button><button class="btn" id="save-restored">Save as…</button></div></div>`;
+  }
+
+  // ------------------------------------------------------- matter settings
+  //
+  // The open matter's password, recovery code and cache. Reached from the
+  // matter card on the setup screen, from the review and restore screens, and
+  // straight after a matter is opened with its recovery code.
+
+  function settingsLink() {
+    return '<p class="small muted"><button class="link" data-matter-settings>Matter settings</button>: change the password, replace the recovery code, clear the cache.</p>';
+  }
+
+  function matterSettings({ back, recovered = false }) {
+    let askForPassword = recovered; // the note asking for a new password, until one is set
+    const draw = ({ error, done } = {}) => {
+      document.getElementById('matter-name').textContent = state.matter?.name || '';
+      show(`<div class="narrow" id="matter-settings">
+        <h1>Matter settings</h1>
+        <p class="muted">${state.matter?.name ? `<b>${esc(state.matter.name)}</b>. ` : ''}Each change takes effect straight away and is recorded in the matter's log with your name. The log never holds the password or the recovery code.</p>
+        ${askForPassword ? '<div class="msg warn" id="recovered-note"><b>You opened this matter with the recovery code.</b> Set a new password now, and tell the people who work on the matter. The recovery code has been out of the safe, so consider replacing it too.</div>' : ''}
+        ${error ? message(error) : ''}
+        ${done ? `<div class="msg ok" role="status" id="settings-done">${done}</div>` : ''}
+        <div class="card">
+          <h2>Change the password</h2>
+          <p class="muted small">From now on the new password opens the matter for everyone, and the old one stops working. Cloak does not send it to anyone: tell the people who work on the matter yourself.</p>
+          <div class="field"><label for="s-pw">New password (${state.info.minPasswordLength || 10} characters or more)</label><input type="password" id="s-pw" autocomplete="new-password"></div>
+          <div class="field"><label for="s-pw2">Type the new password again</label><input type="password" id="s-pw2" autocomplete="new-password"></div>
+          <button class="btn primary" id="s-change">Change the password</button>
+        </div>
+        <div class="card">
+          <h2>Replace the recovery code</h2>
+          <p class="muted small">Do this if the printed code may have been seen, or once it has been used. Cloak makes a new code and shows it once, to print or write down. The old code stops working straight away.</p>
+          <button class="btn" id="s-recovery">Replace the recovery code…</button>
+        </div>
+        <div class="card">
+          <h2>Clear the cache</h2>
+          <p class="muted small">The cache keeps what was read from each file, encrypted, so that files that have not changed are not read again. Clearing it frees space and changes nothing in the key or the review. The next time the folder is cloaked, every file is read again, and scans and pictures go through OCR again, which can take much longer.</p>
+          <button class="btn" id="s-cache">Clear the cache…</button>
+        </div>
+        <div class="row"><button class="btn" id="s-back">${recovered ? 'Continue' : 'Back'}</button></div>
+      </div>`);
+      on('#s-back', 'click', () => back());
+      on('#s-change', 'click', changePassword);
+      on('#s-pw2', 'keydown', (e) => { if (e.key === 'Enter') changePassword(); });
+      on('#s-recovery', 'click', replaceCode);
+      on('#s-cache', 'click', clearCache);
+      if (askForPassword) document.getElementById('s-pw').focus();
+    };
+    // While a change is being saved, nothing else can be pressed or typed. Every outcome draws the screen again.
+    const wait = (id, text) => {
+      main.querySelectorAll('#matter-settings button, #matter-settings input').forEach((b) => { b.disabled = true; });
+      document.getElementById(id).textContent = text;
+    };
+    async function changePassword() {
+      if (document.getElementById('s-change').disabled) return;
+      const password = document.getElementById('s-pw').value;
+      const again = document.getElementById('s-pw2').value;
+      wait('s-change', 'Changing the password…');
+      try {
+        const r = await call('changePassword', { password, again });
+        askForPassword = false;
+        const kept = { updated: ' The password remembered on this computer has been updated.', forgotten: ' The password remembered on this computer has been forgotten: type the new one next time.' }[r.remembered] || '';
+        draw({ done: `<b>The password has been changed.</b> The old password no longer opens this matter.${kept}` });
+      } catch (err) { draw({ error: err.message }); }
+    }
+    async function replaceCode() {
+      const yes = await confirmDialog({ title: 'Replace the recovery code?', body: 'Cloak makes a new recovery code and shows it once, to print or write down. <b>The old code stops working straight away.</b>', yes: 'Replace the recovery code' });
+      if (!yes) return;
+      wait('s-recovery', 'Replacing…');
+      try {
+        const r = await call('newRecoveryCode');
+        recoveryCode({ ...r, then: () => draw({ done: '<b>The recovery code has been replaced.</b> The old code no longer opens this matter.' }) });
+      } catch (err) { draw({ error: err.message }); }
+    }
+    async function clearCache() {
+      const yes = await confirmDialog({ title: 'Clear the cache?', body: 'Nothing in the key or the review changes. <b>The next time the folder is cloaked, every file is read again</b>, and scans and pictures go through OCR again, which can take much longer.', yes: 'Clear the cache' });
+      if (!yes) return;
+      wait('s-cache', 'Clearing…');
+      try {
+        await call('clearCache');
+        draw({ done: '<b>The cache has been cleared.</b> The next time the folder is cloaked, every file is read again.' });
+      } catch (err) { draw({ error: err.message }); }
+    }
+    draw();
   }
 
   // ------------------------------------------------------------ first run
@@ -822,6 +916,7 @@
       <ul>
         <li>While a matter is open, its key is in this computer's memory.</li>
         <li>Anyone who gets a copy of ${code('matter.cloakkey')} can try passwords against it for as long as they like. A long password is what protects it.</li>
+        <li>A new password or recovery code (Matter settings) locks the old one out of the key in the matter folder, not out of older copies. Someone who kept a copy of the key file and knows the old password or code can still open that copy.</li>
         <li>If both the password and the recovery code are lost, nobody can open the key. There is no back door.</li>
         <li>Once you paste cloaked text into an AI tool, that tool's own terms apply.</li>
       </ul>`;
