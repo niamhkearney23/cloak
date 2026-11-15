@@ -190,9 +190,10 @@ test('nothing real is left in temp or cache locations', async () => {
       continue;
     }
     // The window tests run at the same time: Chromium's temp folders come and
-    // go, and its lock files are links to nothing. A file that is gone, or a
-    // link to nothing, holds no text to leave behind.
-    const buf = await readFile(f).catch((err) => { if (err.code === 'ENOENT') return null; throw err; });
+    // go, its lock files are links to nothing, and its SingletonSocket is a
+    // socket (ENXIO when opened). A file that is gone, a link to nothing or a
+    // socket holds no text to leave behind.
+    const buf = await readFile(f).catch((err) => { if (err.code === 'ENOENT' || err.code === 'ENXIO') return null; throw err; });
     if (!buf) continue;
     const text = buf.toString('latin1');
     assert.deepEqual(realValuesIn(text), [], `real value left in ${f}`);

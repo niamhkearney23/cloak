@@ -26,7 +26,7 @@ import { NON_LATIN_CHARS } from './run.js';
 import { assertNotSynced, locate } from './source.js';
 import { Chronology } from './chronology.js';
 import { contextSheet } from './context.js';
-import { keySweep } from './doublecheck.js';
+import { documentUnit, sheetUnit, reportUnit, markerUnit, namesUnit, inspect, verdict } from './doublecheck.js';
 import { assertLicenceAllowsExport, licenceForReport } from './licence.js';
 import { READER_VERSION } from './extract.js';
 
@@ -34,6 +34,8 @@ import { READER_VERSION } from './extract.js';
 const READER = `${VERSION}/reader-${READER_VERSION}`;
 
 const LOCK_NAME = 'matter.lock';
+// The marker file says what state the exported copies are in.
+export const MARKER_NAME = 'REVIEWED-AND-DOUBLE-CHECKED.txt';
 export const APPROVE_WORD = 'APPROVE';
 // Messages used in more than one place: what happened, then what to do next.
 const NOT_IN_RUN = 'That file is not in this run. The list may be out of date: cloak the folder again to see the files as they are now.';
@@ -68,6 +70,28 @@ async function takeLock(dir, user, { takeOver = false } = {}) {
     }
   }
   throw new Error('Could not lock the matter: someone else opened it at the same moment. Wait a few seconds and try again.');
+}
+
+// ---------------------------------------------------------------- for the double checker
+
+/** Why export was refused. No real value: the file and line of the first findings; the words are on the Double check tab. */
+function refusal(result) {
+  const open = result.groups.flatMap((g) => g.places.filter((p) => !p.decided));
+  const n = result.counts.undecided;
+  const files = result.counts.filesFailing;
+  const where = open.slice(0, 3).map((p) => `${p.unit} line ${p.line}`).join('; ');
+  return `The double check found ${n} thing${n === 1 ? '' : 's'} still to decide in ${files} file${files === 1 ? '' : 's'} (${where}${open.length > 3 ? '; …' : ''}). Nothing was exported. Open the Double check tab: each finding shows the words, the file and the line, with "Hide it" and "It is fine".`;
+}
+
+/** The exact text found at each place of a finding. */
+const surfaces = (group) => [...new Set(group.places.map((p) => p.excerpt.slice(p.mark[0], p.mark[1])).filter(Boolean))];
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** Whole words, exactly as written, outside tags, replaced by their tag. */
+function replaceExact(text, list) {
+  const re = new RegExp(`(?<![\\p{L}\\p{N}_])(?:${list.map((h) => escapeRe(h.value)).join('|')})(?![\\p{L}\\p{N}_])`, 'gu');
+  const tokenOf = new Map(list.map((h) => [h.value, h.token]));
+  return String(text).split(/(\{\{[^{}]*\}\})/).map((part, i) => (i % 2 ? part : part.replace(re, (m) => `{{${tokenOf.get(m)}}}`))).join('');
 }
 
 class Session {
@@ -172,6 +196,7 @@ class Session {
     if (changed) this.review.complete = null;
     // Files the reviewer asked to have their non-Latin text hidden are cloaked again.
     for (const f of run.files) if (f.hideNonLatin) renderFile(this.matter, f);
+    this.applyExactHides();
     await this.save();
     await this.log('cloak-folder', { ...run.report.totals, seconds: run.seconds });
     return run;
@@ -225,6 +250,7 @@ class Session {
       cf.out = '000-chronology.cloaked.txt';
       this.chronologyFile = cf;
     }
+    this.applyExactHides();
   }
 
   /** What the review screen shows. Real values: this never leaves the machine. */
@@ -250,6 +276,7 @@ class Session {
       blockers,
       complete: this.review.complete && { ...this.review.complete, whenText: formatDate(this.review.complete.when) },
       source: this.run?.source?.real || null,
+      doubleCheck: this.checkBrief(),
     };
   }
 
@@ -344,6 +371,7 @@ class Session {
     }
     f.approved = { by: this.user, when: new Date().toISOString(), reasons: f.reasons, nonLatinShowing: showing };
     this.review.checked[f.fingerprint] = f.approved;
+    this.lastCheck = null; // one more file will be exported: the double check must read it
     if (!f.out) f.out = `${String(this.numberFor(f.fingerprint)).padStart(3, '0')}-${f.type}.cloaked.txt`;
     await this.save();
     await this.log('file-checked-by-hand', { file_number: this.files[f.fingerprint].number, non_latin_text_showing: showing });
@@ -363,13 +391,13 @@ class Session {
 
   /**
    * Write the cloaked copies to a folder. Only after the review is signed
-   * off, and only files that were fully read (or checked by hand).
+   * off, only files that were fully read (or checked by hand), and only once
+   * the double check has passed on exactly what is written: every file
+   * passes, or a person has decided every finding.
    */
   async export({ outDir, only = 'all' }) {
     if (!this.run) throw new Error('Cloak a folder first.');
     if (!this.review.complete) throw new Error('Nothing can be exported until the review is finished.');
-    // Until the double checker exists, only matters marked as made-up test documents can be exported.
-    if (!this.testMatter) throw Object.assign(new Error('Export is limited to test matters until the double checker is built. If this matter holds made-up test documents only, tick that box on the setup screen.'), { code: 'TEST_MATTER_ONLY' });
     // The licence, a rule of its own: an evaluation copy (no licence, or one
     // that has ended) exports test matters only, whatever any other check
     // says. The app sets this.licence from the licence on this computer;
@@ -379,36 +407,241 @@ class Session {
     outDir = path.resolve(outDir);
     if (inside(this.dir, outDir) || inside(outDir, this.dir)) throw new Error('The cloaked copies must not go into the matter folder. The key must never sit with the cloaked files.');
     await assertNotSynced(outDir, 'The folder for the cloaked copies', { source: this.run.location });
+    // The double check runs again on what is about to be written. It is one condition of its own: any other
+    // condition on export (a licence that allows test matters only, for example) is checked as well, not instead.
+    const checked = await this.checkExport(only);
+    if (!checked.result.passed) {
+      const c = checked.result.counts;
+      await this.log('export-refused', { reason: 'double check', still_to_decide: c.undecided, files: c.filesFailing });
+      throw Object.assign(new Error(refusal(checked.result)), { code: 'DOUBLE_CHECK', counts: c });
+    }
+    const { plan, report, marker, result } = checked;
+    const written = await writeOutput(outDir, [...plan.files, ...plan.extra], report, marker, MARKER_NAME, (f) => plan.extra.includes(f) || plan.allowed(f));
+    // Counts only: never a value.
+    await this.log('exported', { only, files_written: written.length, files_held_back: only === 'chronology' ? 0 : plan.files.filter((f) => f.cloaked && !plan.allowed(f)).length, double_checked: true, found: result.counts.places, marked_fine: result.counts.markedFine, hidden_in_double_check: this.checkState().hidden, test_matter: this.testMatter });
+    return { outDir, written, heldBack: only === 'chronology' ? 0 : plan.files.filter((f) => !f.container && !plan.allowed(f)).length, doubleCheck: report.double_check };
+  }
+
+  // ------------------------------------------------------------ the double checker (feature 4)
+  //
+  // A second, independent check of everything an export would write. Its
+  // findings hold real text: they stay in memory and on this screen. The
+  // approvals ("It is fine") are kept in the encrypted matter with who and
+  // when; the log gets counts only. Any change to the review takes the
+  // sign-off away, and with it the double check and its approvals.
+
+  /** The double check of the current review sign-off. A new sign-off starts it again. */
+  checkState() {
+    const signedOff = this.review.complete?.when || null;
+    if (!this.review.doubleCheck || this.review.doubleCheck.forReview !== signedOff) this.review.doubleCheck = { forReview: signedOff, approvals: {}, hidden: 0, last: null };
+    return this.review.doubleCheck;
+  }
+
+  /** What an export would write: the files, the confirmed chronology, the context sheet, and one unit per file for the checker. */
+  exportPlan(only = 'all') {
     const files = this.run.files;
     const allowed = (f) => only !== 'chronology' && (f.status === 'cloaked' || (f.status === 'manual' && !!f.approved));
-    const strict = this.matter.facts.on;
     // The confirmed chronology is its own document, cloaked like any other file.
     const extra = [];
     if (this.chronology?.confirmed && this.chronologyFile) extra.push(this.chronologyFile);
     const toWrite = [...files.filter(allowed), ...extra];
     // Strict: the context sheet for the AI goes with every export.
-    let sheet = null;
-    if (strict) {
-      sheet = { out: '000-context-sheet.cloaked.txt', cloaked: contextSheet(this.matter, toWrite.filter((f) => f.cloaked), { version: VERSION }), status: 'cloaked' };
-      extra.push(sheet);
-    }
-    // The key sweep: nothing the key holds may appear in anything that is written, the context sheet included.
-    if (strict) {
-      const findings = [];
-      for (const f of [...toWrite.filter((x) => x.cloaked), ...(sheet ? [sheet] : [])]) {
-        // The context sheet gives each person's role, job titles included, as the owner asked; nothing else may show one.
-        for (const h of keySweep(this.matter, f.cloaked, { allowKinds: f === sheet ? ['job'] : [] })) findings.push({ file: f.out, paragraph: h.paragraph, kind: h.kind });
+    if (this.matter.facts.on) extra.push({ out: '000-context-sheet.cloaked.txt', cloaked: contextSheet(this.matter, toWrite.filter((f) => f.cloaked), { version: VERSION }), status: 'cloaked', sheet: true });
+    const written = [...files.filter((f) => allowed(f) && f.out && f.cloaked), ...extra.filter((f) => f.out && f.cloaked)];
+    const units = written.map((f) => (f.sheet ? sheetUnit(f) : f === this.chronologyFile ? documentUnit(f, { title: 'Chronology (confirmed)', label: 'Chronology' }) : documentUnit(f)));
+    return { only, files, allowed, extra, written, units };
+  }
+
+  /** cloak-report.json for an export, saying who reviewed it and who double-checked it. */
+  exportReport(plan, result, when) {
+    const state = this.checkState();
+    const approvers = [...new Set(result.groups.flatMap((g) => g.places.filter((p) => p.decided).map((p) => p.decided.by)))];
+    const double = {
+      statement: `Double-checked by ${this.user} on ${formatDate(when)}.`,
+      by: this.user,
+      when,
+      when_text: formatDate(when),
+      files_checked: result.counts.files,
+      found: result.counts.places,
+      marked_fine_by_a_person: result.counts.markedFine,
+      hidden_during_the_double_check: state.hidden,
+      fine_marked_by: approvers,
+      checks: ['key sweep', 'pattern sweep', 'leftover names', 'every part of every file', 'tags'],
+      ai_used: false,
+    };
+    const note = `Reviewed by ${this.review.complete.by} on ${formatDate(this.review.complete.when)}. ${double.statement}`;
+    const report = buildReport({ matter: this.matter, files: plan.files, total: this.run.total, user: this.user, seconds: this.run.seconds, cached: this.run.cached, source: this.run.source.cloaked, review: note });
+    // What the double check hid by its exact text is hidden in what the report says about each file too (part names, reasons).
+    const hides = (this.review.exactHides || []).filter((h) => this.matter.cloak.byToken.has(h.token)).sort((a, b) => b.value.length - a.value.length);
+    if (hides.length) {
+      for (const e of report.files) {
+        e.name = replaceExact(e.name, hides);
+        e.reasons = e.reasons.map((r) => replaceExact(r, hides));
+        e.proof.could_not_be_read = e.proof.could_not_be_read.map((r) => replaceExact(r, hides));
+        e.proof.parts_read = e.proof.parts_read.map((r) => replaceExact(r, hides));
       }
-      if (findings.length) throw Object.assign(new Error(`The key sweep found a real value still showing in ${findings.length} place(s): ${findings.slice(0, 5).map((x) => `${x.file} paragraph ${x.paragraph}`).join('; ')}. Nothing was exported.`), { code: 'SWEEP_FAILED', findings });
     }
-    const note = `Reviewed by ${this.review.complete.by} on ${formatDate(this.review.complete.when)}. NOT YET DOUBLE-CHECKED.`;
-    const report = buildReport({ matter: this.matter, files, total: this.run.total, user: this.user, seconds: this.run.seconds, cached: this.run.cached, source: this.run.source.cloaked, review: note });
     report.level = this.matter.options.level;
     report.licence = licenceForReport(this.licence); // the licensee and licence ID, or "evaluation copy"
-    if (strict) report.facts = { dates_version: this.matter.facts.datesVersion, un_blurred: this.matter.facts.unblurred.map((u) => ({ kind: u.kind, by: u.by, when: u.when })) };
-    const written = await writeOutput(outDir, [...files, ...extra], report, `Cloak ${VERSION}\n\n${note}\nThe double checker has not been run on these copies.\n`, 'REVIEWED-NOT-DOUBLE-CHECKED.txt', (f) => extra.includes(f) || allowed(f));
-    await this.log('exported', { only, files_written: written.length, files_held_back: only === 'chronology' ? 0 : files.filter((f) => f.cloaked && !allowed(f)).length });
-    return { outDir, written, heldBack: only === 'chronology' ? 0 : files.filter((f) => !f.container && !allowed(f)).length };
+    if (this.matter.facts.on) report.facts = { dates_version: this.matter.facts.datesVersion, un_blurred: this.matter.facts.unblurred.map((u) => ({ kind: u.kind, by: u.by, when: u.when })) };
+    // The person's own statement that the documents are made up. Cloak cannot tell.
+    report.test_matter = this.testMatter;
+    report.double_check = double;
+    return report;
+  }
+
+  exportMarker(report) {
+    const d = report.double_check;
+    return `Cloak ${VERSION}\n\n${report.review.split(' Double-checked by ')[0]}\n${d.statement}\nChecked: ${d.files_checked} files. Found: ${d.found}. Marked as fine by a person: ${d.marked_fine_by_a_person}. Hidden during the double check: ${d.hidden_during_the_double_check}.\nMade-up test documents only: ${report.test_matter ? 'yes' : 'no'}.\nNo AI was used.\n`;
+  }
+
+  /**
+   * Run the double check on what an export would write. The report and the
+   * marker file are written last, with the counts, so they are read twice:
+   * once to count, and again as they will be written.
+   */
+  async checkExport(only = 'all') {
+    const state = this.checkState();
+    const plan = this.exportPlan(only);
+    const when = new Date().toISOString();
+    const docs = inspect(this.matter, plan.units);
+    const generated = (report, marker) => inspect(this.matter, [reportUnit(JSON.stringify(report, null, 2)), markerUnit(marker, MARKER_NAME), namesUnit([...plan.written.map((f) => f.out), 'cloak-report.json', MARKER_NAME])]);
+    const options = { approvals: state.approvals };
+    let report = this.exportReport(plan, verdict(this.matter, [docs], options), when);
+    let result = verdict(this.matter, [docs, generated(report, this.exportMarker(report))], options);
+    report = this.exportReport(plan, result, when);
+    const marker = this.exportMarker(report);
+    result = verdict(this.matter, [docs, generated(report, marker)], options);
+    this.lastCheck = { result, when, by: this.user, only, forReview: state.forReview };
+    state.last = { when, by: this.user, only, ...result.counts, passed: result.passed };
+    await this.save();
+    await this.log('double-check', { only, files_checked: result.counts.files, found: result.counts.places, distinct: result.counts.groups, still_to_decide: result.counts.undecided, marked_fine: result.counts.markedFine, passed: result.passed });
+    return { plan, report, marker, result };
+  }
+
+  /** "Run the double check": everything an export of all files would write is checked. Nothing is written. */
+  async doubleCheck({ only = 'all' } = {}) {
+    if (!this.run) throw new Error('Cloak a folder first.');
+    if (!this.review.complete) throw new Error('Finish the review first. The double check reads what would be exported.');
+    await this.checkExport(only);
+    return this.checkView();
+  }
+
+  /** The last double check as the screen shows it. Real text: it never leaves this machine. */
+  checkView() {
+    const last = this.lastCheck;
+    if (!last || !this.review.complete || last.forReview !== this.checkState().forReview) return { ran: false };
+    const r = last.result;
+    const shown = (p) => ({ ...p, decided: p.decided && { ...p.decided, whenText: formatDate(p.decided.when) } });
+    return {
+      ran: true, passed: r.passed, only: last.only, by: last.by, whenText: formatDate(last.when), counts: r.counts, hidden: this.checkState().hidden,
+      units: r.units,
+      groups: r.groups.map((g) => ({ ...g, places: g.places.slice(0, 40).map(shown), more: Math.max(0, g.places.length - 40) })),
+    };
+  }
+
+  /** For the finish bar: has the double check run on this sign-off, and what did it find. Counts only. */
+  checkBrief() {
+    if (!this.review.complete) return null;
+    const view = this.checkView();
+    return view.ran ? { ran: true, passed: view.passed, by: view.by, whenText: view.whenText, counts: view.counts, hidden: view.hidden } : { ran: false };
+  }
+
+  /**
+   * A person decides one finding (everywhere it was found):
+   *   fine  - it is not confidential; kept with who and when, for these places
+   *   hide  - hide it like the review screen's "add" (kind: PERSON, COMPANY or
+   *           OTHER for a possible name), cloak again and check again
+   * Hiding keeps the review signed off unless it gives the review something
+   * new to decide (a name joined to another, say): then the review must be
+   * finished again, and the double check starts again.
+   */
+  async decideFinding({ key, decision, kind } = {}) {
+    if (!this.run || !this.review.complete) throw new Error('Finish the review first.');
+    if (!this.lastCheck || this.lastCheck.forReview !== this.checkState().forReview) await this.checkExport('all');
+    const only = this.lastCheck.only;
+    const group = this.lastCheck.result.groups.find((g) => g.key === key);
+    if (!group) throw new Error('That finding is no longer there. Run the double check again.');
+    const state = this.checkState();
+    if (decision === 'fine') {
+      const before = state.approvals[key];
+      state.approvals[key] = { by: this.user, when: new Date().toISOString(), check: group.check, places: [...new Set([...(before?.places || []), ...group.places.map((p) => p.place)])] };
+      await this.save();
+      await this.log('double-check-fine', { check: group.check, places: group.places.length });
+      await this.checkExport(only);
+      return { check: this.checkView(), review: this.reviewData() };
+    }
+    if (decision !== 'hide') throw new Error('Choose "Hide it" or "It is fine".');
+    if (!group.fixable) {
+      throw new Error({
+        tag: 'A tag problem cannot be hidden. Leave the file out, or mark it as fine if you are sure.',
+        who: 'Cloak writes this name in the report on purpose: who reviewed, who double-checked, or the firm on the licence. Hiding cannot change it. Mark it as fine if it may go with the copies, or leave the report out when you send them.',
+        generated: 'Cloak writes this from tags and numbers, so hiding cannot change it. Mark it as fine if you are sure.',
+      }[group.whyNot] || 'This cannot be hidden. Mark it as fine if you are sure.');
+    }
+    // What the review has waiting before the change: only something new reopens it.
+    const waiting = () => { const d = this.reviewData(); return new Set([...d.unsure.map((u) => `u|${u.text}`), ...d.merges.map((m) => `m|${m.tag}`), ...d.shortForms.map((a) => `s|${a.tag}|${a.also}`)]); };
+    const before = waiting();
+    const isNew = () => [...waiting()].some((k) => !before.has(k));
+    const how = this.hideFinding(group, kind);
+    this.reapply();
+    state.hidden += 1;
+    let reopened = isNew();
+    let current = false;
+    if (!reopened) {
+      // If the same words still show (a name in lower case, for one), their exact text is hidden under the tag.
+      await this.checkExport(only);
+      current = true;
+      const still = this.lastCheck.result.groups.find((g) => g.key === key && g.undecided);
+      if (still && how.token) {
+        for (const s of surfaces(still)) this.addExactHide(s, how.token);
+        this.reapply();
+        reopened = isNew();
+        current = false;
+      }
+    }
+    // Something new for the review to decide: it must be finished again, and the double check run again.
+    if (reopened) this.review.complete = null;
+    await this.save();
+    await this.log('double-check-hide', { check: group.check, as: how.as, review_reopened: reopened });
+    if (!reopened && !current) await this.checkExport(only);
+    return { check: this.checkView(), review: this.reviewData(), reopened };
+  }
+
+  /** Hide what one finding found, the way the review screen would. Returns the tag it now has, when that is known. */
+  hideFinding(group, kind) {
+    const m = this.matter;
+    if (group.check === 'name') {
+      const as = ['PERSON', 'COMPANY', 'OTHER'].includes(kind) ? kind : group.hideAs || 'PERSON';
+      return { as, token: review.addTerm(m, group.value, as) };
+    }
+    if (group.check === 'pattern') return { as: group.type, token: m.addId(group.type, group.value) };
+    if (group.check === 'fact') {
+      // The new way of writing it becomes another form of the same fact ({{DATE_1.C}}).
+      for (const s of surfaces(group)) m.facts.learn(s);
+      return { as: group.fact, token: null };
+    }
+    // A value the key holds but the text shows anyway (in lower case, or a folder name): its exact text is hidden under its tag.
+    for (const s of surfaces(group)) this.addExactHide(s, group.token);
+    return { as: 'key value', token: group.token };
+  }
+
+  addExactHide(value, token) {
+    const list = (this.review.exactHides ||= []);
+    if (value && token && !list.some((h) => h.value === value && h.token === token)) list.push({ value, token, by: this.user, when: new Date().toISOString() });
+  }
+
+  /** Exact text the double check was told to hide where the key search does not reach it. Applied after every cloaking. */
+  applyExactHides() {
+    const list = (this.review.exactHides || []).filter((h) => this.matter.cloak.byToken.has(h.token)).sort((a, b) => b.value.length - a.value.length);
+    if (!list.length) return;
+    for (const f of [...(this.run?.files || []), ...(this.chronologyFile ? [this.chronologyFile] : [])]) {
+      if (f.name) f.name = replaceExact(f.name, list);
+      if (!f.cloaked) continue;
+      f.cloaked = replaceExact(f.cloaked, list);
+      f.tags = {};
+      for (const t of f.cloaked.matchAll(/\{\{([A-Z][A-Z0-9_]*?)_(\d+)(?:\.[A-Z0-9_]+)?\}\}/g)) f.tags[`${t[1]}_${t[2]}`] = (f.tags[`${t[1]}_${t[2]}`] || 0) + 1;
+    }
   }
 
   async changePassword(newPassword) {

@@ -122,8 +122,10 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     await page.waitForFunction((n) => document.querySelectorAll('#chrono-table tbody tr').length > n, datedRows);
     await page.click('#toggle-undated');
     await page.waitForFunction((n) => document.querySelectorAll('#chrono-table tbody tr').length === n, datedRows);
+    // The edit leaves two names the first pass does not hide and the review does not ask about: each stands alone
+    // after a colon. The double check finds both (below).
     await page.locator('[data-edit]').first().click();
-    await page.fill('#fd-text', 'Edited by the reviewer.');
+    await page.fill('#fd-text', 'Edited by the reviewer. Copy to: Rohani (accounts). Prepared for: Zubaidah.');
     await page.click('#fd-yes');
     await page.waitForSelector('#chrono-table td:has-text("Edited by the reviewer.")');
     await page.locator('[data-pick]').nth(1).check();
@@ -173,6 +175,29 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
 
     await page.click('#finish');
     await page.waitForSelector('#export-chrono');
+
+    // The double check, from the finish bar: every file that would be written, each with pass or fail.
+    assert.match(await page.textContent('#check-state'), /Next: the double check/);
+    await page.click('#run-check');
+    await page.waitForSelector('#check-findings');
+    assert.ok(await page.locator('#check-files tbody tr').count() >= 20, 'every file that would be written is listed');
+    assert.equal(await page.locator('#check-files tr:has(.chip.partial)').count(), 1, 'only the chronology fails');
+    assert.match(await page.textContent('#check-files tr:has(.chip.partial)'), /000-chronology\.cloaked\.txt/);
+    const finding = (text) => page.locator('#check-findings tbody tr', { has: page.locator('td > b', { hasText: new RegExp(`^${text}$`) }) });
+    assert.match(await finding('Rohani').textContent(), /Possible name.*Chronology \(confirmed\) · Chronology · line \d+/s, 'the word, the file and the line are shown');
+    assert.match(await finding('Zubaidah').textContent(), /Possible name/);
+    assert.match(await page.textContent('#check-state'), /Double check: 2 to decide/);
+    // Hide one: it is added as a person, hidden under its tag and checked again.
+    assert.equal(await finding('Rohani').locator('[data-dc-kind]').inputValue(), 'PERSON');
+    await finding('Rohani').locator('[data-dc-hide]').click();
+    await page.waitForFunction(() => !/\bRohani\b/.test(document.getElementById('check-findings')?.textContent || ''));
+    // The other is fine: a person decides, after a deliberate yes.
+    await finding('Zubaidah').locator('[data-dc-fine]').click();
+    await page.click('#yes');
+    await page.waitForSelector('#check-summary .chip.cloaked');
+    assert.match(await finding('Zubaidah').textContent(), /Marked fine.*Reviewer Example/s);
+    assert.match(await page.textContent('#check-state'), /Double check passed/);
+
     // The recommended export: the confirmed chronology alone (with the context sheet).
     await page.click('#export-chrono');
     await page.waitForSelector('#exported');
@@ -191,7 +216,17 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
       for (const v of REAL_EXACT) assert.ok(!new RegExp(`(?<![\\p{L}\\p{N}])${v}(?![\\p{L}\\p{N}])`, 'u').test(text), `${v} in ${n}`);
       assert.ok(!/Gombak/.test(text));
     }
-    assert.match(JSON.parse(await readFile(path.join(out, 'cloak-report.json'), 'utf8')).review, /^Reviewed by /);
+    const report = JSON.parse(await readFile(path.join(out, 'cloak-report.json'), 'utf8'));
+    assert.match(report.review, /^Reviewed by Reviewer Example .* Double-checked by Reviewer Example /);
+    assert.equal(report.double_check.marked_fine_by_a_person, 1);
+    assert.equal(report.double_check.hidden_during_the_double_check, 1);
+    assert.ok(names.includes('REVIEWED-AND-DOUBLE-CHECKED.txt'));
+    assert.match(await page.textContent('#exported'), /Double-checked by Reviewer Example/);
+    // The log has the decisions as counts, never the words.
+    const log = await readFile(path.join(matter, 'log.jsonl'), 'utf8');
+    assert.match(log, /"action":"double-check-hide"/);
+    assert.match(log, /"action":"double-check-fine","check":"name","places":1/);
+    assert.ok(!/Zubaidah|Rohani|Ahmad/.test(log), 'no value in the log');
     assert.deepEqual(errors, []);
     assert.ok(await stat(path.join(matter, 'matter.lock')), 'the matter is locked while the window is open');
 
