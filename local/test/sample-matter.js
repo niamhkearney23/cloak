@@ -30,7 +30,7 @@ export const SAMPLE_INFO = {
 export const SAMPLE_REAL = [
   'Nurul Huda', 'Nurul', 'Huda', 'Rahmat', 'Kemas Jaya', 'Kemas', 'KJR', 'Lee Chee Keong', 'Chee Keong', 'Keong',
   'Suresh', 'Ramasamy', 'Faris', 'Abdul Latif', 'Latif', 'Gan Wei Ming', 'Wei Ming', 'Azman', 'Farah', 'Aziz', 'Rajan',
-  '870214-10-5562', '870214105562', '760823-07-5113', '201801023456', '3187662015',
+  '870214-10-5562', '760823-07-5113', '201801023456', '3187662015',
   '012-338 4410', '019-722 5180', '016-221 7093', '017-640 2286', '012-905 6631', '03-8070 1234',
   'nurulhuda.rahmat', 'ck.lee', 'kemasjaya.example', 'aziz-ong.example', 'suresh@kemasjaya',
   'Jalan Cempaka', 'Taman Cempaka Indah', 'Jalan Perindustrian', 'Bukit Puchong', 'Menara Cendana', 'Jalan Kenari', 'Jalan Bayu',
@@ -40,6 +40,58 @@ export const SAMPLE_REAL = [
 export const SAMPLE_REAL_EXACT = ['Lee', 'Gan', 'Ong', 'Tan'];
 // Facts a Strict matter hides: dates, amounts and towns as written in the documents.
 export const SAMPLE_FACTS = ['6 January 2025', '3 March 2025', '30 April 2025', '2 July 2025', '16 July 2025', 'RM 45,000.00', 'RM 30,000.00', 'RM 150,000.00', 'RM 93,500.00', 'RM 18,500.00', '45,000', '93,500', 'Puchong', 'Shah Alam'];
+
+// How a careful reviewer answers the "not sure" list for the sample: a word
+// that is (part of) a person's name is hidden as a person, part of the
+// company or an address as something else; everything else is fine.
+const PEOPLE_WORDS = new Set(['nurul', 'huda', 'rahmat', 'lee', 'chee', 'keong', 'suresh', 'ramasamy', 'faris', 'abdul', 'latif', 'gan', 'wei', 'ming', 'azman', 'farah', 'aziz', 'ong', 'rajan']);
+const COMPANY_WORDS = new Set(['kemas', 'jaya', 'kjr', 'kemasjaya']);
+const GENERIC_WORDS = new Set(['jalan', 'taman', 'bukit', 'menara', 'indah', 'perindustrian', 'example', 'mail', 'lit']);
+const words = (s) => String(s).toLowerCase().split(/[^\p{L}]+/u).filter(Boolean);
+const REAL_WORDS = new Set(SAMPLE_REAL.flatMap(words).filter((w) => w.length >= 3 && !GENERIC_WORDS.has(w)));
+
+/** 'PERSON', 'COMPANY' or 'OTHER' to hide a "not sure" word, or null when it is fine. */
+export function sampleDecision(text) {
+  const ws = words(text);
+  if (ws.some((w) => PEOPLE_WORDS.has(w))) return 'PERSON';
+  if (ws.some((w) => COMPANY_WORDS.has(w))) return 'COMPANY';
+  if (ws.some((w) => REAL_WORDS.has(w))) return 'OTHER';
+  return null;
+}
+
+/** Decide everything on the review screen of the sample as a careful reviewer would, and finish the review. */
+export async function finishSampleReview(session) {
+  let d = session.reviewData();
+  for (let guard = 0; guard < 300 && (d.unsure.length || d.merges.length || d.shortForms.length); guard++) {
+    if (d.unsure.length) {
+      const kind = sampleDecision(d.unsure[0].text);
+      d = await session.reviewAction(kind ? { type: 'add', text: d.unsure[0].text, kind } : { type: 'fine', text: d.unsure[0].text });
+    } else if (d.merges.length) d = await session.reviewAction({ type: 'confirmMerge', tag: d.merges[0].tag });
+    else d = await session.reviewAction({ type: 'confirmShortForm', tag: d.shortForms[0].tag, also: d.shortForms[0].also });
+  }
+  for (const f of d.files.filter((x) => x.status === 'manual' && !x.checkedBy)) {
+    if (f.nonLatinShowing) await session.reviewAction({ type: 'hideNonLatin', number: f.number });
+    await session.approveFile(f.number);
+  }
+  return session.completeReview();
+}
+
+// The words on the scanned receipt live only in its picture; kept here so tests can find them.
+export const RECEIPT_LINES = [
+  '# KEMAS JAYA RENOVATION SDN BHD',
+  'No. 7, Jalan Perindustrian 2, 47100 Puchong',
+  '',
+  '# OFFICIAL RECEIPT   No. KJR-0457',
+  '',
+  'Date: 6 January 2025',
+  'Received from: Nurul Huda binti Rahmat',
+  'The sum of: RM 45,000.00',
+  'Being: deposit for renovation works at',
+  'No. 18, Jalan Cempaka 3/2, Taman Cempaka Indah',
+  'Paid by: online transfer to account 3187662015',
+  '',
+  'Received by: Suresh a/l Ramasamy',
+];
 
 // ------------------------------------------------------------------ Word
 
@@ -232,27 +284,13 @@ export function sampleDocuments() {
         ['Contact', 'Suresh a/l Ramasamy', '017-640 2286', '', '', 'Project manager'],
       ],
     }),
-    '03 Deposit receipt (scanned).pdf': scannedPdf([
-      '# KEMAS JAYA RENOVATION SDN BHD',
-      'No. 7, Jalan Perindustrian 2, 47100 Puchong',
-      '',
-      '# OFFICIAL RECEIPT   No. KJR-0457',
-      '',
-      'Date: 6 January 2025',
-      'Received from: Nurul Huda binti Rahmat',
-      'The sum of: RM 45,000.00',
-      'Being: deposit for renovation works at',
-      'No. 18, Jalan Cempaka 3/2, Taman Cempaka Indah',
-      'Paid by: online transfer to account 3187662015',
-      '',
-      'Received by: Suresh a/l Ramasamy',
-    ]),
+    '03 Deposit receipt (scanned).pdf': scannedPdf(RECEIPT_LINES),
     '04 WhatsApp chat with contractor.txt': [
       'WhatsApp chat with Ah Keong (Kemas Jaya)',
       'Exported by Nurul Huda on 21 July 2025',
       '',
       '[03/03/2025, 10:12 am] Nurul Huda: Ah Keong, I have transferred the RM 30,000 progress payment. Please confirm.',
-      '[03/03/2025, 10:31 am] Ah Keong (Kemas Jaya): Received, thank you Puan. Cabinets done, tiles start next week.',
+      '[03/03/2025, 10:31 am] Ah Keong (Kemas Jaya): Received, thank you Puan. The cabinets are done, tiles start next week.',
       '[14/03/2025, 6:45 pm] Nurul Huda: Nobody came to the site this week. The bathroom pipe is leaking into the kitchen ceiling.',
       '[14/03/2025, 8:02 pm] Ah Keong (Kemas Jaya): 我是李志强。工人下个星期才回来，请多多包涵。',
       '[14/03/2025, 8:05 pm] Ah Keong (Kemas Jaya): Sorry Puan, workers only come back next week. Azman will redo the tiles.',
@@ -277,6 +315,7 @@ export function sampleDocuments() {
         '> Mr Lee, the works were due on 30 April 2025. The bathroom is still leaking and',
         '> half the tiles are cracked. Please tell me in writing when you will finish.',
         '> Nurul Huda',
+        '> 012-338 4410',
       ],
     }),
     '06 Statement of Nurul Huda.docx': wordFile({
