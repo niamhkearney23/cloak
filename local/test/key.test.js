@@ -1,6 +1,7 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readdir, readFile, writeFile, stat, utimes } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { makeMatter, REAL_VALUES, REAL_EXACT } from './matter.js';
@@ -158,6 +159,22 @@ test('unchanged files come from the encrypted cache and are not read again', asy
   const again = await s.cloakFolder({ folder: src });
   assert.equal(again.report.totals.taken_from_cache, 20);
   console.log(`      second run with everything cached: ${run.seconds.toFixed(2)} seconds (first run ${firstRun.seconds.toFixed(2)})`);
+  await s.close();
+});
+
+test('a reading made by an older version of the readers is not used: that file is read again', async () => {
+  const s = await openMatter({ dir, password: PASSWORD, user: 'lawyer-one' });
+  const first = (await s.cloakFolder({ folder: src })).report.totals.taken_from_cache;
+  // Make the cached reading of one file look as if an older reader made it.
+  const file = path.join(src, '21 New letter.txt');
+  const cached = path.join(dir, 'cache', `${s.crypto.name(createHash('sha256').update(await readFile(file)).digest('hex'))}.enc`);
+  const entry = s.crypto.decrypt(await readFile(cached));
+  assert.match(entry.reader, new RegExp(`^${escapeRe(VERSION)}/reader-\\d+$`), 'the cache records which reader made each reading');
+  entry.reader = `${VERSION}/reader-1`;
+  await writeFile(cached, s.crypto.encrypt(entry));
+  const again = await s.cloakFolder({ folder: src });
+  assert.equal(again.report.totals.taken_from_cache, first - 1, 'only the file with the old reading was read again');
+  assert.equal(s.crypto.decrypt(await readFile(cached)).reader, entry.reader.replace(/reader-1$/, `reader-${(await import('../extract.js')).READER_VERSION}`), 'the new reading replaced the old one');
   await s.close();
 });
 

@@ -1,9 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createMatter, openMatter } from '../matter.js';
+import { checkLicence, issueLicence } from '../licence.js';
 import { Matter } from '../engine.js';
 import { doubleCheck, documentUnit, inspect, keySweep, reportUnit, verdict } from '../doublecheck.js';
 import { writeZip } from '../zip.js';
@@ -14,6 +16,9 @@ import { makeMatter, REAL_VALUES, REAL_EXACT } from './matter.js';
 
 const FAST = { N: 2 ** 12, r: 8, p: 1 };
 const PASSWORD = 'double check test password';
+// A licence made with a key made here: these tests export matters that are not test matters, which an evaluation copy never does.
+const vendor = generateKeyPairSync('ed25519');
+const LICENCE = checkLicence(issueLicence({ privateKey: vendor.privateKey, firm: 'Made-up Advocates & Solicitors', seats: 5, issued: '2026-01-01', expires: '2099-12-31' }), { publicKey: vendor.publicKey });
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
@@ -66,6 +71,7 @@ async function folder(files, name = 'documents') {
 async function session(files, { user = 'checker-one', testMatter = false } = {}) {
   const { root, docs } = await folder(files);
   const { session: s } = await createMatter({ dir: path.join(root, 'matter'), password: PASSWORD, user, kdf: FAST, testMatter });
+  s.licence = LICENCE;
   await s.cloakFolder({ folder: docs });
   await finishReview(s);
   return { s, root, docs };
@@ -150,25 +156,27 @@ test('planted leaks of each kind fail the check: a missed name, an NRIC in a foo
   await s.close();
 });
 
-test('"Hide it" works for each kind: a possible name, a name in lower case, a date in another format and an identifier', async () => {
+test('"Hide it" works for each kind: a possible name, a value the key keeps only for putting back, a date in another format and an identifier', async () => {
   const { s } = await session({ '01 Note.txt': 'Encik Ahmad bin Ismail paid RM 60,000.00 on 3 March 2023 to Maju Jaya Sdn Bhd.' });
   assert.equal((await s.doubleCheck()).passed, true);
+  // The name of a synced source folder is in the key for putting back only, so the text never hides it by itself.
+  s.matter.cloak.register('PATH_1', 'Kearney Library', { match: false });
   // The source text has things the first pass did not catch (cloaked again without learning, as after a change).
   const f = s.run.files[0];
-  f.parts[0].text += '\nZubaidah binti Hamzah witnessed it on 03.03.2023. Later ahmad confirmed it.';
+  f.parts[0].text += '\nZubaidah binti Hamzah witnessed it on 03.03.2023. The file is kept in Kearney Library.';
   s.reapply();
   f.cloaked = f.cloaked.replace('\n', '\nNRIC 900101-14-5678\n');
   let view = await s.doubleCheck();
   const group = (check, value) => view.groups.find((g) => g.check === check && g.value === value);
-  assert.ok(group('name', 'Zubaidah binti Hamzah') && group('fact', '03.03.2023') && group('key', 'ahmad') && group('pattern', '900101-14-5678'), JSON.stringify(view.groups.map((g) => [g.check, g.value])));
+  assert.ok(group('name', 'Zubaidah binti Hamzah') && group('fact', '03.03.2023') && group('key', 'Kearney Library') && group('pattern', '900101-14-5678'), JSON.stringify(view.groups.map((g) => [g.check, g.value])));
   assert.equal(group('name', 'Zubaidah binti Hamzah').hideAs, 'PERSON');
   view = (await s.decideFinding({ key: group('pattern', '900101-14-5678').key, decision: 'hide' })).check;
   assert.ok(s.matter.cloak.entries.some((e) => e.value === '900101-14-5678'), 'the number is in the key now');
   view = (await s.decideFinding({ key: group('name', 'Zubaidah binti Hamzah').key, decision: 'hide', kind: 'PERSON' })).check;
   view = (await s.decideFinding({ key: group('fact', '03.03.2023').key, decision: 'hide' })).check;
-  view = (await s.decideFinding({ key: group('key', 'ahmad').key, decision: 'hide' })).check;
+  view = (await s.decideFinding({ key: group('key', 'Kearney Library').key, decision: 'hide' })).check;
   assert.equal(view.passed, true, JSON.stringify(view.groups.map((g) => [g.check, g.value])));
-  assert.match(f.cloaked, /\{\{PERSON_\d+\}\} witnessed it on \{\{DATE_1\.[A-Z]\}\}\. Later \{\{PERSON_\d+\.FIRST\}\} confirmed it\./);
+  assert.match(f.cloaked, /\{\{PERSON_\d+\}\} witnessed it on \{\{DATE_1\.[A-Z]\}\}\. The file is kept in \{\{PATH_1\}\}\./);
   assert.ok(s.reviewData().complete, 'hiding these gave the review nothing new to decide, so it stays signed off');
   await s.close();
 });
@@ -193,10 +201,10 @@ test('hiding a name that joins one already in the key reopens the review, and th
 });
 
 test('"It is fine" is kept in the encrypted matter with who and when; the log has counts only; any change to the review starts the double check again', async () => {
-  const { s, root, docs } = await session({ '01 Note.txt': 'The client, Encik Ahmad bin Ismail, telephoned.\n\nZubaidah called back later.' }, { user: 'Siti Rahman (siti.r)' });
+  const { s, root, docs } = await session({ '01 Note.txt': 'The client, Encik Ahmad bin Ismail, telephoned.\n\nCopy to: Zubaidah (accounts).' }, { user: 'Siti Rahman (siti.r)' });
   let view = await s.doubleCheck();
   const g = view.groups.find((x) => x.value === 'Zubaidah');
-  assert.ok(g, 'a name alone at the start of a sentence, which the review does not ask about');
+  assert.ok(g, 'a name alone after a colon, which the first pass neither hides nor asks about');
   assert.equal(g.check, 'name');
   await assert.rejects(s.export({ outDir: path.join(root, 'out') }), (e) => e.code === 'DOUBLE_CHECK');
   view = (await s.decideFinding({ key: g.key, decision: 'fine' })).check;
@@ -248,6 +256,10 @@ test('once the double check passes, a matter that is not a test matter can be ex
   assert.ok(view.units.some((u) => u.id === '000-context-sheet.cloaked.txt') && view.units.some((u) => u.id === 'cloak-report.json') && view.units.some((u) => u.id === '(file names)'));
   assert.equal(s.testMatter, false);
   const out = path.join(root, 'cloaked');
+  // Two separate conditions: the double check has passed, but an evaluation copy still exports test matters only.
+  await assert.rejects(s.export({ outDir: out }), (e) => e.code === 'EVALUATION_TEST_MATTERS_ONLY');
+  await assert.rejects(stat(out));
+  s.licence = LICENCE;
   await s.export({ outDir: out });
   const names = await readdir(out);
   assert.ok(names.includes('REVIEWED-AND-DOUBLE-CHECKED.txt'));
@@ -343,6 +355,15 @@ test('pattern sweep and leftover names are fresh: dates, amounts and provisions 
   const v = doubleCheck(m, [unitOf(text)]);
   const values = v.groups.map((g) => `${g.check}:${g.value}`).sort();
   assert.deepEqual(values, ['name:Kumar a/l Velu', 'name:Rohani', 'name:Siti Zainab', 'name:ZAINAB', 'pattern:012-345 6789', 'pattern:x.y@mail.example'].sort());
+});
+
+test('informal titles stay in the text, as in the first pass: the name after one is found, the title alone is not', () => {
+  const m = matterOf('Nothing to learn here.', 'standard');
+  m.cloak.register('PERSON_1.SURNAME', 'Lee');
+  const text = 'Ah {{PERSON_1.SURNAME}} said the lorry was late.\nPak Ngah Rosli came later. Tan Ah Kow paid. Ah, the receipt.';
+  const values = doubleCheck(m, [unitOf(text)]).groups.map((g) => `${g.check}:${g.value}`).sort();
+  // "Ngah" (a birth-order word) belongs to the title; "Tan Ah Kow" is one name, not a title inside one.
+  assert.deepEqual(values, ['name:Rosli', 'name:Tan Ah Kow']);
 });
 
 test('the double check is quick on a big matter: thousands of key values against a long text', () => {

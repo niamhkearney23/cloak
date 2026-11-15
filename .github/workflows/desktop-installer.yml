@@ -2,6 +2,13 @@
 # Runs when the desktop code changes. It can also be run by hand from the
 # Actions tab, or by pushing a tag like desktop-v0.1.0.
 # The installers appear under "Artifacts" on the run's page.
+#
+# Code signing happens only when the signing secrets are set (Settings,
+# Secrets and variables, Actions). Without them the installers are built
+# unsigned, exactly as before. See local/docs/signing.md.
+#   Windows: WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD
+#   Mac:     CSC_LINK, CSC_KEY_PASSWORD, and for notarisation
+#            APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
 name: Desktop installer
 
 on:
@@ -38,9 +45,78 @@ jobs:
         run: |
           npm test > test.log 2>&1 || { echo "FAILED TESTS:"; grep -A40 '^not ok' test.log | grep -vE 'duration_ms|^\s+type:|^\s+---|^\s+\.\.\.' | head -150; tail -12 test.log; exit 1; }
           tail -12 test.log
-      - run: npx electron-builder --publish never
+      # The licences of exactly the packages installed on this system go into the installer.
+      - name: Third-party notices
+        run: node tools/third-party-notices.mjs
+      - name: Build the installer
+        id: build
+        shell: bash
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # A secret that is not set arrives as an empty value: treat it as absent.
+          for v in WIN_CSC_LINK WIN_CSC_KEY_PASSWORD CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            [ -n "${!v:-}" ] || unset "$v"
+          done
+          signed=no
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            # The Mac certificate must never be offered to the Windows build.
+            if [ -n "${CSC_LINK:-}" ] && [ -z "${WIN_CSC_LINK:-}" ]; then
+              echo "::warning::CSC_LINK is the Mac certificate. To sign the Windows installer set WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD."
+            fi
+            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+            if [ -n "${WIN_CSC_LINK:-}" ]; then
+              echo "Signing the Windows installer."
+              signed=yes
+            else
+              echo "::notice::No Windows signing certificate (WIN_CSC_LINK): building an UNSIGNED installer, as before."
+              export CSC_IDENTITY_AUTO_DISCOVERY=false
+            fi
+          else
+            unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD
+            if [ -n "${CSC_LINK:-}" ]; then
+              signed=yes
+              if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+                echo "Signing the Mac app and having Apple notarise it."
+              else
+                echo "::warning::Signing the Mac app, but NOT notarising it: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID must all be set. Without notarisation the Mac still warns."
+                unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+              fi
+            else
+              echo "::notice::No Mac signing certificate (CSC_LINK): building an UNSIGNED app, as before."
+              unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+              export CSC_IDENTITY_AUTO_DISCOVERY=false
+            fi
+          fi
+          echo "signed=$signed" >> "$GITHUB_OUTPUT"
+          npx electron-builder --publish never
+      # Every package inside the built app must be named in the notices it carries.
+      - name: Check the notices against the built app
+        run: node tools/third-party-notices.mjs --check dist
+      - name: Check the Windows signature
+        if: runner.os == 'Windows' && steps.build.outputs.signed == 'yes'
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem dist\*.exe) + @(Get-ChildItem dist\win-unpacked\*.exe)
+          foreach ($f in $files) {
+            $s = Get-AuthenticodeSignature $f.FullName
+            Write-Output "$($f.Name): $($s.Status) $($s.SignerCertificate.Subject)"
+            if ($s.Status -ne 'Valid') { throw "$($f.Name) is not validly signed" }
+          }
+      - name: Check the Mac signature and notarisation
+        if: runner.os == 'macOS' && steps.build.outputs.signed == 'yes'
+        shell: bash
+        run: |
+          app=$(ls -d dist/mac*/Cloak.app | head -1)
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=2 "$app" || echo "::warning::Gatekeeper does not accept the app yet (expected if it was not notarised)."
+          xcrun stapler validate "$app" || echo "::warning::No notarisation ticket is stapled to the app."
       - uses: actions/upload-artifact@v4
         with:
           name: cloak-installer-${{ matrix.os }}

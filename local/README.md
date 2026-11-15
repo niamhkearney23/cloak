@@ -249,7 +249,9 @@ It is rules and word lists, not an AI model, and it is not perfect.
 - **Words inside pictures on a typed page** (stamps, letterheads, handwriting).
   They are not read and are not in the cloaked copy.
 - **Handwriting and poor scans.** Low-confidence OCR blocks the file.
-- **Attachments inside emails.** They are not opened; save them into the folder.
+- **Attachments inside emails** are opened and read like any other file (see
+  "The completeness rule" above). An attachment Cloak cannot read, such as
+  an old .doc or a password-protected PDF, blocks the whole email.
 - **Place names and organisations without a company ending** (a town, a
   school, a government office) are kept unless they are part of an address.
 - **Unusual number formats** not covered by the patterns, and plates that are

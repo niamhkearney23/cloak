@@ -27,7 +27,7 @@
 
 import { TOKEN_RE, PATTERNS, FORWARD_DETECTORS, findAddresses, isStop, norm } from './engine.js';
 import { Facts, findDates, findAmounts, findSheetAmounts, findPlaces, findCourts, findProjects, findJobs } from './facts.js';
-import { NAME_WORDS, CHINESE_SURNAMES, MALAY_NAMES, INDIAN_NAMES, ENGLISH_NAMES, AMBIGUOUS, GENERIC_PARTS, HONOURS } from './names.js';
+import { NAME_WORDS, CHINESE_SURNAMES, MALAY_NAMES, INDIAN_NAMES, ENGLISH_NAMES, AMBIGUOUS, GENERIC_PARTS, HONOURS, ORDINARY, KIN_TITLES, BIRTH_ORDER } from './names.js';
 import { AI_RULES } from './context.js';
 
 // ---------------------------------------------------------------- basics
@@ -203,9 +203,11 @@ function keyItems(matter) {
     const low = value.toLowerCase().replace(/['’.]/g, '');
     if (HONOUR_ONLY.has(low)) continue;
     const single = !/\s/.test(value) && /^\p{L}/u.test(value);
-    const common = single && (isStop(value) || ALSO_ENGLISH.has(low));
-    // Three letters and an ordinary word ("may", "low"): not swept at all.
-    if (common && letters <= 3) continue;
+    // On the common-word lists ("notice", "company"), or a name that is also an ordinary English or Malay word ("Grace", "Intan", "Sim").
+    const listed = single && isStop(value);
+    const common = listed || (single && (ORDINARY.has(low) || ALSO_ENGLISH.has(low)));
+    // Three letters and on the common-word lists: not swept at all.
+    if (listed && letters <= 3) continue;
     items.push({
       token: e.token,
       value,
@@ -333,6 +335,9 @@ const TITLES = ['Tan Sri', 'Puan Sri', 'Toh Puan', "Dato' Seri", "Dato' Sri", 'D
   'Kak', 'Kakak', 'Abang', 'Pak', 'Pakcik', 'Mak', 'Makcik', 'Uncle', 'Aunty', 'Auntie', 'Cikgu', 'Ustaz', 'Ustazah', 'Sir', 'Dame', 'Lady', 'Lord', 'Tengku', 'Tunku', 'Syed', 'Sharifah',
   'YB', 'YBhg', 'YM', 'YAB', 'Inspector', 'Insp', 'ASP', 'DSP', 'Supt', 'Sgt', 'Sjn', 'Sarjan', 'Kpl', 'Cpl', 'Koperal', 'Konstabel', 'Constable'];
 const titleWords = (t) => t.toLowerCase().replace(/’/g, "'").replace(/\.$/, '').split(/\s+/);
+// The informal titles of the first pass (Kak, Pak, Uncle, Adik, Ah...), from names.js.
+for (const t of KIN_TITLES) if (!TITLES.includes(t)) TITLES.push(t);
+const KIN = new Set(KIN_TITLES.map((t) => titleWords(t).join(' ')));
 const TITLE_SEQ = TITLES.map(titleWords).sort((a, b) => b.length - a.length);
 const PARTICLES = new Set(['bin', 'binti', 'binte', 'bte', 'bt', 'a/l', 'a/p', 's/o', 'd/o', 'anak', 'ibni']);
 // Abbreviations that may be followed by a full stop inside a name ("Mr. Tan", "Mohd. Zaki", "Ahmad b. Ismail").
@@ -351,7 +356,7 @@ const letterCount = (w) => (w.match(/\p{L}/gu) || []).length;
 function nameKind(tok) {
   const w = tok.plain;
   if (!NAME_WORDS.has(w) || stopWord(tok.text)) return null;
-  if (AMBIGUOUS.has(w) || ALSO_ENGLISH.has(w)) return 'weak';
+  if (AMBIGUOUS.has(w) || ALSO_ENGLISH.has(w) || ORDINARY.has(w)) return 'weak';
   if (GENERIC_PARTS.has(w)) return 'generic';
   if (CHINESE_SURNAMES.has(w) && !MALAY_NAMES.has(w) && !INDIAN_NAMES.has(w) && !ENGLISH_NAMES.has(w)) return 'surname';
   return 'strong';
@@ -394,10 +399,20 @@ function runsIn(text) {
   return runs;
 }
 
+/** How many words of the run, from word i, are a title (0 if none). */
 function titleAt(run, i) {
   for (const words of TITLE_SEQ) {
     if (i + words.length > run.length) continue;
-    if (words.every((w, k) => run[i + k].plain.replace(/'$/, '') === w.replace(/'$/, '') && (run[i + k].cap || w === 'a/l'))) return words.length;
+    if (!words.every((w, k) => run[i + k].plain.replace(/'$/, '') === w.replace(/'$/, '') && (run[i + k].cap || w === 'a/l'))) continue;
+    let n = words.length;
+    if (KIN.has(words.join(' '))) {
+      // An informal title starts a name; it is not inside one ("Tan Ah Kow" is one name).
+      const prev = run[i - 1];
+      if (prev && !prev.particle && (nameKind(prev) || GENERIC_PARTS.has(prev.plain)) && !titleAt(run, i - 1)) return 0;
+      // "Mak Long", "Pak Ngah": a birth-order word belongs to the title.
+      while (i + n < run.length && BIRTH_ORDER.has(run[i + n].plain)) n++;
+    }
+    return n;
   }
   return 0;
 }
@@ -457,9 +472,15 @@ function nameFinds(text, ctx, { prose }) {
     // C. Words in the name lists, and D. capitalised words that are not ordinary words.
     let sub = [];
     const subs = [];
-    run.forEach((t, i) => {
-      if (!t.particle && (stopWord(t.text) || titleAt(run, i))) { if (sub.length) subs.push(sub); sub = []; } else sub.push({ ...t, at: i });
-    });
+    for (let i = 0; i < run.length; i++) {
+      const t = run[i];
+      const n = t.particle ? 0 : titleAt(run, i);
+      if (n || (!t.particle && stopWord(t.text))) {
+        if (sub.length) subs.push(sub);
+        sub = [];
+        i += Math.max(n, 1) - 1; // every word of the title, not only the first
+      } else sub.push({ ...t, at: i });
+    }
     if (sub.length) subs.push(sub);
     for (const s0 of subs) {
       let s = trimEnds(s0);
@@ -558,8 +579,10 @@ export function sheetUnit(sheet) {
   return { id: sheet.out, title: 'Context sheet for the AI', kind: 'generated', text: sheet.cloaked, parts, exempt, allowKinds: ['job'] };
 }
 
-const TIME_KEYS = new Set(['when', 'when_text', 't', 'first_cloaked', 'last_cloaked', 'cloak_version']);
-const WHO_KEYS = new Set(['by', 'review', 'statement', 'fine_marked_by']);
+const TIME_KEYS = new Set(['when', 'when_text', 't', 'first_cloaked', 'last_cloaked', 'cloak_version', 'licence_id', 'licence_ends']);
+// Names Cloak writes on purpose: who reviewed and checked, and the firm on the licence. Only the key sweep reads them:
+// such a name must not be one the key holds (a firm's own name is often in its documents).
+const WHO_KEYS = new Set(['by', 'review', 'statement', 'fine_marked_by', 'licensed_to']);
 
 /**
  * cloak-report.json, line by line as it is written. Time stamps and the

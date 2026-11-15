@@ -85,9 +85,15 @@ test('setup is kept in the matter and logged without the names; once the double 
   await session.cloakFolder({ folder: docs });
   const { finishReview } = await import('./helpers.js');
   const { readFile } = await import('node:fs/promises');
+  const { generateKeyPairSync } = await import('node:crypto');
+  const { checkLicence, issueLicence } = await import('../licence.js');
   await finishReview(session);
-  // Not a test matter: the double check is what allows the export.
+  // Not a test matter: an evaluation copy still refuses it (the licence rule), and a licensed copy may export it
+  // once the double check has passed.
   assert.equal(session.testMatter, false);
+  await assert.rejects(session.export({ outDir: path.join(root, 'out') }), (e) => e.code === 'EVALUATION_TEST_MATTERS_ONLY');
+  const vendor = generateKeyPairSync('ed25519');
+  session.licence = checkLicence(issueLicence({ privateKey: vendor.privateKey, firm: 'Made-up Advocates', seats: 2, issued: '2026-01-01', expires: '2099-12-31' }), { publicKey: vendor.publicKey });
   assert.ok((await session.export({ outDir: path.join(root, 'out') })).written.length >= 1);
   const report = JSON.parse(await readFile(path.join(root, 'out', 'cloak-report.json'), 'utf8'));
   assert.equal(report.test_matter, false);

@@ -1,0 +1,19 @@
+{
+  "name": "Cloak sample matter (made-up documents)",
+  "about": "Ten made-up documents about a home renovation dispute in Selangor. Every name, number and address in them is invented.",
+  "client": "Nurul Huda binti Rahmat; Nurul Huda; Puan Nurul Huda",
+  "others": "Kemas Jaya Renovation Sdn Bhd; Kemas Jaya; KJR\nperson: Lee Chee Keong; Mr Lee",
+  "level": "strict",
+  "files": [
+    "01 Renovation agreement.pdf",
+    "02 Payment schedule.xlsx",
+    "03 Deposit receipt (scanned).pdf",
+    "04 WhatsApp chat with contractor.txt",
+    "05 Email from Kemas Jaya.eml",
+    "06 Statement of Nurul Huda.docx",
+    "07 Letter of demand.docx",
+    "08 File note - call with neighbour.txt",
+    "Correspondence/09 Reply from Tan & Rajan.pdf",
+    "Correspondence/10 Our reply.docx"
+  ]
+}

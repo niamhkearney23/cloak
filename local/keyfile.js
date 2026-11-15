@@ -163,6 +163,21 @@ export async function replaceRecoveryCode(path, dataKey) {
   return recoveryCode;
 }
 
+/**
+ * Does the key file on disk open with this data key? Used by the support
+ * file's self-test while a matter is open. Returns counts only, never values.
+ */
+export async function checkKeyFile(path, dataKey) {
+  const file = await load(path);
+  let contents;
+  try {
+    contents = JSON.parse(unseal(dataKey, file.contents, aadOf(file)).toString('utf8'));
+  } catch {
+    throw new Error('The key file did not open with this matter\'s key: it has been changed or damaged.');
+  }
+  return { savedWith: file.cloak_version, formatVersion: file.format_version, tags: contents.state?.entries?.length || 0, files: Object.keys(contents.files || {}).length };
+}
+
 /** Encrypt / decrypt a cache entry with a key derived from the data key. */
 export function cacheCrypto(dataKey) {
   const key = Buffer.from(crypto.hkdfSync('sha256', dataKey, Buffer.alloc(0), 'cloak cache v1', 32));
