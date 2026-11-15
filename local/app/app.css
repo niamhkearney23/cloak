@@ -110,7 +110,7 @@ select.merge { width: 150px; padding: 4px 8px; border-radius: 99px; font-size: 1
 .help-links { margin-top: 14px; }
 .bar-link { background: none; border: 1px solid var(--rule); border-radius: 99px; padding: 2px 12px; cursor: pointer; color: var(--text); font-size: 13px; }
 .bar-link:hover { border-color: var(--ink); }
-.dialog.help { width: min(900px, 100%); padding-top: 16px; }
+.dialog.help { width: min(900px, 100%); height: min(760px, 90vh); padding-top: 16px; }
 .help-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; position: sticky; top: -16px; background: #fff; padding: 6px 0 10px; z-index: 1; }
 .help-head .tabs { margin: 0; }
 .help h3 { font-size: 15.5px; margin: 20px 0 6px; color: var(--ink); }

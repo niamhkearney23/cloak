@@ -46,7 +46,9 @@ export function firstRunApi({ app, dialog, getWin, getMatter, setMatter, who, te
     // For the "About" screen.
     about: async () => {
       const s = systemInfo();
-      return { version: VERSION, installFolder: installFolder(), notices: findNotices(), noticesName: NOTICES, support: SUPPORT_CONTACT, system: `${s.operating_system_version || s.operating_system} (${s.architecture})`, electron: s.electron, matterOpen: !!getMatter() };
+      // Windows gives a readable name ("Windows 11 Pro"); elsewhere the kernel's own version string is not one.
+      const system = process.platform === 'win32' ? s.operating_system_version : process.platform === 'darwin' ? `macOS (Darwin ${os.release()})` : s.operating_system;
+      return { version: VERSION, installFolder: installFolder(), notices: findNotices(), noticesName: NOTICES, support: SUPPORT_CONTACT, system: `${system} (${s.architecture})`, electron: s.electron, matterOpen: !!getMatter() };
     },
 
     // The person chooses where; Cloak writes the zip there and nowhere else.
