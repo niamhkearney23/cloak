@@ -399,12 +399,13 @@ class Session {
     return { outDir, written, heldBack: only === 'chronology' ? 0 : files.filter((f) => !f.container && !allowed(f)).length };
   }
 
+  /** Set a new matter password. The old one stops working. The log records who, never the password. */
   async changePassword(newPassword) {
     await setPassword(this.keyFile, this.dataKey, newPassword);
     await this.log('password-changed');
   }
 
-  /** Returns a new recovery code; the old one stops working. */
+  /** Returns a new recovery code; the old one stops working. The log records who, never the code. */
   async newRecoveryCode() {
     const code = await replaceRecoveryCode(this.keyFile, this.dataKey);
     await this.log('recovery-code-replaced');
