@@ -5,12 +5,45 @@ import os from 'node:os';
 import path from 'node:path';
 import { makeMatter } from './matter.js';
 import { createMatter, openMatter } from '../matter.js';
-import { redactLog } from '../support.js';
+import { redactLog, selfTest, noPaths } from '../support.js';
 
 // Fixes found in review (support and sample areas). Made-up data only.
 const FAST = { N: 2 ** 12, r: 8, p: 1 };
 const PASSWORD = 'a long test password';
 const exists = (p) => stat(p).then(() => true, () => false);
+
+test('the self-test writes its result even if the OCR engine never answers', async () => {
+  const never = new Promise(() => {});
+  const r = await selfTest({ ocr: () => never, stopOcr: () => never, ocrWaitMs: 100 });
+  assert.equal(r[0].check, 'OCR engine');
+  assert.equal(r[0].ok, false);
+  assert.match(r[0].what, /did not answer within 0 seconds|did not answer within \d+ seconds/);
+  assert.equal(r.length, 2);
+});
+
+test('the self-test keeps the reason when the OCR engine fails with a plain string', async () => {
+  const r = await selfTest({ ocr: () => Promise.reject('Error: Error attempting to read image.'), stopOcr: async () => {} });
+  assert.equal(r[0].ok, false);
+  assert.match(r[0].what, /Error attempting to read image/);
+  assert.doesNotMatch(r[0].what, /did not start/);
+  // and a late failure after the wait is not an uncaught error
+  const late = await selfTest({ ocr: () => new Promise((_, no) => setTimeout(() => no('late'), 150)), stopOcr: async () => {}, ocrWaitMs: 50 });
+  assert.match(late[0].what, /did not answer/);
+  await new Promise((ok) => setTimeout(ok, 250));
+});
+
+test('paths in self-test errors go to the end of the line, profile names with spaces or apostrophes included', () => {
+  const win = "Cannot find module 'x'\nRequire stack:\n- C:\\Users\\Siti Aminah\\AppData\\Local\\Programs\\Cloak\\resources\\app\\extract.js";
+  const out = noPaths(win);
+  assert.doesNotMatch(out, /Siti|Aminah|AppData|extract\.js/);
+  assert.match(out, /Require stack:\n- \(path not shown\)/);
+  const apos = "ENOENT: no such file or directory, open 'C:\\Users\\Ja'afar Hamid\\AppData\\Local\\Temp\\cloak-ocr-lang\\eng.traineddata.gz'";
+  assert.doesNotMatch(noPaths(apos), /afar|Hamid|Temp/);
+  const unc = 'failed \\\\server\\share\\Some Client\\x.txt';
+  assert.doesNotMatch(noPaths(unc), /Client|server/);
+  assert.equal(noPaths('took 1.2 seconds, 3/4 done'), 'took 1.2 seconds, 3/4 done');
+  assert.equal(noPaths(undefined), '');
+});
 
 test('the support file guard indexes the key values once, not once per string', () => {
   const values = Array.from({ length: 21000 }, (_, i) => ({ value: `Person${i} Example${i}`, token: `PERSON_${i}` }));

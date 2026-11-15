@@ -42,27 +42,46 @@ function testPicture(text) {
   return c.toBuffer('image/png');
 }
 
-/** Error messages can carry file paths, and paths often carry client names: they are left out. */
-const noPaths = (message, dir) => String(message || '')
+/**
+ * Error messages can carry file paths, and paths often carry client names (or a Windows profile name): they are left out.
+ * Some failures are plain strings, not Errors, so this takes either.
+ */
+export const noPaths = (message, dir) => String(message?.message ?? message ?? '')
   .split(dir || '\u0000').join('(the matter folder)')
+  // A Windows path may hold spaces and apostrophes (C:\Users\Siti Aminah\...): Node puts it last on its line, so the rest of the line goes.
+  .replace(/(?:[A-Za-z]:\\|\\\\)[^\n]*/g, '(path not shown)')
   .replace(/'[^']*[\\/][^']*'/g, '(path not shown)')
   .replace(/(?:[A-Za-z]:\\|\\\\|\/)[^\s'"]*[\\/][^\s'"]*/g, '(path not shown)');
+
+// How long the OCR check may take before the support file is written without it.
+const OCR_WAIT_MS = 60000;
+const TIMED_OUT = Symbol('timed out');
+const within = (promise, ms) => {
+  let timer;
+  const late = new Promise((resolve) => { timer = setTimeout(() => resolve(TIMED_OUT), ms); });
+  promise.catch(() => {}); // a failure that comes after the wait is over is not an uncaught error
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+};
 
 /**
  * Does the OCR engine start, and does the open matter's key open?
  * Each result: { check, ok (true, false, or null when not run), what }.
  */
-export async function selfTest({ session = null, ocr = ocrImage, stopOcr = closeOcr } = {}) {
+export async function selfTest({ session = null, ocr = ocrImage, stopOcr = closeOcr, ocrWaitMs = OCR_WAIT_MS } = {}) {
   const results = [];
   const started = Date.now();
   try {
-    const r = await ocr(testPicture('CLOAK SELF TEST 2468'));
-    const ok = /SELF\s*TEST/i.test(r.text) && /2468/.test(r.text);
-    results.push({ check: 'OCR engine', ok, what: ok ? `It started and read the test picture correctly (confidence ${Math.round(r.confidence)}%, ${((Date.now() - started) / 1000).toFixed(1)} seconds).` : `It started but misread the test picture (it read "${String(r.text).trim().slice(0, 60)}"). Scanned pages may not be read well on this computer.` });
+    const r = await within(Promise.resolve().then(() => ocr(testPicture('CLOAK SELF TEST 2468'))), ocrWaitMs);
+    if (r === TIMED_OUT) {
+      results.push({ check: 'OCR engine', ok: false, what: `It did not answer within ${Math.round(ocrWaitMs / 1000)} seconds. Scanned pages and pictures may not be read until this is fixed.` });
+    } else {
+      const ok = /SELF\s*TEST/i.test(r.text) && /2468/.test(r.text);
+      results.push({ check: 'OCR engine', ok, what: ok ? `It started and read the test picture correctly (confidence ${Math.round(r.confidence)}%, ${((Date.now() - started) / 1000).toFixed(1)} seconds).` : `It started but misread the test picture (it read "${String(r.text).trim().slice(0, 60)}"). Scanned pages may not be read well on this computer.` });
+    }
   } catch (err) {
-    results.push({ check: 'OCR engine', ok: false, what: `It did not start: ${noPaths(err.message)}. Scanned pages and pictures cannot be read until this is fixed.` });
+    results.push({ check: 'OCR engine', ok: false, what: `It failed: ${noPaths(err)}. Scanned pages and pictures cannot be read until this is fixed.` });
   } finally {
-    await stopOcr().catch(() => {});
+    await within(Promise.resolve().then(() => stopOcr()), ocrWaitMs).catch(() => {});
   }
   if (!session) {
     results.push({ check: 'Matter key', ok: null, what: 'Not checked: no matter was open. Open the matter first if the problem is with one matter.' });
@@ -73,14 +92,14 @@ export async function selfTest({ session = null, ocr = ocrImage, stopOcr = close
     const k = await checkKeyFile(keyFile, session.dataKey);
     results.push({ check: 'Matter key', ok: true, what: `It opened with this matter's key (${k.tags} tags; last saved by Cloak ${k.savedWith}).` });
   } catch (err) {
-    results.push({ check: 'Matter key', ok: false, what: noPaths(err.message, session.dir) });
+    results.push({ check: 'Matter key', ok: false, what: noPaths(err, session.dir) });
   }
   try {
     const b = await checkKeyFile(`${keyFile}.bak`, session.dataKey);
     results.push({ check: 'Backup of the matter key', ok: true, what: `matter.cloakkey.bak opened too (${b.tags} tags).` });
   } catch (err) {
     const none = /no matter key/i.test(err.message);
-    results.push({ check: 'Backup of the matter key', ok: none ? null : false, what: none ? 'There is no backup yet: Cloak makes one the next time it saves the matter.' : noPaths(err.message, session.dir) });
+    results.push({ check: 'Backup of the matter key', ok: none ? null : false, what: none ? 'There is no backup yet: Cloak makes one the next time it saves the matter.' : noPaths(err, session.dir) });
   }
   return results;
 }
