@@ -42,7 +42,7 @@ const parseC = (s) => { const m = s.match(/rgba?\(([^)]+)\)/); if (!m) return nu
         }
         // clipped text: element with overflow hidden/clip whose scrollWidth > clientWidth, or any element whose right edge is past the viewport
         document.querySelectorAll('body *').forEach((el) => { const cs = getComputedStyle(el); if (cs.display === 'none') return; const r = el.getBoundingClientRect(); if (!r.width) return;
-          if ((cs.overflowX === 'hidden' || cs.overflowX === 'clip' || cs.textOverflow === 'ellipsis') && el.scrollWidth > el.clientWidth + 1 && el.textContent.trim()) R.clipped.push('clip-x ' + sel(el) + ' ' + el.scrollWidth + '>' + el.clientWidth + ' "' + el.textContent.trim().slice(0, 30) + '"');
+          if (el.matches('.vh, main') ) return; if ((cs.overflowX === 'hidden' || cs.overflowX === 'clip' || cs.textOverflow === 'ellipsis') && el.scrollWidth > el.clientWidth + 1 && el.textContent.trim()) R.clipped.push('clip-x ' + sel(el) + ' ' + el.scrollWidth + '>' + el.clientWidth + ' "' + el.textContent.trim().slice(0, 30) + '"');
           if (r.right > innerWidth + 1 && !el.closest('.sprite') && cs.position !== 'fixed') R.clipped.push('past-right ' + sel(el) + ' right=' + Math.round(r.right));
           if (r.left < -1 && !el.closest('.sprite,.skip')) R.clipped.push('past-left ' + sel(el) + ' left=' + Math.round(r.left));
         });

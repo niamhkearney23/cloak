@@ -1,0 +1,2854 @@
+{
+ "860-light": {
+  "dialog-confirm-id.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-confirm.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-delete-row.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-export.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-fine.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Hide it as",
+     "cls": "vh",
+     "sw": 62,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-form.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-home.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-remove-licence.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "Licence text",
+     "cls": "vh",
+     "sw": 78,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-typed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    },
+    {
+     "t": "Type APPROVE",
+     "cls": "vh",
+     "sw": 109,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-viewer-scripts.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-viewer.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "doublecheck-passed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "doublecheck.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Hide it as",
+     "cls": "vh",
+     "sw": 62,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress-flags.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress-start.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "restore-empty.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "The draft",
+     "cls": "vh",
+     "sw": 59,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-chrono-empty.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-chrono.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-exported.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-facts.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-files-blocked.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-files.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-joined.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-ready.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-reviewed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-terms.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure-sample.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure-undo.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  }
+ },
+ "860-dark": {
+  "dialog-confirm-id.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-confirm.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-delete-row.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-export.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-fine.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Hide it as",
+     "cls": "vh",
+     "sw": 62,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-form.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-home.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-remove-licence.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "Licence text",
+     "cls": "vh",
+     "sw": 78,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-typed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    },
+    {
+     "t": "Type APPROVE",
+     "cls": "vh",
+     "sw": 109,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-viewer-scripts.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-viewer.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "doublecheck-passed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "doublecheck.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Hide it as",
+     "cls": "vh",
+     "sw": 62,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress-flags.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress-start.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "restore-empty.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "The draft",
+     "cls": "vh",
+     "sw": 59,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-chrono-empty.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-chrono.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-exported.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-facts.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-files-blocked.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-files.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-joined.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-ready.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-reviewed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-terms.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure-sample.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure-undo.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  }
+ },
+ "1180-light": {
+  "dialog-confirm-id.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-confirm.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-delete-row.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Select",
+     "cls": "vh",
+     "sw": 38,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-export.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-fine.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Hide it as",
+     "cls": "vh",
+     "sw": 62,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-form.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Select",
+     "cls": "vh",
+     "sw": 38,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-home.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-remove-licence.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "Licence text",
+     "cls": "vh",
+     "sw": 78,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-typed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    },
+    {
+     "t": "Type APPROVE",
+     "cls": "vh",
+     "sw": 109,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-viewer-scripts.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-viewer.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "doublecheck-passed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "doublecheck.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Hide it as",
+     "cls": "vh",
+     "sw": 62,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress-flags.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress-start.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "restore-empty.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "The draft",
+     "cls": "vh",
+     "sw": 59,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-chrono-empty.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-chrono.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Select",
+     "cls": "vh",
+     "sw": 38,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-exported.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-facts.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-files-blocked.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-files.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-joined.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-ready.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-reviewed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-terms.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure-sample.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure-undo.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  }
+ },
+ "1180-dark": {
+  "dialog-confirm-id.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-confirm.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-delete-row.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Select",
+     "cls": "vh",
+     "sw": 38,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-export.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-fine.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Hide it as",
+     "cls": "vh",
+     "sw": 62,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-form.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Select",
+     "cls": "vh",
+     "sw": 38,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-home.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-remove-licence.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "Licence text",
+     "cls": "vh",
+     "sw": 78,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-typed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    },
+    {
+     "t": "Type APPROVE",
+     "cls": "vh",
+     "sw": 109,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-viewer-scripts.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "dialog-viewer.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "doublecheck-passed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "doublecheck.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Hide it as",
+     "cls": "vh",
+     "sw": 62,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress-flags.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress-start.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "progress.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "restore-empty.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "The draft",
+     "cls": "vh",
+     "sw": 59,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-chrono-empty.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-chrono.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Select",
+     "cls": "vh",
+     "sw": 38,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-exported.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-facts.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-files-blocked.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-files.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-joined.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-ready.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-reviewed.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Find a file",
+     "cls": "vh",
+     "sw": 65,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-terms.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "Search by name or tag",
+     "cls": "vh",
+     "sw": 153,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure-sample.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure-undo.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  },
+  "review-unsure.html": {
+   "low": [],
+   "clipped": [
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    },
+    {
+     "t": "(done)",
+     "cls": "vh",
+     "sw": 41,
+     "cw": 1
+    }
+   ],
+   "hoverflow": 0,
+   "tiny": [],
+   "failed": []
+  }
+ }
+}
