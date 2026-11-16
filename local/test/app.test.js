@@ -180,10 +180,10 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     assert.match(await page.textContent('#check-state'), /Next: the double check/);
     await page.click('#run-check');
     await page.waitForSelector('#check-findings');
-    assert.ok(await page.locator('#check-files tbody tr').count() >= 20, 'every file that would be written is listed');
-    assert.equal(await page.locator('#check-files tr:has(.chip.partial)').count(), 1, 'only the chronology fails');
-    assert.match(await page.textContent('#check-files tr:has(.chip.partial)'), /000-chronology\.cloaked\.txt/);
-    const finding = (text) => page.locator('#check-findings tbody tr', { has: page.locator('td > b', { hasText: new RegExp(`^${text}$`) }) });
+    assert.ok(await page.locator('#check-files li').count() >= 20, 'every file that would be written is listed');
+    assert.equal(await page.locator('#check-files li:has(.stamp.fail)').count(), 1, 'only the chronology fails');
+    assert.match(await page.textContent('#check-files li:has(.stamp.fail)'), /000-chronology\.cloaked\.txt/);
+    const finding = (text) => page.locator('#check-findings .finding', { has: page.locator('.value > b', { hasText: new RegExp(`^${text}$`) }) });
     assert.match(await finding('Rohani').textContent(), /Possible name.*Chronology \(confirmed\) · Chronology · line \d+/s, 'the word, the file and the line are shown');
     assert.match(await finding('Zubaidah').textContent(), /Possible name/);
     assert.match(await page.textContent('#check-state'), /Double check: 2 to decide/);
@@ -361,10 +361,10 @@ test('first run: tips, help screens, the sample matter from the home screen to a
     // The Not sure list, decided as a careful reviewer would: names and address words hidden, the rest fine.
     await page.click('[data-tab="unsure"]');
     for (let n = await page.locator('[data-fine]').count(), guard = 0; n > 0 && guard < 40; n = await page.locator('[data-fine]').count(), guard++) {
-      const word = (await page.locator('#panel tbody tr:first-child td b').textContent()).trim();
+      const word = (await page.locator('#panel .decide-row .word b').first().textContent()).trim();
       const kind = sampleDecision(word);
-      await page.locator(kind ? `#panel tbody tr:first-child [data-hide][data-kind="${kind}"]` : '#panel tbody tr:first-child [data-fine]').click();
-      await page.waitForFunction(([before, first]) => document.querySelectorAll('[data-fine]').length < before || document.querySelector('#panel tbody tr td b')?.textContent.trim() !== first, [n, word], { timeout: 15000 });
+      await page.locator(kind ? `#panel .decide-row [data-hide][data-kind="${kind}"]` : '#panel .decide-row [data-fine]').first().click();
+      await page.waitForFunction(([before, first]) => document.querySelectorAll('[data-fine]').length < before || document.querySelector('#panel .decide-row .word b')?.textContent.trim() !== first, [n, word], { timeout: 15000 });
     }
     await page.click('[data-tab="joined"]');
     for (let n = await page.locator('[data-same], [data-short-ok], [data-group]').count(); n > 0; n = await page.locator('[data-same], [data-short-ok], [data-group]').count()) {

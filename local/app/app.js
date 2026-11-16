@@ -3,8 +3,21 @@
   'use strict';
   const main = document.getElementById('main');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const tags = (s) => esc(s).replace(/\{\{[^}]+\}\}/g, (m) => `<span class="tag">${m}</span>`);
+  // A tag is a redaction bar: the braces and the ending are dimmer than the name. `code` is already escaped, without braces.
+  const tagSafe = (code) => { const [base, ...rest] = code.split('.'); return `<span class="tag"><span class="b">{{</span>${base}${rest.length ? `<span class="b">.${rest.join('.')}</span>` : ''}<span class="b">}}</span></span>`; };
+  const tagHtml = (code) => tagSafe(esc(code));
+  const tags = (s) => esc(s).replace(/\{\{([^}]+)\}\}/g, (m, code) => tagSafe(code));
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const icon = (name, size = 'sm') => `<svg class="i i-${size}" aria-hidden="true" focusable="false"><use href="#i-${name}"/></svg>`;
+  // Runs of Jawi, Tamil or Chinese text get a lang attribute so the right face and line height are used. `html` is already escaped.
+  const SCRIPT = '\\u0600-\\u06FF\\u0750-\\u077F\\u08A0-\\u08FF\\uFB50-\\uFDFF\\uFE70-\\uFEFC\\u0B80-\\u0BFF\\u3400-\\u9FFF\\uF900-\\uFAFF';
+  const SCRIPT_RUN = new RegExp(`[${SCRIPT}]+(?:[ \\u00A0\\u3000-\\u303F\\uFF00-\\uFFEF,.;:!?()-]*[${SCRIPT}]+)*`, 'gu');
+  const scriptLang = (run) => (/[\u0600-\u08FF\uFB50-\uFEFC]/.test(run) ? { lang: 'ms-Arab', dir: ' dir="rtl"' } : /[\u0B80-\u0BFF]/.test(run) ? { lang: 'ta', dir: '' } : { lang: 'zh-Hans', dir: '' });
+  const langRuns = (html, cls = '') => html.replace(SCRIPT_RUN, (run) => { const l = scriptLang(run); return `<span${cls ? ` class="${cls}"` : ''} lang="${l.lang}"${l.dir}>${run}</span>`; });
+  const escL = (s) => langRuns(esc(s));
+  // The same date form the engine writes: 12 Nov 2026, 9:19 am.
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const nowText = () => { const d = new Date(); const h = d.getHours(); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`; };
 
   // How many calls to the app are still running. Closing the matter waits until it is zero.
   let pending = 0;
@@ -22,20 +35,48 @@
   };
   const withNextStep = (text, code) => (NEXT_STEP[code] ? `${text} ${NEXT_STEP[code](text)}` : text);
 
-  const state = { info: null, folder: null, matterDir: null, matter: null, options: { dates: false, amounts: false, provisions: false }, progress: new Map(), review: null, tab: 'unsure', filter: '', busy: false, exported: null, manualSource: '', location: null, recovery: null, showAll: false, client: '', others: '', testMatter: false, level: 'strict', afterOpen: null, showUndated: false, chrono: null, draft: '', docsFolder: null, restoreResult: null, check: null, checking: false };
+  const state = { info: null, folder: null, matterDir: null, matter: null, options: { dates: false, amounts: false, provisions: false }, progress: new Map(), review: null, tab: 'unsure', filter: '', busy: false, exported: null, manualSource: '', location: null, recovery: null, showAll: false, client: '', others: '', testMatter: false, level: 'strict', afterOpen: null, showUndated: false, chrono: null, draft: '', docsFolder: null, restoreResult: null, check: null, checking: false, fileFilter: 'all', fileSearch: '', showAllFiles: false, matterExists: null, openTag: null, draftName: '' };
 
-  function show(html) { main.innerHTML = html; main.scrollTop = 0; }
+  // The top bar names the open matter, its level and whether it holds made-up test documents.
+  function setBar() {
+    const open = !!state.matter;
+    document.getElementById('bar-matter').hidden = !open;
+    document.getElementById('matter-name').textContent = open ? (state.matter.name || 'Matter open') : '';
+    const level = document.getElementById('matter-level');
+    level.hidden = !open;
+    level.textContent = state.level === 'standard' ? 'Standard' : 'Strict';
+    document.getElementById('matter-test').hidden = !(open && state.testMatter);
+  }
+  function show(html) { main.innerHTML = html; main.scrollTop = 0; setBar(); }
   function on(selector, event, fn) { main.querySelectorAll(selector).forEach((el) => el.addEventListener(event, fn)); }
-  const message = (text, kind = 'bad') => `<div class="msg ${kind}" role="alert">${esc(text)}</div>`;
+  const message = (text, kind = 'bad') => `<div class="msg ${kind}" role="${kind === 'bad' ? 'alert' : 'status'}">${esc(text)}</div>`;
+  // The page behind a dialog cannot be reached while it is open.
+  const lockMain = (on_) => { main.inert = on_; };
 
-  // A question that needs a deliberate yes. Cancel is the default.
-  function confirmDialog({ title, body, yes, danger }) {
+  // The five steps of a cloaking run. `at` is the current step (1 to 5); `count` is a short note on the current step.
+  const STEPS = ['Set up', 'Read', 'Review', 'Double check', 'Export'];
+  function stepper(at, count, done = 0) {
+    return `<ol class="stepper" aria-label="Where you are">${STEPS.map((label, i) => {
+      const n = i + 1;
+      const isDone = n < at || n <= done;
+      return `<li class="${isDone ? 'done' : ''}"${n === at && !isDone ? ' aria-current="step"' : ''}><span class="dot" aria-hidden="true">${isDone ? '' : n}</span><span>${label}</span>${isDone ? '<span class="vh"> (done)</span>' : ''}${n === at && count ? `<span class="count">${esc(count)}</span>` : ''}</li>`;
+    }).join('')}</ol>`;
+  }
+  const pageHead = (title, steps, meta = []) => `<div class="pagehead"><div><h1>${esc(title)}</h1>${meta.length ? `<div class="meta">${meta.map((m) => `<span>${m}</span>`).join('')}</div>` : ''}</div>${steps || ''}</div>`;
+
+  // A question that needs a deliberate yes. Cancel is the default and has the focus.
+  // Options: step (1 or 2 of 2), kind (a chip), ledger ([[label, value, isReal]]), leaves (what leaves the computer, in the dashed grammar),
+  // callout ({ icon, html }), notes ([{ icon, html }]), small (smaller body text), no (the label of the Cancel button).
+  function confirmDialog({ title, body, yes, danger, no = 'Cancel', step, kind, ledger, leaves, callout, notes, small }) {
     return new Promise((resolve) => {
       const o = document.createElement('div');
       o.className = 'overlay';
-      o.innerHTML = `<div class="dialog narrow-dialog" role="alertdialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2><p>${body}</p><div class="row"><button class="btn" id="no">Cancel</button><button class="btn primary ${danger ? 'danger-fill' : ''}" id="yes">${esc(yes)}</button></div></div>`;
+      const steps = step ? `<div class="dialog-steps"><span>Question ${step} of 2</span><span class="bars" aria-hidden="true"><i class="on"></i><i${step === 2 ? ' class="on"' : ''}></i></span></div>` : '';
+      const head = kind ? `<div class="dialog-kind"><h2 id="dt">${esc(title)}</h2>${kind}</div>` : `<h2 id="dt">${esc(title)}</h2>`;
+      o.innerHTML = `<div class="dialog narrow-dialog" role="alertdialog" aria-modal="true" aria-labelledby="dt">${steps}${head}${body ? `<p${small ? ' class="small"' : ''}>${body}</p>` : ''}${ledger ? `<dl class="ledger">${ledger.map(([k, v, real]) => `<dt>${esc(k)}</dt><dd${real ? ' class="real"' : ''}>${v}</dd>`).join('')}</dl>` : ''}${leaves ? `<div class="callout leaves-callout">${icon('out', 'md')}<div>${leaves}</div></div>` : ''}${callout ? `<div class="callout">${icon(callout.icon, 'md')}<div>${callout.html}</div></div>` : ''}${notes?.length ? `<ul class="consequences">${notes.map((n) => `<li>${icon(n.icon)}<span>${n.html}</span></li>`).join('')}</ul>` : ''}<div class="row"><button class="btn" id="no" type="button">${esc(no)}</button><button class="btn primary ${danger ? 'danger-fill' : ''}" id="yes" type="button">${esc(yes)}</button></div></div>`;
       document.body.appendChild(o);
-      const done = (v) => { document.removeEventListener('keydown', onKey); o.remove(); resolve(v); };
+      lockMain(true);
+      const done = (v) => { document.removeEventListener('keydown', onKey); lockMain(false); o.remove(); resolve(v); };
       const onKey = (e) => { if (e.key === 'Escape') done(false); };
       document.addEventListener('keydown', onKey);
       o.querySelector('#no').addEventListener('click', () => done(false));
@@ -43,6 +84,8 @@
       o.querySelector('#no').focus();
     });
   }
+  // "Recorded as NAME, TIME": every decision says who made it and when.
+  const recorded = () => ({ icon: 'user', html: `The matter records who did this and when: <b>${esc(state.info?.who || '')}, ${esc(nowText())}.</b>` });
   // The pasted draft and the restored text hold real details: they are never kept once the matter is closed.
   const DRAFT_NOT_KEPT = 'The pasted draft and the restored text are not kept: copy or save the restored text first.';
   const draftAtRisk = () => !!(state.draft?.trim() || state.restoreResult);
@@ -55,9 +98,11 @@
       <h1>What is your full name?</h1>
       <p class="muted">Cloak writes it next to your computer login on every sign-off and in the log, so it is clear who checked what. It stays on this computer.</p>
       ${error ? message(error) : ''}
-      <div class="field"><label for="full-name">Full name</label><input type="text" id="full-name" value="${esc(state.info.fullName)}" autocomplete="off" placeholder="e.g. Siti Aminah binti Yusof"></div>
-      <p class="small muted">Computer login: <b>${esc(state.info.login)}</b></p>
-      <button class="btn primary" id="save-name">Save</button>
+      <div class="card mt-4">
+        <div class="field"><label for="full-name">Full name</label><input type="text" id="full-name" value="${esc(state.info.fullName)}" autocomplete="off" placeholder="e.g. Siti Aminah binti Yusof"></div>
+        <p class="small muted">Computer login: <b class="ink">${esc(state.info.login)}</b></p>
+        <button class="btn primary" id="save-name" type="button">Save</button>
+      </div>
     </div>`);
     const save = async () => {
       try { const r = await call('setName', { fullName: document.getElementById('full-name').value }); state.info = { ...state.info, ...(await call('info')), who: r.who }; home(); } catch (err) { nameScreen(err.message); }
@@ -70,18 +115,38 @@
   // ------------------------------------------------------------------ home
 
   function home() {
-    document.getElementById('matter-name').textContent = '';
-    show(`<div class="narrow home">
-      <span class="mark" aria-hidden="true"></span>
-      <h1>Cloak</h1>
-      <p class="muted">Hide client details before a document goes to an AI tool. Put them back afterwards.</p>
+    show(`<div class="home">
       ${tip('home')}
-      <div class="choices">
-        <button class="choice primary" id="go-cloak"><b>Cloak a folder</b>Hide names and numbers in a folder of documents.</button>
-        <button class="choice" id="go-restore"><b>Restore a draft</b>Put the real details back into a draft, and check it.</button>
+      <div class="home-grid">
+        <section class="home-hero" aria-labelledby="h">
+          <p class="kicker">${icon('lock')}Runs on this computer. Nothing is sent anywhere.</p>
+          <h1 id="h">Send the case to the AI, <em>not the client.</em></h1>
+          <p class="lead">Cloak hides names and numbers in a folder of documents, then puts them back into the AI's draft.</p>
+          <figure class="specimen" aria-label="An example of a sentence before and after cloaking">
+            <div class="part">
+              <div class="cap"><span>The original</span><span>stays on this computer</span></div>
+              <p lang="ms"><span class="real">Pada 12 Mac 2024</span>, <span class="real">Tan Ah Kow</span> membayar <span class="real">RM 48,500.00</span> kepada <span class="real">Gudang Lima Sdn Bhd</span>.</p>
+            </div>
+            <div class="cut">${icon('scissors')}<span>Cloak cuts here</span></div>
+            <div class="part">
+              <div class="cap"><span>Cloaked</span><span>what the AI sees</span></div>
+              <p lang="ms">Pada ${tagHtml('DATE_1')}, ${tagHtml('PERSON_1')} membayar ${tagHtml('AMOUNT_1')} kepada ${tagHtml('COMPANY_2')}.</p>
+            </div>
+          </figure>
+        </section>
+        <section aria-label="What would you like to do?">
+          <div class="choices">
+            <button class="choice primary" id="go-cloak" type="button"><span class="eyebrow">Before the AI</span><b>Cloak a folder</b><span class="desc">Hide names and numbers in a folder of documents.</span><span class="go">${icon('arrow', 'md')}</span></button>
+            <button class="choice" id="go-restore" type="button"><span class="eyebrow">After the AI</span><b>Restore a draft</b><span class="desc">Put the real details back into a draft, and check it.</span><span class="go">${icon('arrow', 'md')}</span></button>
+          </div>
+          ${homeExtras()}
+        </section>
       </div>
-      ${homeExtras()}
-      <p class="signed">Signed in as <b>${esc(state.info.who)}</b> · <button class="link" id="change-name">Change name</button> · <button class="link" id="go-licence">Licence</button></p>
+      <div class="flow" aria-label="What stays and what leaves">
+        <div class="stay"><h3>${icon('pc', 'md')}Stays on this computer</h3><p>Your documents, the encrypted key, the real names and numbers, and the log. Nothing is sent anywhere, ever.</p></div>
+        <div class="leave"><h3>${icon('out', 'md')}Leaves only when you export</h3><p>The cloaked copies, with tags instead of names, to a folder you choose. Nobody can export until a person has reviewed them.</p></div>
+      </div>
+      <p class="signed help-links">Signed in as <b>${esc(state.info.who)}</b><span class="sep"></span><button class="link" id="change-name" type="button">Change name</button><span class="sep"></span><button class="link" id="go-licence" type="button">Licence</button><span class="sep"></span><button class="link" data-help="how" type="button">How Cloak works</button><span class="sep"></span><button class="link" data-help="data" type="button">Your data</button><span class="sep"></span><button class="link" data-help="about" type="button">About</button></p>
     </div>`);
     on('#go-cloak', 'click', () => { state.afterOpen = null; setup(); });
     on('#go-restore', 'click', () => restoreStart());
@@ -91,41 +156,57 @@
 
   // ----------------------------------------------------------------- setup
 
+  // What is still missing before cloaking can start, as the bar at the foot of the setup screen says it.
+  function startNote() {
+    const missing = [];
+    if (!state.folder) missing.push('Choose the documents');
+    if (!state.matter) missing.push(!state.matterDir ? 'Choose the matter folder' : state.matterExists === false ? 'Create the matter' : 'Open the matter');
+    if (missing.length) return `<span class="finish-lead">Before you can start</span><div class="blockers">${missing.map((m) => `<span class="blocker">${esc(m)}</span>`).join('')}</div>`;
+    return '<span class="finish-lead">Ready to cloak</span><span>Nothing is saved or sent until you finish the review and export.</span>';
+  }
+
   function setup(error) {
     const o = state.options;
-    show(`<div class="narrow">
-      <h1>Cloak a folder</h1>
+    const ready = !!(state.folder && state.matter);
+    show(`<div class="wide has-finish">
+      ${pageHead('Cloak a folder', stepper(1))}
       ${screenNote('setup')}
       ${error ? message(error) : ''}
-      <div class="card">
-        <h2>1. The documents</h2>
-        <p class="muted small">The folder is only read. Nothing in it is changed.</p>
-        <div class="row"><button class="btn" id="pick-folder">Choose folder…</button>${state.folder ? `<span class="path" id="folder-path">${esc(state.folder)}</span>` : ''}</div>
+      <div class="setup-grid">
+      <section class="card" aria-labelledby="s1">
+        <h2 id="s1"><span class="step-no" aria-hidden="true">1</span>The documents</h2>
+        <p class="sub">The folder is only read. Nothing in it is changed.</p>
+        <div class="row"><button class="btn" id="pick-folder" type="button">${icon('folder', 'md')}Choose folder…</button>${state.folder ? `<span class="path" id="folder-path">${esc(state.folder)}</span>` : ''}</div>
         ${state.folder ? `${state.location ? `<div class="msg ok" id="source-note"><b>This folder is in ${esc(state.location.label)}.</b> Cloak only reads it. It will never create, rename, move or change anything there, and nothing of the matter (key, cache or cloaked copies) will be saved there.${state.location.workspacePath ? `<div class="small">Workspace path: <b>${esc(state.location.workspacePath)}</b></div>` : ''}<div class="small">Recognised from: ${esc(state.location.how)}.</div></div>` : ''}
-        <div class="field"><label for="manual-src">Where is this folder?</label><select id="manual-src"><option value="">Work it out automatically</option><option value="imanage" ${state.manualSource === 'imanage' ? 'selected' : ''}>It is on iManage Drive</option><option value="onedrive" ${state.manualSource === 'onedrive' ? 'selected' : ''}>It is in OneDrive</option><option value="googledrive" ${state.manualSource === 'googledrive' ? 'selected' : ''}>It is in Google Drive</option></select><span class="small muted">Choose one if Cloak did not recognise the folder as synced.</span></div>` : ''}
-        ${state.level === 'standard' ? `<p class="small muted" id="keep-note">This matter is <b>Standard</b>. Dates, amounts and legal provisions are kept unless you tick them:</p>
-        <label class="check"><input type="checkbox" data-opt="dates" ${o.dates ? 'checked' : ''}> Also hide dates</label>
-        <label class="check"><input type="checkbox" data-opt="amounts" ${o.amounts ? 'checked' : ''}> Also hide amounts of money</label>
-        <label class="check"><input type="checkbox" data-opt="provisions" ${o.provisions ? 'checked' : ''}> Also hide legal provisions (sections, Acts)</label>` : '<p class="small muted" id="keep-note">This matter is <b>Strict</b>: dates, amounts, reference numbers, places, project names, job titles and court names are hidden as well as names and numbers.</p>'}
+        <details class="more"${state.manualSource ? ' open' : ''}><summary>Is this folder synced? Tell Cloak</summary><div class="field"><label for="manual-src">Where is this folder?</label><select id="manual-src"><option value="">Work it out automatically</option><option value="imanage" ${state.manualSource === 'imanage' ? 'selected' : ''}>It is on iManage Drive</option><option value="onedrive" ${state.manualSource === 'onedrive' ? 'selected' : ''}>It is in OneDrive</option><option value="googledrive" ${state.manualSource === 'googledrive' ? 'selected' : ''}>It is in Google Drive</option></select><span class="small hint">Choose one if Cloak did not recognise the folder as synced.</span></div></details>` : ''}
+        ${state.level === 'standard' ? `<p class="small muted mt-3" id="keep-note">This matter is <b class="ink">Standard</b>. Dates, amounts and legal provisions are kept unless you tick them:</p>
+        <label class="check"><input type="checkbox" data-opt="dates" ${o.dates ? 'checked' : ''}><span>Also hide dates</span></label>
+        <label class="check"><input type="checkbox" data-opt="amounts" ${o.amounts ? 'checked' : ''}><span>Also hide amounts of money</span></label>
+        <label class="check"><input type="checkbox" data-opt="provisions" ${o.provisions ? 'checked' : ''}><span>Also hide legal provisions (sections, Acts)</span></label>` : '<p class="small muted mt-3 mb-0" id="keep-note">This matter is <b class="ink">Strict</b>: dates, amounts, reference numbers, places, project names, job titles and court names are hidden as well as names and numbers.</p>'}
+      </section>
+      <section class="card" aria-labelledby="s2">
+        <h2 id="s2"><span class="step-no" aria-hidden="true">2</span>The matter</h2>
+        <p class="sub">Its own folder, holding the encrypted key. Not inside the documents folder. Keep it on the firm's shared drive.</p>
+        <div class="row"><button class="btn" id="pick-matter" type="button">${icon('key', 'md')}Choose matter folder…</button>${state.matterDir ? `<span class="path" id="matter-path">${esc(state.matterDir)}</span>` : ''}</div>
+        <div id="matter-form" class="mt-3"></div>
+      </section>
+      <section class="card" aria-labelledby="s3">
+        <h2 id="s3"><span class="step-no" aria-hidden="true">3</span>The people in this matter</h2>
+        <div class="grid-2">
+          <div class="field"><label for="client-name">Who is the client?</label><textarea id="client-name" rows="2" autocomplete="off">${esc(state.client)}</textarea><span class="small hint">Every way it is written, separated by ;  Hidden everywhere, file names too.</span></div>
+          <div class="field"><label for="other-parties">Who are the other parties?</label><textarea id="other-parties" rows="3" autocomplete="off">${esc(state.others)}</textarea><span class="small hint">One party per line, forms separated by ;  Start with person: or company: if needed.</span></div>
+        </div>
+        <label class="check"><input type="checkbox" id="test-matter" ${state.testMatter ? 'checked' : ''}><span>This matter holds made-up test documents only <span class="small muted">(the export report records it)</span></span></label>
+      </section>
       </div>
-      <div class="card">
-        <h2>2. The matter</h2>
-        <p class="muted small">Each matter has its own folder holding its encrypted key. Keep it on the firm's shared drive, not inside the documents folder.</p>
-        <div class="row"><button class="btn" id="pick-matter">Choose matter folder…</button>${state.matterDir ? `<span class="path" id="matter-path">${esc(state.matterDir)}</span>` : ''}</div>
-        <div id="matter-form"></div>
+      <div class="startbar">
+        <div class="finish-note" id="finish-note">${startNote()}</div>
+        <div class="row"><button class="btn" id="back" type="button">Back</button><button class="btn primary" id="start" type="button" ${ready ? '' : 'disabled'}>${ready ? '' : icon('lock')}Start cloaking</button></div>
       </div>
-      <div class="card">
-        <h2>3. The people in this matter</h2>
-        <div class="field"><label for="client-name">Who is the client?</label><textarea id="client-name" rows="2" autocomplete="off">${esc(state.client)}</textarea><span class="small muted">Every way it is written, separated by ; (for example: Seri Kembara Logistics Sdn Bhd; Seri Kembara; Kembara). Each form is hidden everywhere, file and folder names included.</span></div>
-        <div class="field"><label for="other-parties">Who are the other parties?</label><textarea id="other-parties" rows="3" autocomplete="off">${esc(state.others)}</textarea><span class="small muted">One party per line. Forms of the same party are separated by ;. Start a line with person: or company: if Cloak should treat it as one or the other.</span></div>
-        <label class="check"><input type="checkbox" id="test-matter" ${state.testMatter ? 'checked' : ''}> This matter holds made-up test documents only</label>
-        <p class="small muted">Tick this only if every document is made up. The export report records it.</p>
-      </div>
-      <div class="row"><button class="btn" id="back">Back</button><button class="btn primary" id="start" ${state.folder && state.matter ? '' : 'disabled'}>Start cloaking</button></div>
     </div>`);
     on('#client-name', 'input', (e) => { state.client = e.target.value; });
     on('#other-parties', 'input', (e) => { state.others = e.target.value; });
-    on('#test-matter', 'change', (e) => { state.testMatter = e.target.checked; });
+    on('#test-matter', 'change', (e) => { state.testMatter = e.target.checked; setBar(); });
     on('#back', 'click', async () => { if (pending) return; await call('closeMatter').catch(() => {}); matterClosed(); home(); });
     on('#pick-folder', 'click', async () => {
       const p = await call('pickFolder', { title: 'Choose the folder of documents' });
@@ -146,6 +227,7 @@
       await call('closeMatter').catch(() => {});
       matterClosed();
       state.matterDir = p;
+      state.matterExists = null;
       setup();
     });
     on('[data-opt]', 'change', (e) => { o[e.target.dataset.opt] = e.target.checked; });
@@ -159,21 +241,31 @@
 
   function matterOpenNote() {
     document.getElementById('matter-form').innerHTML = `<div class="msg ok">Matter open${state.matter.name ? `: <b>${esc(state.matter.name)}</b>` : ''}.</div>`;
+    setBar();
+  }
+  // The foot bar of the setup screen says what is still missing.
+  function refreshStartNote() {
+    const note = document.getElementById('finish-note');
+    if (note && document.getElementById('start')) note.innerHTML = startNote();
   }
 
-  async function matterForm(error, mode) {
+  async function matterForm(error, mode, kind = 'bad') {
     const box = document.getElementById('matter-form');
     let info;
     try { info = await call('inspectMatter', { dir: state.matterDir }); } catch (err) { box.innerHTML = message(err.message); return; }
+    state.matterExists = info.exists;
+    refreshStartNote();
     if (!info.exists && state.afterOpen) { box.innerHTML = message('There is no matter in this folder. Choose the folder that holds the matter key (matter.cloakkey).'); return; }
     if (!info.exists) {
+      const mismatch = !!error && /do not match/.test(error);
       box.innerHTML = `${error ? message(error) : ''}
         <p class="small">This folder has no matter yet. Create one:</p>
-        <div class="field"><label for="m-name">Matter name (optional)</label><input type="text" id="m-name" autocomplete="off"></div>
-        <div class="field"><label for="m-level">How much to hide</label><select id="m-level"><option value="strict" ${state.level === 'strict' ? 'selected' : ''}>Strict: names, numbers and distinctive facts (recommended)</option><option value="standard" ${state.level === 'standard' ? 'selected' : ''}>Standard: names and numbers only</option></select></div>
-        <div class="field"><label for="m-pw">Matter password (10 characters or more)</label><input type="password" id="m-pw" autocomplete="new-password"></div>
-        <div class="field"><label for="m-pw2">Type the password again</label><input type="password" id="m-pw2" autocomplete="new-password"></div>
-        <button class="btn primary" id="m-create">Create matter</button>`;
+        <div class="pair"><div class="field"><label for="m-name">Matter name (optional)</label><input type="text" id="m-name" autocomplete="off"></div>
+        <div class="field"><label for="m-level">How much to hide</label><select id="m-level"><option value="strict" ${state.level === 'strict' ? 'selected' : ''}>Strict (recommended)</option><option value="standard" ${state.level === 'standard' ? 'selected' : ''}>Standard</option></select></div></div>
+        <p class="small hint mb-3">Strict also hides dates, amounts and places. Standard hides names and numbers only.</p>
+        <div class="pair"><div class="field"><label for="m-pw">Matter password</label><input type="password" id="m-pw" autocomplete="new-password"><span class="small hint">10 characters or more</span></div>
+        <div class="field"><label for="m-pw2">Type it again</label><input type="password" id="m-pw2" autocomplete="new-password"${mismatch ? ' class="invalid" aria-invalid="true"' : ''}></div></div>
+        <button class="btn primary" id="m-create" type="button">Create matter</button>`;
       on('#m-create', 'click', async () => {
         const pw = document.getElementById('m-pw').value;
         if (pw !== document.getElementById('m-pw2').value) return matterForm('The two passwords do not match. Type the same password in both boxes.');
@@ -187,12 +279,12 @@
       return;
     }
     const recovery = mode === 'recovery';
-    box.innerHTML = `${error ? message(error) : ''}
-      ${info.remembered && !recovery ? '<p class="small">The password for this matter is remembered on this computer.</p><div class="row"><button class="btn primary" id="m-open-remembered">Open matter</button><button class="link" id="m-forget">Forget it</button></div>' : `
-      <div class="field"><label for="m-secret">${recovery ? 'Recovery code' : 'Matter password'}</label><input type="${recovery ? 'text' : 'password'}" id="m-secret" autocomplete="off"></div>
-      ${state.info.canRemember && !recovery ? '<label class="check"><input type="checkbox" id="m-remember"> Remember the password on this computer</label>' : ''}
-      <div class="row"><button class="btn primary" id="m-open">Open matter</button><button class="link" id="m-switch">${recovery ? 'Use the password instead' : 'Forgot the password? Use the recovery code'}</button></div>`}
-      <div id="m-locked"></div>`;
+    box.innerHTML = `${error ? message(error, kind) : ''}
+      ${info.remembered && !recovery ? '<p class="small muted mb-3">The password for this matter is remembered on this computer.</p><div class="row"><button class="btn primary" id="m-open-remembered" type="button">Open matter</button><button class="link" id="m-forget" type="button">Forget it</button></div>' : `
+      <div class="field"><label for="m-secret">${recovery ? 'Recovery code' : 'Matter password'}</label><input type="${recovery ? 'text' : 'password'}" id="m-secret" autocomplete="off"${error && kind === 'bad' ? ' class="invalid" aria-invalid="true"' : ''}></div>
+      ${state.info.canRemember && !recovery ? '<label class="check"><input type="checkbox" id="m-remember"><span>Remember the password on this computer</span></label>' : ''}
+      <div class="row mt-3"><button class="btn primary" id="m-open" type="button">Open matter</button><button class="link" id="m-switch" type="button">${recovery ? 'Use the password instead' : 'Forgot the password? Use the recovery code'}</button></div>`}
+      <div id="m-locked" class="mt-3"></div>`;
     const open = async (args) => {
       try {
         const r = await call('openMatter', { dir: state.matterDir, ...args });
@@ -203,8 +295,8 @@
         (state.afterOpen || setup)();
       } catch (err) {
         if (err.code !== 'LOCKED') return matterForm(err.message, mode);
-        await matterForm(err.message, mode);
-        document.getElementById('m-locked').innerHTML = '<p class="small">If that person has finished (or their computer crashed), you can take the matter over. This is recorded in the log.</p><button class="btn danger" id="m-takeover">Take over</button>';
+        await matterForm(err.message, mode, 'warn');
+        document.getElementById('m-locked').innerHTML = '<p class="small">If that person has finished (or their computer crashed), you can take the matter over. This is recorded in the log.</p><button class="btn danger small" id="m-takeover" type="button">Take over</button>';
         on('#m-takeover', 'click', () => open(lastSecret === null ? { useRemembered: true, takeOver: true } : { [recovery ? 'recoveryCode' : 'password']: lastSecret, takeOver: true }));
       }
     };
@@ -220,19 +312,20 @@
   function recoveryCode(made) {
     state.recovery = made;
     show(`<div class="narrow">
+      <div class="print-sheet-head"><span class="mark" aria-hidden="true"></span>cloak by Lawgistics: matter recovery code</div>
       <h1>Write down the recovery code</h1>
       <p>This code opens the matter if the password is forgotten. <b>It is shown only once.</b> Print it or write it down, and keep it on the paper file or in the safe.</p>
-      <p class="small"><b>Matter:</b> ${esc(made.name || '(no name)')}<br><b>Created:</b> ${esc(made.createdText)} by ${esc(made.who)}</p>
-      <div class="code" id="recovery-code">${esc(made.recoveryCode)}</div>
+      <dl class="code-meta"><dt>Matter</dt><dd>${esc(made.name || '(no name)')}</dd><dt>Created</dt><dd>${esc(made.createdText)}, by ${esc(made.who)}</dd></dl>
+      <div class="code" id="recovery-code" aria-label="Recovery code">${esc(made.recoveryCode)}</div>
       <p class="msg warn">If both the password and this code are lost, the key cannot be opened by anyone. There is no back door.</p>
       <p class="print-only small">Do not keep this sheet with the cloaked copies or in the matter folder on the computer.</p>
-      <div class="row no-print"><button class="btn" id="print">Print this page</button></div>
+      <div class="row no-print"><button class="btn" id="print" type="button">${icon('print', 'md')}Print this page</button></div>
       <p class="msg warn no-print" id="recovery-wait" hidden>Write the recovery code down first and tick the box. It is shown only once, so Cloak cannot go back to the home screen yet.</p>
-      <label class="check no-print"><input type="checkbox" id="wrote"> I have written the recovery code down</label>
-      <p class="no-print"><button class="btn primary" id="continue" disabled>Continue</button></p>
+      <label class="check no-print mt-4"><input type="checkbox" id="wrote"><span>I have written the recovery code down</span></label>
+      <p class="no-print mt-3"><button class="btn primary" id="continue" type="button" disabled>${icon('lock')}Continue</button></p>
     </div>`);
     on('#print', 'click', () => window.print());
-    on('#wrote', 'change', (e) => { document.getElementById('continue').disabled = !e.target.checked; });
+    on('#wrote', 'change', (e) => { const c = document.getElementById('continue'); c.disabled = !e.target.checked; c.querySelector('svg').toggleAttribute('hidden', e.target.checked); });
     on('#continue', 'click', () => { state.recovery = null; (state.afterOpen || setup)(); });
   }
 
@@ -245,17 +338,20 @@
     const total = rows[0]?.total || 0;
     const box = document.getElementById('progress');
     if (!box) return;
-    document.getElementById('progress-count').textContent = total ? `${done} of ${total} files read` : 'Looking at the folder…';
-    box.innerHTML = rows.map((r) => `<tr><td class="num">${r.index}</td><td>${esc(r.file)}</td><td>${r.ocr ? '<span class="chip ocr">OCR</span>' : ''}</td><td>${r.stage === 'reading' ? '<span class="spinner"></span> ' : ''}${STAGE[r.stage]}</td></tr>`).join('');
+    document.getElementById('progress-head').innerHTML = total
+      ? `<div class="bigcount"><span class="n">${done}</span><span class="of" id="progress-count">of ${total} files read</span></div><progress value="${done}" max="${total}" aria-label="Files read"></progress>`
+      : '<p class="muted" id="progress-count"><span class="spinner" aria-hidden="true"></span> Looking at the folder…</p>';
+    box.innerHTML = rows.map((r) => `<tr${r.stage === 'reading' ? ' class="is-active"' : ''}><td class="num">${r.index}</td><td>${escL(r.file)}</td><td>${r.ocr ? '<span class="chip ocr">OCR</span>' : ''}</td><td class="stage">${r.stage === 'reading' ? '<span class="spinner" aria-hidden="true"></span> ' : ''}${STAGE[r.stage]}</td></tr>`).join('');
   }
 
   async function runCloak() {
     state.progress.clear();
     show(`<div class="wide">
-      <h1>Cloaking…</h1>
-      <p class="muted" id="progress-count">Looking at the folder…</p>
-      <div class="card white"><table><thead><tr><th>#</th><th>File</th><th>OCR</th><th>Progress</th></tr></thead><tbody id="progress"></tbody></table></div>
+      ${pageHead('Cloaking…', stepper(2, '', 1), ['Reading every part of every file. Nothing leaves this computer.'])}
+      <div id="progress-head"></div>
+      <div class="mt-4"><table class="progress-table"><thead><tr><th>#</th><th>File</th><th>OCR</th><th>Progress</th></tr></thead><tbody id="progress"></tbody></table></div>
     </div>`);
+    drawProgress();
     try {
       const r = await call('cloak', { folder: state.folder, options: state.options, manualSource: state.manualSource, setup: { client: state.client, others: state.others, testMatter: state.testMatter } });
       state.review = r.review;
@@ -270,41 +366,61 @@
 
   // ---------------------------------------------------------------- review
 
-  const STATUS = { cloaked: 'Cloaked', manual: 'Needs manual check', partial: 'Partly read – blocked', unreadable: 'Unreadable – blocked', container: 'Archive opened' };
-
   async function act(action) {
     if (state.busy) return;
     state.busy = true;
     try { state.review = await call('action', action); state.exported = null; state.check = null; review(); } catch (err) { review(err.message); } finally { state.busy = false; }
   }
 
+  const STATUS = { cloaked: 'Cloaked', manual: 'Needs manual check', partial: 'Partly read – blocked', unreadable: 'Unreadable – blocked', container: 'Archive opened' };
+  const num = (n) => Number(n).toLocaleString('en-GB');
+
+  // An empty state says why it is empty, and what to do.
+  const empty = (ic, title, text, button = '') => `<div class="empty">${icon(ic, 'xl')}<h2>${esc(title)}</h2><p>${text}</p>${button}</div>`;
+
+  // What stops the review from being finished, as buttons that jump to the work.
+  function blockerList(d) {
+    const list = [];
+    if (d.unsure.length) list.push({ n: d.unsure.length, label: 'not sure', aria: `${plural(d.unsure.length, 'word', 'words')} on the Not sure list`, tab: 'unsure' });
+    if (d.merges.length) list.push({ n: d.merges.length, label: d.merges.length === 1 ? 'joined name' : 'joined names', aria: `${plural(d.merges.length, 'joined name', 'joined names')} to confirm`, tab: 'joined' });
+    if (d.shortForms.length) list.push({ n: d.shortForms.length, label: d.shortForms.length === 1 ? 'short form' : 'short forms', aria: `${plural(d.shortForms.length, 'short form', 'short forms')} to check`, tab: 'joined' });
+    return list;
+  }
+
   function review(error, notice) {
     const d = state.review;
-    document.getElementById('matter-name').textContent = state.matter?.name || '';
     const joined = d.merges.length + d.shortForms.length;
-    const tab = (id, label, n, todo) => `<button class="tab ${todo && n ? 'todo' : ''}" role="tab" data-tab="${id}" aria-selected="${state.tab === id}">${label}<span class="n">${n}</span></button>`;
+    const c = d.doubleCheck || { ran: false };
+    const passed = !!(d.complete && c.ran && c.passed);
+    const tab = (id, label, n, todo, short) => {
+      const cls = todo && typeof n === 'number' ? (n ? 'todo' : 'done') : '';
+      return `<button class="tab ${cls}" type="button" role="tab" data-tab="${id}" aria-selected="${state.tab === id}">${short ? `<span class="t-full">${label}</span><span class="t-short">${short}</span>` : label}${n === '' ? '' : `<span class="n"><span>${typeof n === 'number' ? num(n) : n}</span></span>`}</button>`;
+    };
     const willExport = d.files.filter((f) => f.willExport).length;
     const blocked = d.files.filter((f) => !f.willExport && f.status !== 'container').length;
-    show(`<div class="wide">
-      <h1>Review</h1>
+    const toDecide = d.unsure.length + joined;
+    const [at, count] = !d.complete ? [3, toDecide ? `${toDecide} to decide` : ''] : state.exported ? [6, ''] : passed ? [5, ''] : [4, c.ran && c.counts.undecided ? `${c.counts.undecided} to decide` : ''];
+    const meta = [`${icon('file')}${plural(d.files.length, 'file', 'files')} read in ${state.seconds.toFixed(1)} seconds`];
+    if (d.source && d.source.label) meta.push(`${icon('cloud')}Source: ${esc(d.source.kind)}${d.source.workspace_path ? `, workspace path ${esc(d.source.workspace_path)}` : ''}, read only`);
+    meta.push(state.exported ? `${icon('out')}Exported` : `${icon('out')}Nothing has been exported`);
+    show(`<div class="wide has-finish">
+      ${pageHead('Review', stepper(at, count), meta)}
       ${screenNote('review')}
-      <p class="muted">${plural(d.files.length, 'file', 'files')} read in ${state.seconds.toFixed(1)} seconds. Nothing has been exported. Check the lists below, then finish the review.</p>
-      ${d.source && d.source.label ? `<p class="small muted">Source: <b>${esc(d.source.kind)}</b>${d.source.workspace_path ? ` · workspace path <b>${esc(d.source.workspace_path)}</b>` : ''}. Read only.</p>` : ''}
       ${error ? message(error) : ''}${notice ? message(notice, 'warn') : ''}
-      <div class="card">
-        <h2>Add a word or name the tool missed</h2>
-        <div class="addbar"><input type="text" id="add-text" placeholder="Type it exactly as it appears" autocomplete="off">
+      <div class="card slim">
+        <div class="addbar"><label for="add-text">Add a word or name the tool missed</label><input type="text" id="add-text" placeholder="Type it exactly as it appears" autocomplete="off">
           <select id="add-kind" aria-label="What it is"><option value="PERSON">A person</option><option value="COMPANY">A company</option><option value="OTHER">Something else</option></select>
-          <button class="btn primary" id="add-go">Hide it in every file</button></div>
+          <button class="btn primary" id="add-go" type="button">Hide it in every file</button></div>
       </div>
       <div class="tabs" role="tablist">
-        ${tab('unsure', 'Not sure', d.unsure.length, true)}${tab('joined', 'Joined names', joined, true)}${tab('terms', 'Everything replaced', d.terms.length)}${d.facts?.length ? tab('facts', 'Hidden facts', d.facts.length) : ''}${tab('chrono', 'Chronology', state.chrono ? state.chrono.dated : '')}${tab('files', 'Files', d.files.length)}${tab('check', 'Double check', d.doubleCheck?.ran ? d.doubleCheck.counts.undecided : '', true)}
+        ${tab('unsure', 'Not sure', d.unsure.length, true)}${tab('joined', 'Joined names', joined, true)}${tab('terms', 'Everything replaced', d.terms.length, false, 'Replaced')}${d.facts?.length ? tab('facts', 'Hidden facts', d.facts.length, false, 'Facts') : ''}${tab('chrono', 'Chronology', state.chrono ? state.chrono.dated : '')}${tab('files', 'Files', d.files.length)}${tab('check', 'Double check', d.doubleCheck?.ran ? d.doubleCheck.counts.undecided : '', true)}
       </div>
       <div id="panel"></div>
-      <div class="finish">${finishBar(d, willExport, blocked)}</div>
-      ${state.exported ? `<div class="msg ok" id="exported">${plural(state.exported.written.length, 'cloaked copy', 'cloaked copies')} written to <b>${esc(state.exported.outDir)}</b>.${state.exported.heldBack ? ` ${plural(state.exported.heldBack, 'file was', 'files were')} held back.` : ''} ${esc(state.exported.doubleCheck?.statement || '')}</div>` : ''}
+      ${state.exported ? `<div class="msg ok" id="exported" role="status">${plural(state.exported.written.length, 'cloaked copy', 'cloaked copies')} written to <b>${esc(state.exported.outDir)}</b>.${state.exported.heldBack ? ` ${plural(state.exported.heldBack, 'file was', 'files were')} held back.` : ''} ${esc(state.exported.doubleCheck?.statement || '')}</div>` : ''}
+      ${finishBar(d, willExport, blocked)}
     </div>`);
     on('.tab', 'click', (e) => { state.tab = e.currentTarget.dataset.tab; review(); });
+    on('[data-blocker-tab]', 'click', (e) => { state.tab = e.currentTarget.dataset.blockerTab; review(); });
     const add = () => { const text = document.getElementById('add-text').value.trim(); if (text) act({ type: 'add', text, kind: document.getElementById('add-kind').value }); };
     on('#add-go', 'click', add);
     on('#add-text', 'keydown', (e) => { if (e.key === 'Enter') add(); });
@@ -333,56 +449,78 @@
     ({ unsure: panelUnsure, joined: panelJoined, terms: panelTerms, facts: panelFacts, chrono: panelChronology, files: panelFiles, check: panelCheck })[state.tab]();
   }
 
-  // The finish bar: finish the review, run the double check, export.
+  // The finish bar, always at the foot: what is left, what will leave the computer, and the next step. Blockers are buttons that jump to the work.
   function finishBar(d, willExport, blocked) {
+    const leaves = `<div class="leaves"><span>On export</span><b>${plural(willExport, 'file leaves', 'files leave')}</b>${blocked ? `<span>${blocked} held back</span>` : ''}</div>`;
     if (!d.complete) {
-      return `<div id="finish-note">${d.blockers.length ? `<b>Before you can finish:</b> ${d.blockers.map(esc).join(' ')}` : `Everything is decided. ${plural(willExport, 'file', 'files')} will be exported${blocked ? ` and ${blocked} held back` : ''}.`}</div>
-        <div class="row"><button class="btn primary" id="finish" ${d.blockers.length ? 'disabled' : ''}>Finish review</button></div>`;
+      const list = blockerList(d);
+      const buttons = list.map((b) => `<button class="blocker" type="button" data-blocker-tab="${b.tab}" aria-label="${esc(b.aria)}"><b>${num(b.n)}</b> ${b.label}</button>`).join('');
+      const more = list.length > 1 ? `<button class="blocker more" type="button" data-blocker-tab="${list[0].tab}" aria-label="${list.length - 1} more things to finish. Open the first."><b>+${list.length - 1}</b> more</button>` : '';
+      return `<div class="finish ${list.length ? 'is-blocked' : 'is-ready'}${list.length > 2 ? ' many' : ''}">
+        <div class="finish-note" id="finish-note">${list.length ? `<span class="finish-lead">Before you can finish</span><div class="blockers">${buttons}${more}</div>` : `<span class="finish-lead">Everything is decided</span><span>${plural(willExport, 'file', 'files')} will be exported${blocked ? ` and ${blocked} held back` : ''}.</span>`}</div>
+        ${leaves}
+        <div class="row"><button class="btn primary" id="finish" type="button" ${list.length ? 'disabled' : ''}>${list.length ? icon('lock') : ''}Finish review</button></div></div>`;
     }
     const c = d.doubleCheck || { ran: false };
     const passed = c.ran && c.passed;
-    const note = !c.ran ? '<span id="check-state">Next: the double check. It also runs when you export.</span>'
-      : passed ? `<span class="chip cloaked" id="check-state">Double check passed</span> ${esc(c.whenText)}.${c.counts.places ? ` ${plural(c.counts.places, 'finding', 'findings')} marked fine by a person.` : ' Nothing left to decide.'}${c.hidden ? ` ${plural(c.hidden, 'finding', 'findings')} hidden during the check.` : ''}`
-        : `<span class="chip partial" id="check-state">Double check: ${c.counts.undecided} to decide</span> in ${plural(c.counts.filesFailing, 'file', 'files')}.`;
+    const note = !c.ran ? '<span class="long" id="check-state">Next: the double check. It also runs when you export.</span>'
+      : passed ? `<span class="chip cloaked" id="check-state">Double check passed</span><span class="long">${esc(c.whenText)}.${c.counts.places ? ` ${plural(c.counts.places, 'finding', 'findings')} marked fine by a person.` : ' Nothing left to decide.'}${c.hidden ? ` ${plural(c.hidden, 'finding', 'findings')} hidden during the check.` : ''}</span>`
+        : `<span class="chip partial" id="check-state">Double check: ${c.counts.undecided} to decide</span><span class="long">in ${plural(c.counts.filesFailing, 'file', 'files')}.</span>`;
     const exporting = state.chrono?.confirmed
-      ? `<button class="btn ${passed ? 'primary' : ''}" id="export-chrono">Export the chronology only (recommended)</button><button class="btn" id="export">Export all files…</button>`
-      : `<button class="btn ${passed ? 'primary' : ''}" id="export">Export cloaked copies…</button>`;
-    return `<div id="finish-note"><span class="chip cloaked">Review finished</span> by ${esc(d.complete.by)} on ${esc(d.complete.whenText)}. ${plural(willExport, 'file', 'files')} ready to export${blocked ? `, ${blocked} held back` : ''}. ${note}</div>
-      <div class="row"><button class="btn ${passed ? '' : 'primary'}" id="run-check" ${state.checking ? 'disabled' : ''}>${c.ran ? 'Run the double check again' : 'Run the double check'}</button>${exporting}</div>`;
+      ? `<button class="btn ${passed ? 'primary' : ''}" id="export-chrono" type="button">${icon('out')}<span class="c-full">Export the chronology only (recommended)</span><span class="c-short">Chronology only</span></button><button class="btn" id="export" type="button"><span class="c-full">Export all files…</span><span class="c-short">All files…</span></button>`
+      : `<button class="btn ${passed ? 'primary' : ''}" id="export" type="button">${icon('out')}<span class="c-full">Export cloaked copies…</span><span class="c-short">Export…</span></button>`;
+    const lead = state.exported ? 'Exported' : 'Review finished';
+    const by = `<span class="long">by ${esc(d.complete.by)} on ${esc(d.complete.whenText)}. ${plural(willExport, 'file', 'files')} ready to export${blocked ? `, ${blocked} held back` : ''}.</span>`;
+    return `<div class="finish ${state.exported ? 'is-exported' : passed ? 'is-ready' : 'is-done'}">
+      <div class="finish-note" id="finish-note"><span class="finish-lead">${lead}</span>${by}${note}</div>
+      ${leaves}
+      <div class="row"><button class="btn ${passed ? '' : 'primary'}" id="run-check" type="button" ${state.checking ? 'disabled' : ''}>${c.ran ? 'Run the double check again' : 'Run the double check'}</button>${exporting}</div></div>`;
   }
 
   function panel(html) { document.getElementById('panel').innerHTML = html; }
 
+  // The few words around the word to decide, with the word marked. The engine already cuts the excerpt to about 100 characters.
+  function excerpt(text, word) {
+    const at = text.indexOf(word);
+    if (at < 0) return langRuns(tags(text));
+    return langRuns(`${tags(text.slice(0, at))}<mark>${esc(word)}</mark>${tags(text.slice(at + word.length))}`);
+  }
+  const scriptChip = (word) => (/[؀-ࣿﭐ-ﻼ]/.test(word) ? '<span class="chip kind">Jawi script</span>' : /[஀-௿]/.test(word) ? '<span class="chip kind">Tamil script</span>' : /[㐀-鿿豈-﫿]/.test(word) ? '<span class="chip kind">Chinese script</span>' : '');
+
   function panelUnsure() {
     const d = state.review;
-    if (!d.unsure.length) return panel('<div class="msg ok">Nothing left that the tool is unsure about.</div>');
-    panel(`<p class="muted small">These words look like they could be names. For each one, hide it or say it is fine. Your answer applies to every file and is remembered for this matter.</p>
-      <table><thead><tr><th>Word</th><th>Where</th><th></th></tr></thead><tbody>${d.unsure.map((u, i) => `<tr>
-        <td><b>${esc(u.text)}</b>${u.examples.map((x) => `<div class="example">${tags(x)}</div>`).join('')}</td>
-        <td class="num">${plural(u.places, 'place', 'places')}<br><span class="muted small">${plural(u.files, 'file', 'files')}</span></td>
-        <td><div class="row"><button class="btn small primary" data-hide="${i}" data-kind="PERSON">Hide: person</button><button class="btn small" data-hide="${i}" data-kind="COMPANY">Hide: company</button><button class="btn small" data-hide="${i}" data-kind="OTHER">Hide: other</button><button class="btn small" data-fine="${i}">It's fine</button></div></td></tr>`).join('')}</tbody></table>`);
+    if (!d.unsure.length) return panel(empty('check', 'Nothing left to decide', 'Nothing left that the tool is unsure about.'));
+    panel(`<div class="decide">
+      <div class="decide-head"><span><b>${plural(d.unsure.length, 'word', 'words')}</b> to decide. Your answer applies to every file and is remembered for this matter.</span></div>
+      ${d.unsure.map((u, i) => `<div class="decide-row"><div class="what"><div class="word"><b>${escL(u.text)}</b>${scriptChip(u.text)}</div>
+        ${u.examples.slice(0, 1).map((x) => `<div class="example">${excerpt(x, u.text)}</div>`).join('')}
+        <div class="meta">${u.where ? `<span class="where">${escL(u.where)}${u.files > 1 ? ` and ${u.files - 1} more` : ''}</span>` : ''}<span><b>${num(u.places)}</b> ${u.places === 1 ? 'place' : 'places'} in <b>${num(u.files)}</b> ${u.files === 1 ? 'file' : 'files'}</span></div></div>
+        <div class="actions"><span class="seg-label" id="hl${i}">Hide as</span><div class="seg" role="group" aria-labelledby="hl${i}"><button type="button" data-hide="${i}" data-kind="PERSON">Person</button><button type="button" data-hide="${i}" data-kind="COMPANY">Company</button><button type="button" data-hide="${i}" data-kind="OTHER">Other</button></div><span class="fine"><button class="btn" type="button" data-fine="${i}">It's fine</button></span></div></div>`).join('')}
+    </div>`);
     on('[data-hide]', 'click', (e) => act({ type: 'add', text: d.unsure[+e.currentTarget.dataset.hide].text, kind: e.currentTarget.dataset.kind }));
     on('[data-fine]', 'click', (e) => act({ type: 'fine', text: d.unsure[+e.currentTarget.dataset.fine].text }));
   }
 
   function panelJoined() {
     const d = state.review;
-    if (!d.merges.length && !d.shortForms.length) return panel('<div class="msg ok">No joined names waiting to be checked.</div>');
+    if (!d.merges.length && !d.shortForms.length) return panel(empty('check', 'No joined names waiting', 'No joined names waiting to be checked.'));
     // Variants that differ only in punctuation or spacing can be confirmed together.
     // "(M)", a different ending or a different spelling is always its own decision.
     const groups = new Map();
     for (const m of d.merges.filter((x) => x.onlyPunctuation)) groups.set(m.into, [...(groups.get(m.into) || []), m]);
     const grouped = new Set([...groups].filter(([, list]) => list.length >= 2).map(([into]) => into));
     const single = d.merges.filter((m) => !(m.onlyPunctuation && grouped.has(m.into)));
-    panel(`<p class="muted small">The tool gave these the same tag because they look like the same person or company. Confirm each one, or split it off.</p>
-      ${[...grouped].map((into) => { const list = groups.get(into); return `<div class="card white"><b>${plural(list.length, 'variant', 'variants')} of ${esc(list[0].intoValue)}</b> <span class="tag">{{${esc(into)}}}</span>
-        <div class="small muted">These differ only in punctuation or spacing: ${list.map((m) => esc(m.value)).join(' · ')}</div>
-        <div class="row mt-2"><button class="btn small primary" data-group="${esc(into)}">Confirm all ${list.length} in this group</button></div></div>`; }).join('')}
-      ${single.length || d.shortForms.length ? `<table><thead><tr><th>This</th><th>was joined to</th><th>Why</th><th></th></tr></thead><tbody>
-      ${single.map((m) => `<tr><td><b>${esc(m.value)}</b><br><span class="tag">{{${esc(m.tag)}}}</span></td><td>${esc(m.intoValue)}<br><span class="tag">{{${esc(m.into)}}}</span></td><td class="small">${esc(m.reason)}</td>
-        <td><div class="row"><button class="btn small primary" data-same="${esc(m.tag)}">Same</button><button class="btn small" data-split="${esc(m.tag)}">Different: split</button></div></td></tr>`).join('')}
-      ${d.shortForms.map((a, i) => `<tr><td><b>${esc(a.value)}</b><br><span class="tag">{{${esc(a.tag)}}}</span></td><td>${esc(a.belongsToValue)}<br><span class="tag">{{${esc(a.belongsTo)}}}</span></td><td class="small">This short form could also mean ${esc(a.alsoValue)}.</td>
-        <td><div class="row"><button class="btn small primary" data-short-ok="${i}">That's right</button><button class="btn small" data-short-split="${i}">Give it its own tag</button></div></td></tr>`).join('')}
+    const acts = (yes, no) => `<td class="act"><div class="row tight">${yes}${no}</div></td>`;
+    panel(`<p class="muted small mb-3 panel-intro">The tool gave these the same tag because they look like the same person or company. Confirm each one, or split it off.</p>
+      ${[...grouped].map((into) => { const list = groups.get(into); return `<div class="card group-card"><div class="row between"><div><b>${plural(list.length, 'variant', 'variants')} of ${escL(list[0].intoValue)}</b> ${tagHtml(into)}
+        <div class="small muted mt-2 gc-sub">These differ only in punctuation or spacing:</div>
+        <div class="taglist mt-2">${list.map((m) => `<span class="chip kind">${escL(m.value)}</span>`).join('')}</div></div>
+        <button class="btn small primary" data-group="${esc(into)}" type="button">Confirm all ${list.length} in this group</button></div></div>`; }).join('')}
+      ${single.length || d.shortForms.length ? `<table class="joined-table"><thead><tr><th>This</th><th>was joined to</th><th>Why</th><th></th></tr></thead><tbody>
+      ${single.map((m) => `<tr><td><b>${escL(m.value)}</b><br>${tagHtml(m.tag)}</td><td>${escL(m.intoValue)}<br>${tagHtml(m.into)}</td><td class="small why">${esc(m.reason)}</td>
+        ${acts(`<button class="btn small primary" data-same="${esc(m.tag)}" type="button">Same</button>`, `<button class="btn small" data-split="${esc(m.tag)}" type="button">Different: split</button>`)}</tr>`).join('')}
+      ${d.shortForms.map((a, i) => `<tr><td><b>${escL(a.value)}</b><br>${tagHtml(a.tag)}</td><td>${escL(a.belongsToValue)}<br>${tagHtml(a.belongsTo)}</td><td class="small why">This short form could also mean ${escL(a.alsoValue)}.</td>
+        ${acts(`<button class="btn small primary" data-short-ok="${i}" type="button">That's right</button>`, `<button class="btn small" data-short-split="${i}" type="button">Give it its own tag</button>`)}</tr>`).join('')}
       </tbody></table>` : ''}`);
     on('[data-group]', 'click', (e) => act({ type: 'confirmGroup', into: e.currentTarget.dataset.group }));
     on('[data-same]', 'click', (e) => act({ type: 'confirmMerge', tag: e.currentTarget.dataset.same }));
@@ -400,11 +538,22 @@
     const form = term.forms.find((f) => f.tag === tag);
     const value = form?.value ?? term.value;
     const whole = !tag.includes('.');
-    const yes = await confirmDialog({ title: 'Stop hiding this?', body: `<b>${esc(value)}</b> will be shown as written in ${whole ? 'every place it appears' : 'every place this form of it appears'}, and it will be in the exported copies.`, yes: 'Yes, stop hiding it' });
+    const places = form ? form.places : term.places;
+    const files = form ? form.files : term.files;
+    const where = `${plural(places, 'place', 'places')} in ${plural(files, 'file', 'files')}`;
+    const yes = await confirmDialog({
+      title: 'Stop hiding this?',
+      step: term.patternRule ? 1 : 0,
+      kind: term.patternRule ? '<span class="chip manual">Number or ID</span>' : '',
+      ledger: [['Hidden now as', tagHtml(tag)], ['Will be shown as', escL(value), true], ['Where', where]],
+      leaves: `<b>It will leave this computer.</b> It will be in the exported copies, in ${whole ? 'every place it appears' : 'every place this form of it appears'}.`,
+      notes: [...(term.patternRule ? [{ icon: 'info', html: `Cloak found it because it looks like ${esc(TYPE_WORDS[term.type] ? `a ${TYPE_WORDS[term.type]}` : 'a number or identifier')}. <b>You will be asked once more.</b>` }] : []), recorded()],
+      yes: 'Yes, stop hiding it',
+    });
     if (!yes) return;
     let confirmations = 1;
     if (term.patternRule) {
-      const sure = await confirmDialog({ title: 'Are you sure?', body: `Cloak found <b>${esc(value)}</b> because it looks like a ${esc(TYPE_WORDS[term.type] || 'number or identifier')}. That kind of detail identifies a person or an account. If you go ahead it goes out in the exported copies.`, yes: 'Yes, show it', danger: true });
+      const sure = await confirmDialog({ title: 'Are you sure?', step: 2, body: `Cloak found <b>${esc(value)}</b> because it looks like a ${esc(TYPE_WORDS[term.type] || 'number or identifier')}. That kind of detail identifies a person or an account. If you go ahead it goes out in the exported copies.`, leaves: `<b>Leaves this computer:</b> ${esc(value)}, in ${where}.`, yes: 'Yes, show it', danger: true });
       if (!sure) return;
       confirmations = 2;
     }
@@ -418,20 +567,21 @@
     // A big matter can have thousands of terms: show the first part, search for the rest.
     const LIMIT = 300;
     const list = state.showAll || matching.length <= LIMIT ? matching : matching.slice(0, LIMIT);
-    panel(`<div class="row"><input type="text" id="filter" placeholder="Search by name or tag" value="${esc(state.filter)}" autocomplete="off"></div>
-      <table><thead><tr><th>Tag</th><th>Real value</th><th>Found by</th><th class="num">Places</th><th class="num">Files</th><th></th></tr></thead><tbody>
+    panel(`<div class="tablebar"><label class="vh" for="filter">Search by name or tag</label><input type="search" id="filter" placeholder="Search ${num(d.terms.length)} names and tags" value="${esc(state.filter)}" autocomplete="off"></div>
+      ${list.length ? `<table><thead><tr><th>Tag</th><th>Real value</th><th>Found by</th><th class="num">Places</th><th class="num">Files</th><th></th></tr></thead><tbody>
       ${list.map((t) => `<tr>
-        <td><span class="tag">{{${esc(t.tag)}}}</span></td>
-        <td><b>${esc(t.value)}</b>${t.forms.length > 1 ? ` <button class="link small" data-open="${esc(t.tag)}">${state.openTag === t.tag ? 'hide' : `+ ${t.forms.length - 1} other form${t.forms.length > 2 ? 's' : ''}`}</button>` : ''}</td>
-        <td class="small muted">${esc(t.how)}</td><td class="num">${t.places}</td><td class="num">${t.files}</td>
-        <td><div class="row"><button class="btn small danger" data-remove="${esc(t.tag)}">Don't hide</button>
+        <td class="nowrap">${tagHtml(t.tag)}</td>
+        <td><b>${escL(t.value)}</b>${t.forms.length > 1 ? ` <button class="link small" data-open="${esc(t.tag)}" type="button">${state.openTag === t.tag ? 'hide' : `+ ${t.forms.length - 1} other form${t.forms.length > 2 ? 's' : ''}`}</button>` : ''}</td>
+        <td class="small muted">${esc(t.how)}${t.patternRule ? ' <span class="chip manual">Asks twice</span>' : ''}</td><td class="num">${num(t.places)}</td><td class="num">${num(t.files)}</td>
+        <td class="act"><div class="row tight"><button class="btn small ${t.patternRule ? 'danger' : 'quiet'}" data-remove="${esc(t.tag)}" type="button">${icon('eyeoff')}Don't hide</button>
           <select class="merge" data-merge="${esc(t.tag)}" aria-label="Merge ${esc(t.value)} into another tag"><option value="">Same as…</option>${d.terms.filter((o) => o.type === t.type && o.tag !== t.tag).map((o) => `<option value="${esc(o.tag)}">${esc(o.value)} (${esc(o.tag)})</option>`).join('')}</select></div></td></tr>
-        ${state.openTag === t.tag ? t.forms.filter((f) => f.tag !== t.tag).map((f) => `<tr class="sub"><td><span class="tag">{{${esc(f.tag)}}}</span></td><td>${esc(f.value)}</td><td></td><td class="num">${f.places}</td><td class="num">${f.files}</td>
-          <td><div class="row"><button class="btn small danger" data-remove="${esc(f.tag)}">Don't hide this form</button><button class="btn small" data-split-form="${esc(f.tag)}">Split off</button></div></td></tr>`).join('') : ''}`).join('')}
-      </tbody></table>
-      ${list.length < matching.length ? `<p class="small muted">Showing ${list.length} of ${matching.length.toLocaleString()}. Use the search box, or <button class="link" id="show-all">show them all</button>.</p>` : ''}
+        ${state.openTag === t.tag ? t.forms.filter((f) => f.tag !== t.tag).map((f) => `<tr class="sub"><td>${tagHtml(f.tag)}</td><td>${escL(f.value)}</td><td></td><td class="num">${num(f.places)}</td><td class="num">${num(f.files)}</td>
+          <td class="act"><div class="row tight"><button class="btn small quiet" data-remove="${esc(f.tag)}" type="button">Don't hide this form</button><button class="btn small" data-split-form="${esc(f.tag)}" type="button">Split off</button></div></td></tr>`).join('') : ''}`).join('')}
+      </tbody></table>` : empty('search', `No name or tag matches “${state.filter}”`, 'Try part of the name, or clear the search to see everything that was replaced.', '<button class="btn small mt-2" id="clear-filter" type="button">Clear the search</button>')}
+      ${list.length < matching.length ? `<p class="tablefoot">Showing ${num(list.length)} of ${num(matching.length)}. Use the search box, or <button class="link" id="show-all" type="button">show them all</button>.</p>` : ''}
       ${d.kept.length ? `<p class="small muted">Left as they are, at a reviewer's request: ${d.kept.map(esc).join(', ')}. To hide one again, add it in the box above.</p>` : ''}`);
     on('#filter', 'input', (e) => { state.filter = e.target.value; const at = e.target.selectionStart; panelTerms(); const f = document.getElementById('filter'); f.focus(); f.setSelectionRange(at, at); });
+    on('#clear-filter', 'click', () => { state.filter = ''; panelTerms(); });
     on('[data-open]', 'click', (e) => { state.openTag = state.openTag === e.currentTarget.dataset.open ? null : e.currentTarget.dataset.open; panelTerms(); });
     on('#show-all', 'click', () => { state.showAll = true; panelTerms(); });
     on('[data-remove]', 'click', (e) => removeTerm(e.currentTarget.dataset.remove));
@@ -439,14 +589,29 @@
     on('[data-merge]', 'change', (e) => { if (e.target.value) act({ type: 'merge', from: e.target.dataset.merge, into: e.target.value }); });
   }
 
+  const FILE_FILTERS = [['all', 'All', () => true], ['check', 'To check', (f) => f.status === 'manual' && !f.checkedBy], ['blocked', 'Blocked', (f) => !f.willExport && f.status !== 'container'], ['ocr', 'OCR', (f) => f.ocr.length > 0]];
+
   function panelFiles() {
     const d = state.review;
-    panel(`<table><thead><tr><th>#</th><th>File</th><th>Result</th><th>Read</th><th></th></tr></thead><tbody>${d.files.map((f) => `<tr>
+    const q = state.fileSearch.trim().toLowerCase();
+    const filter = FILE_FILTERS.find((x) => x[0] === state.fileFilter) || FILE_FILTERS[0];
+    const shown = d.files.filter((f) => filter[2](f) && (!q || f.name.toLowerCase().includes(q) || String(f.number).includes(q)));
+    const LIMIT = 300;
+    const list = state.showAllFiles || shown.length <= LIMIT ? shown : shown.slice(0, LIMIT);
+    const row = (f) => `<tr>
       <td class="num">${f.number}</td>
-      <td>${esc(f.name)}${f.inside ? `<div class="reason">${esc(f.inside)}</div>` : ''}${f.reasons.map((r) => `<div class="reason">${esc(r)}</div>`).join('')}</td>
-      <td><span class="chip ${f.status}">${STATUS[f.status] || esc(f.status)}</span>${f.nonLatinShowing ? `<div><span class="chip manual">${f.nonLatinShowing} non-Latin character${f.nonLatinShowing === 1 ? '' : 's'} showing</span></div>` : ''}${f.nonLatinHidden ? '<div><span class="chip cloaked">Non-Latin text hidden</span></div>' : ''}${f.checkedBy ? `<div class="reason">Checked by ${esc(f.checkedBy.by)}<br>${esc(f.checkedBy.whenText)}</div>` : ''}</td>
-      <td class="small">${f.found ? `${f.read} of ${f.found} ${esc(f.unit)}<br>` : ''}${f.characters ? `${f.characters.toLocaleString()} characters` : ''}${f.ocr.length ? `<br><span class="chip ocr">OCR</span> ${esc(f.ocr.join(', '))}` : ''}${f.fromCache ? '<br><span class="muted">not re-read (unchanged)</span>' : ''}</td>
-      <td>${f.nonLatinShowing ? `<div class="row"><button class="btn small primary" data-hide-nl="${f.number}">Hide all non-Latin text</button>` : ''}${f.status === 'manual' && !f.checkedBy ? `<button class="btn small ${f.nonLatinShowing ? '' : 'primary'}" data-check="${f.number}">Check this file…</button>` : f.status === 'cloaked' || f.checkedBy ? `<button class="btn small" data-view="${f.number}">View cloaked text</button>` : ''}${f.nonLatinShowing ? '</div>' : ''}</td></tr>`).join('')}</tbody></table>`);
+      <td>${escL(f.name)}${f.inside ? `<span class="reason">${esc(f.inside)}</span>` : ''}${f.reasons.map((r) => `<span class="reason">${esc(r)}</span>`).join('')}</td>
+      <td class="nowrap res"><span class="chip ${f.status}">${STATUS[f.status] || esc(f.status)}</span>${f.nonLatinShowing ? `<div class="mt-2"><span class="chip manual">${f.nonLatinShowing} non-Latin character${f.nonLatinShowing === 1 ? '' : 's'} showing</span></div>` : ''}${f.nonLatinHidden ? '<div class="mt-2"><span class="chip cloaked">Non-Latin text hidden</span></div>' : ''}${f.checkedBy ? `<span class="reason">Checked by ${esc(f.checkedBy.by)}<br>${esc(f.checkedBy.whenText)}</span>` : ''}</td>
+      <td class="small nowrap read">${f.found ? `<span class="rd">${f.read} of ${f.found} ${esc(f.unit)}</span>` : ''}${f.characters ? `<span class="rd">${f.characters.toLocaleString()} characters</span>` : ''}${f.ocr.length ? `<span class="rd"><span class="chip ocr">OCR</span> ${esc(f.ocr.join(', '))}</span>` : ''}${f.fromCache ? '<span class="rd muted">not re-read (unchanged)</span>' : ''}</td>
+      <td>${f.nonLatinShowing ? `<div class="row tight"><button class="btn small primary" data-hide-nl="${f.number}" type="button">Hide all non-Latin text</button>` : ''}${f.status === 'manual' && !f.checkedBy ? `<button class="btn small ${f.nonLatinShowing ? '' : 'primary'}" data-check="${f.number}" type="button">Check this file…</button>` : f.status === 'cloaked' || f.checkedBy ? `<button class="btn small" data-view="${f.number}" type="button">View cloaked text</button>` : ''}${f.nonLatinShowing ? '</div>' : ''}</td></tr>`;
+    panel(`<div class="tablebar"><label class="vh" for="filesearch">Find a file</label><input type="search" id="filesearch" placeholder="Find a file by name" value="${esc(state.fileSearch)}" autocomplete="off"><div class="filters" role="group" aria-label="Show">${FILE_FILTERS.map(([id, label, test]) => `<button class="filter" type="button" data-file-filter="${id}" aria-pressed="${filter[0] === id}">${label}<b>${num(d.files.filter(test).length)}</b></button>`).join('')}</div></div>
+      ${list.length ? `<table class="files-table"><thead><tr><th class="num">#</th><th>File</th><th>Result</th><th>Read</th><th></th></tr></thead><tbody>${list.map(row).join('')}</tbody></table>`
+        : empty('search', q ? `No file matches “${state.fileSearch}”` : 'No files here', q ? `Try part of the file name, or clear the filter to see all ${num(d.files.length)} files.` : 'No file is in this group.', '<button class="btn small mt-2" id="clear-files" type="button">Clear the search</button>')}
+      ${list.length < shown.length ? `<p class="tablefoot">Showing ${num(list.length)} of ${num(shown.length)}. Use the search box or a filter to find the rest, or <button class="link" id="show-all-files" type="button">show them all</button>.</p>` : ''}`);
+    on('#filesearch', 'input', (e) => { state.fileSearch = e.target.value; const at = e.target.selectionStart; panelFiles(); const f = document.getElementById('filesearch'); f.focus(); f.setSelectionRange(at, at); });
+    on('[data-file-filter]', 'click', (e) => { state.fileFilter = e.currentTarget.dataset.fileFilter; panelFiles(); });
+    on('#clear-files', 'click', () => { state.fileSearch = ''; state.fileFilter = 'all'; panelFiles(); });
+    on('#show-all-files', 'click', () => { state.showAllFiles = true; panelFiles(); });
     on('[data-hide-nl]', 'click', (e) => act({ type: 'hideNonLatin', number: +e.currentTarget.dataset.hideNl }));
     on('[data-check]', 'click', (e) => viewFile(+e.currentTarget.dataset.check, true));
     on('[data-view]', 'click', (e) => viewFile(+e.currentTarget.dataset.view, false));
@@ -459,30 +624,37 @@
     const showing = row?.nonLatinShowing || 0;
     const overlay = document.createElement('div');
     overlay.className = 'overlay';
-    overlay.innerHTML = `<div class="dialog" role="dialog" aria-modal="true">
-      <h2>${esc(f.name)}</h2>
+    const lock = icon('lock');
+    overlay.innerHTML = `<div class="dialog viewer" role="dialog" aria-modal="true" aria-labelledby="vt">
+      <div class="viewer-head"><div><h2 id="vt">${escL(f.name)}</h2>${row ? `<span class="chip ${showing && approve ? 'manual' : row.status}">${showing && approve ? `${showing} non-Latin character${showing === 1 ? '' : 's'} showing` : STATUS[row.status] || esc(row.status)}</span>` : ''}</div></div>
       ${f.reasons.map((r) => message(r, 'warn')).join('')}
       ${approve ? '<p class="small">This is the cloaked text as it would be exported. Read it against the original. If a name is still showing, close this, add it in the box at the top, and come back.</p>' : ''}
-      <pre class="filetext">${tags(f.text)}</pre>
+      <pre class="filetext">${langRuns(tags(f.text), 'nonlatin')}</pre>
       ${approve && showing ? `<div class="msg warn"><b>${showing} character${showing === 1 ? '' : 's'} of non-Latin text (Chinese, Tamil or similar) ${showing === 1 ? 'is' : 'are'} still showing.</b> Cloak cannot check names in those scripts. The safe choice is to hide every passage: each becomes one tag and is put back when you restore a draft.</div>
-        <div class="row"><button class="btn primary" id="hide-nl">Hide all non-Latin text in this file</button><button class="btn" id="close">Close</button></div>
-        <details class="more"><summary>Approve it with the non-Latin text showing</summary>
+        <div class="row mt-3" id="safe-row"><button class="btn primary" id="hide-nl" type="button">Hide all non-Latin text in this file</button><button class="btn" id="close" type="button">Close</button></div>
+        <details class="more" open><summary>Approve it with the non-Latin text showing</summary>
           <p class="small">The text will go out as written. Only do this if you have read it and it identifies no one. Type <b>APPROVE</b> to confirm.</p>
-          <div class="row"><input type="text" id="typed" autocomplete="off" placeholder="APPROVE" class="w-sm"><button class="btn" id="approve" disabled>Approve this file</button></div></details>`
-    : approve ? `<label class="check"><input type="checkbox" id="checked"> I have read this file against the original and it is safe to export</label>
-        <div class="row"><button class="btn" id="close">Close</button><button class="btn primary" id="approve" disabled>Approve this file</button></div>`
-      : '<div class="row"><button class="btn" id="close">Close</button></div>'}</div>`;
+          <div class="typed"><label class="vh" for="typed">Type APPROVE</label><input type="text" id="typed" autocomplete="off" placeholder="APPROVE"><button class="btn" id="approve" type="button" disabled>${lock}Approve this file</button></div></details>`
+    : approve ? `<label class="check"><input type="checkbox" id="checked"><span>I have read this file against the original and it is safe to export</span></label>
+        <div class="row"><button class="btn" id="close" type="button">Close</button><button class="btn primary" id="approve" type="button" disabled>${lock}Approve this file</button></div>`
+      : '<div class="row"><button class="btn" id="close" type="button">Close</button></div>'}</div>`;
     document.body.appendChild(overlay);
-    const close = () => overlay.remove();
+    lockMain(true);
+    const close = () => { lockMain(false); document.removeEventListener('keydown', onKey); overlay.remove(); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    // The lock shows only while Approve is locked.
+    const setApprove = (ok) => { const b = overlay.querySelector('#approve'); b.disabled = !ok; b.querySelector('svg')?.toggleAttribute('hidden', ok); };
     overlay.querySelector('#close').addEventListener('click', close);
-    overlay.querySelector('#checked')?.addEventListener('change', (e) => { overlay.querySelector('#approve').disabled = !e.target.checked; });
-    overlay.querySelector('#typed')?.addEventListener('input', (e) => { overlay.querySelector('#approve').disabled = e.target.value.trim().toUpperCase() !== 'APPROVE'; });
+    overlay.querySelector('#checked')?.addEventListener('change', (e) => setApprove(e.target.checked));
+    overlay.querySelector('#typed')?.addEventListener('input', (e) => setApprove(e.target.value.trim().toUpperCase() === 'APPROVE'));
     overlay.querySelector('#hide-nl')?.addEventListener('click', async () => {
       try { state.review = await call('action', { type: 'hideNonLatin', number }); close(); viewFile(number, true); } catch (err) { close(); review(err.message); }
     });
     overlay.querySelector('#approve')?.addEventListener('click', async () => {
       try { state.review = await call('approve', { number, confirmation: overlay.querySelector('#typed')?.value || '' }); close(); review(); } catch (err) { close(); review(err.message); }
     });
+    (overlay.querySelector('#close') || overlay).focus();
   }
 
 
@@ -492,15 +664,16 @@
 
   async function panelFacts() {
     const d = state.review;
-    panel(`<p class="muted small">These dates, amounts, reference numbers, places and titles are hidden because this matter is Strict. They are kept apart from the names. Show one only if a draft needs it: the matter records who did it and when.</p>
-      <table><thead><tr><th>Tag</th><th>What</th><th>As written</th><th>Where</th><th></th></tr></thead><tbody>${d.facts.map((r, i) => `<tr>
-        <td><span class="tag">{{${esc(r.tag)}}}</span></td><td>${esc(KIND_WORDS[r.kind] || r.kind)}</td>
-        <td>${r.forms.map((f) => `${esc(f.surface)} <span class="muted small">${plural(f.count, 'place', 'places')}</span>`).join('<br>')}</td>
+    panel(`<p class="muted small mb-3 panel-intro">These dates, amounts, reference numbers, places and titles are hidden because this matter is Strict. They are kept apart from the names. Show one only if a draft needs it: the matter records who did it and when.</p>
+      <table><thead><tr><th>Tag</th><th>What</th><th>As written</th><th class="num">Where</th><th></th></tr></thead><tbody>${d.facts.map((r, i) => `<tr>
+        <td class="nowrap">${tagHtml(r.tag)}</td><td>${esc(KIND_WORDS[r.kind] || r.kind)}</td>
+        <td>${r.forms.map((f) => `${escL(f.surface)} <span class="muted small">${plural(f.count, 'place', 'places')}</span>`).join('<br>')}</td>
         <td class="num">${plural(r.count, 'place', 'places')}</td>
-        <td>${r.unblurred ? `<span class="chip manual">Shown</span> <button class="btn small" data-reblur="${i}">Hide again</button>` : `<button class="btn small" data-unblur="${i}">Show this one</button>`}</td></tr>`).join('')}</tbody></table>`);
+        <td class="act">${r.unblurred ? `<span class="chip manual">Shown</span> <button class="btn small" data-reblur="${i}" type="button">Hide again</button>` : `<button class="btn small" data-unblur="${i}" type="button">Show this one</button>`}</td></tr>`).join('')}</tbody></table>`);
     on('[data-unblur]', 'click', async (e) => {
       const r = d.facts[+e.currentTarget.dataset.unblur];
-      const yes = await confirmDialog({ title: 'Show this fact?', body: `<b>${esc(r.forms.map((f) => f.surface).join(' · '))}</b> will be written as it is in every file and in the exported copies. The matter records that you did this.`, yes: 'Yes, show it', danger: true });
+      const surface = r.forms.map((f) => f.surface).join(' · ');
+      const yes = await confirmDialog({ title: 'Show this fact?', ledger: [['Hidden now as', tagHtml(r.tag)], ['Will be shown as', escL(surface), true], ['Where', plural(r.count, 'place', 'places')]], leaves: '<b>It will leave this computer</b> as written, in every file and in the exported copies.', notes: [recorded()], yes: 'Yes, show it', danger: true });
       if (yes) act({ type: 'unblurFact', kind: r.kind, key: r.key });
     });
     on('[data-reblur]', 'click', (e) => { const r = d.facts[+e.currentTarget.dataset.reblur]; act({ type: 'reblurFact', kind: r.kind, key: r.key }); });
@@ -513,9 +686,14 @@
     return new Promise((resolve) => {
       const o = document.createElement('div');
       o.className = 'overlay';
-      o.innerHTML = `<div class="dialog narrow-dialog" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2>${fields.map((f) => `<div class="field"><label for="fd-${f.id}">${esc(f.label)}</label>${f.rows ? `<textarea id="fd-${f.id}" rows="${f.rows}">${esc(f.value || '')}</textarea>` : `<input type="text" id="fd-${f.id}" value="${esc(f.value || '')}" autocomplete="off">`}</div>`).join('')}<div class="row"><button class="btn" id="fd-no">Cancel</button><button class="btn primary" id="fd-yes">${esc(yes)}</button></div></div>`;
+      // "Date (for example ...)": the example is a quiet hint after the label.
+      const label = (text) => { const m = /^(.*?)\s*(\(.*\))$/.exec(text); return m ? `${esc(m[1])} <span class="muted small">${esc(m[2])}</span>` : esc(text); };
+      o.innerHTML = `<div class="dialog narrow-dialog" role="alertdialog" aria-modal="true" aria-labelledby="dt"><h2 id="dt">${esc(title)}</h2>${fields.map((f) => `<div class="field"><label for="fd-${f.id}">${label(f.label)}</label>${f.rows ? `<textarea id="fd-${f.id}" rows="${f.rows}" class="serif">${esc(f.value || '')}</textarea>` : `<input type="text" id="fd-${f.id}" value="${esc(f.value || '')}" autocomplete="off">`}</div>`).join('')}<div class="row"><button class="btn" id="fd-no" type="button">Cancel</button><button class="btn primary" id="fd-yes" type="button">${esc(yes)}</button></div></div>`;
       document.body.appendChild(o);
-      const done = (v) => { o.remove(); resolve(v); };
+      lockMain(true);
+      const done = (v) => { document.removeEventListener('keydown', onKey); lockMain(false); o.remove(); resolve(v); };
+      const onKey = (e) => { if (e.key === 'Escape') done(null); };
+      document.addEventListener('keydown', onKey);
       o.querySelector('#fd-no').addEventListener('click', () => done(null));
       o.querySelector('#fd-yes').addEventListener('click', () => done(Object.fromEntries(fields.map((f) => [f.id, o.querySelector(`#fd-${f.id}`).value]))));
       o.querySelector('input,textarea')?.focus();
@@ -532,7 +710,7 @@
   }
 
   async function panelChronology() {
-    panel('<p class="muted">Loading…</p>');
+    panel('<p class="muted"><span class="spinner" aria-hidden="true"></span> Loading…</p>');
     try { state.chrono = await call('chronology', { undated: state.showUndated }); } catch (err) { return panel(message(err.message)); }
     drawChronology();
   }
@@ -540,31 +718,39 @@
   function drawChronology(error) {
     const c = state.chrono;
     if (!c) {
-      panel(`<div class="card"><p>No chronology yet. Cloak reads every sentence with a date, an amount of money or a named person or company, and puts them in one table sorted by date. Rows about the same event are grouped, and rows that disagree are flagged. No AI is used.</p><button class="btn primary" id="chrono-build">Build the chronology</button></div>`);
+      panel(empty('clock', 'No chronology yet', 'Cloak reads every sentence with a date, an amount of money or a named person or company, and puts them in one table sorted by date. Rows about the same event are grouped, and rows that disagree are flagged. No AI is used.', '<button class="btn primary mt-3" id="chrono-build" type="button">Build the chronology</button>'));
       return on('#chrono-build', 'click', async () => {
         try { state.chrono = await call('chronology', { build: true, undated: state.showUndated }); state.review = await call('review'); review(); } catch (err) { drawChronology(); panel(`${message(err.message)}${document.getElementById('panel').innerHTML}`); }
       });
     }
+    const people = (r) => (r.people.length ? r.people.map((p) => `<span class="pn">${escL(p)}</span>`).join('') : '<span class="pn"><span class="muted">-</span></span>');
     panel(`${error ? message(error) : ''}
-      ${c.missing.length ? `<div class="msg warn" id="chrono-missing"><b>Events in these files are missing from this chronology.</b><ul>${c.missing.map((m) => `<li>${esc(m.file)} <span class="muted">(${esc(m.why)})</span></li>`).join('')}</ul></div>` : ''}
-      <p class="muted small">${plural(c.dated, 'row', 'rows')} with a date${c.notUnderstood ? `, ${plural(c.notUnderstood, 'row', 'rows')} whose date Cloak could not read (read them by hand)` : ''}${c.conflicts ? `, ${plural(c.conflicts, 'row', 'rows')} that may conflict` : ''}. ${c.undated ? `${plural(c.undated, 'row', 'rows')} with no date ${state.showUndated ? 'are shown below' : 'are hidden'}. <button class="link" id="toggle-undated">${state.showUndated ? 'Hide them' : `Show the ${c.undated} rows with no date`}</button>` : ''}</p>
-      <div class="row mb-3"><button class="btn small" id="chrono-merge" disabled>Merge selected rows</button><button class="btn small" id="chrono-add">Add a row</button></div>
-      <table id="chrono-table"><thead><tr><th></th><th>Date</th><th>What happened</th><th>People</th><th>Source</th><th></th></tr></thead><tbody>${c.rows.map((r) => `<tr data-row="${esc(r.id)}">
+      ${c.missing.length ? `<div class="msg warn" id="chrono-missing"><details><summary><b>Events in these files are missing from this chronology.</b> <span class="sum-link">Show the ${plural(c.missing.length, 'file', 'files')}</span></summary><ul>${c.missing.map((m) => `<li>${escL(m.file)} <span class="muted">(${esc(m.why)})</span></li>`).join('')}</ul></details></div>` : ''}
+      <div class="chrono-bar"><span>${plural(c.dated, 'row', 'rows')} with a date${c.notUnderstood ? `, ${plural(c.notUnderstood, 'row', 'rows')} whose date Cloak could not read (read them by hand)` : ''}${c.conflicts ? `, ${plural(c.conflicts, 'row', 'rows')} that may conflict` : ''}. ${c.undated ? `${plural(c.undated, 'row', 'rows')} with no date ${state.showUndated ? 'are shown below' : 'are hidden'}. <button class="link" id="toggle-undated" type="button">${state.showUndated ? 'Hide them' : `Show the ${c.undated} rows with no date`}</button>` : ''}</span></div>
+      <div class="chrono-bar"><button class="btn small" id="chrono-merge" type="button" disabled>Merge selected rows</button><button class="btn small" id="chrono-add" type="button">${icon('plus')}Add a row</button><span class="spacer"></span><span class="chrono-key" aria-label="What the chips mean"><span class="chip group">same event</span><span class="chip partial">possible conflict</span><span class="chip manual">no year</span><span class="chip partial">date not understood</span><span class="chip container">range</span></span></div>
+      <table id="chrono-table"><thead><tr><th><span class="vh">Select</span></th><th>Date</th><th>What happened</th><th>People</th><th>Source</th><th></th></tr></thead><tbody>${c.rows.map((r) => `<tr data-row="${esc(r.id)}"${r.conflict ? ' class="is-conflict"' : ''}>
         <td><input type="checkbox" data-pick="${esc(r.id)}" aria-label="Select this row"></td>
-        <td class="num">${r.date ? esc(r.date) : '<span class="muted">no date</span>'}${r.dateNote ? '<br><span class="chip partial">date not understood</span>' : ''}${r.precision === 'dm' ? '<br><span class="chip manual">no year</span>' : ''}${r.precision === 'range' ? '<br><span class="chip">range</span>' : ''}</td>
-        <td>${esc(r.event)}${r.group ? ` <span class="chip container">same event ${esc(r.group)}</span>` : ''}${r.conflict ? `<div class="chip partial mt-2">possible conflict: ${esc(r.conflict.why.join('; '))}</div>` : ''}${r.relative.length ? `<div class="small muted">relative date: ${esc(r.relative.join('; '))}</div>` : ''}</td>
-        <td class="small">${r.people.map(esc).join('<br>') || '<span class="muted">-</span>'}</td><td class="small">${r.source.map(esc).join('<br>')}</td>
-        <td><div class="row"><button class="btn small" data-edit="${esc(r.id)}">Edit</button><button class="btn small danger" data-delete="${esc(r.id)}">Delete</button></div></td></tr>`).join('')}</tbody></table>
-      <div class="card mt-4" id="chrono-confirm">${c.confirmed ? `<span class="chip cloaked">Confirmed</span> by ${esc(c.confirmed.by)} on ${esc(c.confirmed.whenText)}. Any change takes the confirmation away.` : `<p>When the table is right, confirm it. The confirmed table is exported as its own cloaked document, and is the recommended thing to send for drafting.</p><button class="btn primary" id="chrono-confirm-go">Confirm the chronology</button>`}</div>`);
+        <td class="date">${r.date ? esc(r.date) : '<span class="muted">no date</span>'}${r.dateNote ? '<span class="chip partial">date not understood</span>' : ''}${r.precision === 'dm' ? '<span class="chip manual">no year</span>' : ''}${r.precision === 'range' ? '<span class="chip container">range</span>' : ''}</td>
+        <td class="event">${escL(r.event)}${r.group ? ` <span class="chip group">same event ${esc(r.group)}</span>` : ''}${r.conflict ? `<div class="conflict">possible conflict: ${esc(r.conflict.why.join('; '))}</div>` : ''}${r.relative.length ? `<div class="small muted">relative date: ${esc(r.relative.join('; '))}</div>` : ''}</td>
+        <td class="people">${people(r)}</td><td class="source">${r.source.map(escL).join('<br>')}</td>
+        <td><div class="row-actions"><button class="btn small" data-edit="${esc(r.id)}" type="button">Edit</button><button class="btn small danger" data-delete="${esc(r.id)}" type="button">Delete</button></div></td></tr>`).join('')}</tbody></table>
+      <div class="card confirm-card" id="chrono-confirm">${c.confirmed ? `<span class="chip cloaked">Confirmed</span> by ${esc(c.confirmed.by)} on ${esc(c.confirmed.whenText)}. Any change takes the confirmation away.` : `<p>When the table is right, confirm it. The confirmed table is exported as its own cloaked document, and is the recommended thing to send for drafting.</p><button class="btn primary" id="chrono-confirm-go" type="button">Confirm the chronology</button>`}</div>`);
     on('#toggle-undated', 'click', () => { state.showUndated = !state.showUndated; panelChronology(); });
     const picked = () => [...main.querySelectorAll('[data-pick]:checked')].map((x) => x.dataset.pick);
-    on('[data-pick]', 'change', () => { document.getElementById('chrono-merge').disabled = picked().length < 2; });
+    on('[data-pick]', 'change', (e) => {
+      e.target.closest('tr').classList.toggle('is-selected', e.target.checked);
+      const n = picked().length;
+      const merge = document.getElementById('chrono-merge');
+      merge.disabled = n < 2;
+      merge.textContent = n >= 2 ? `Merge ${n} selected rows` : 'Merge selected rows';
+    });
     const guard = (fn) => async (...a) => { try { await fn(...a); } catch (err) { drawChronology(err.message); } };
     on('#chrono-merge', 'click', guard(() => chronoCall({ type: 'merge', ids: picked() })));
     on('#chrono-confirm-go', 'click', guard(() => chronoCall({ type: 'confirm' })));
     on('[data-delete]', 'click', guard(async (e) => {
       const id = e.currentTarget.dataset.delete;
-      const yes = await confirmDialog({ title: 'Delete this row?', body: 'It is taken out of the chronology. It is kept in the matter (so it can be put back) but is not exported.', yes: 'Delete the row' });
+      const row = c.rows.find((r) => r.id === id);
+      const yes = await confirmDialog({ title: 'Delete this row?', small: true, body: 'It is taken out of the chronology. It is kept in the matter (so it can be put back) but is not exported.', notes: [...(row ? [{ icon: 'clock', html: `${row.date ? `${esc(row.date)}. ` : ''}${escL(row.event)}` }] : []), recorded()], yes: 'Delete the row' });
       if (yes) await chronoCall({ type: 'remove', id });
     }));
     on('[data-edit]', 'click', guard(async (e) => {
@@ -616,8 +802,8 @@
 
   async function panelCheck() {
     const d = state.review;
-    if (!d.complete) return panel('<div class="msg warn" id="check-wait">Finish the review first. The double check reads exactly what would be exported.</div>');
-    if (state.checking) return panel('<p id="check-running"><span class="spinner"></span> Running the double check on every file that would be exported…</p>');
+    if (!d.complete) return panel('<div class="msg warn" id="check-wait" role="status">Finish the review first. The double check reads exactly what would be exported.</div>');
+    if (state.checking) return panel('<p id="check-running"><span class="spinner" aria-hidden="true"></span> Running the double check on every file that would be exported…</p>');
     if (!state.check) {
       try { state.check = await call('doubleCheckView'); } catch (err) { return panel(message(err.message)); }
     }
@@ -626,35 +812,42 @@
 
   function drawCheck() {
     const c = state.check?.ran ? state.check : null;
-    const intro = '<p class="muted small">A second, separate check of everything that would be exported: each cloaked copy, the context sheet, the chronology, the file names and the report. It looks again for every value in the key (in any format), for numbers that look like an NRIC, phone, account or case number, and for anything that still looks like a name, in every part of every file. No AI is used. For each finding, hide it or say it is fine. Export waits until every file passes or every finding is decided.</p>';
+    const intro = '<p class="muted small mb-3 dc-intro">A second, separate check of everything that would be exported: each cloaked copy, the context sheet, the chronology, the file names and the report. It looks again for every value in the key (in any format), for numbers that look like an NRIC, phone, account or case number, and for anything that still looks like a name, in every part of every file. No AI is used. For each finding, hide it or say it is fine. Export waits until every file passes or every finding is decided.</p>';
     if (!c) {
-      panel(`${intro}<button class="btn primary" id="check-go">Run the double check</button>`);
+      panel(`${intro}<button class="btn primary" id="check-go" type="button">Run the double check</button>`);
       return on('#check-go', 'click', runCheck);
     }
-    const where = (p) => `<div class="example">${esc(p.title)} · ${esc(p.part)} · line ${p.line}</div><div class="small">${tags(p.excerpt.slice(0, p.mark[0]))}<span class="found">${esc(p.excerpt.slice(p.mark[0], p.mark[1]))}</span>${tags(p.excerpt.slice(p.mark[1]))}</div>`;
+    const where = (p) => `<div class="place"><div class="loc"><b>${escL(p.title)}</b><span class="vh"> · </span>${esc(p.part)} · line ${p.line}</div><div class="excerpt">${langRuns(`${tags(p.excerpt.slice(0, p.mark[0]))}<span class="found">${esc(p.excerpt.slice(p.mark[0], p.mark[1]))}</span>${tags(p.excerpt.slice(p.mark[1]))}`)}</div></div>`;
     const decided = (g) => g.places.find((p) => p.decided)?.decided;
     // Files that fail come first; the findings come before the list of files.
     const units = [...c.units.filter((u) => u.status === 'fail'), ...c.units.filter((u) => u.status !== 'fail')];
+    const failing = c.counts.filesFailing;
     panel(`${intro}
-      <p id="check-summary">${c.passed ? '<span class="chip cloaked">Passed</span>' : '<span class="chip partial">Not passed yet</span>'} Checked ${esc(c.whenText)} by ${esc(c.by)}: ${plural(c.counts.files, 'file', 'files')}, ${plural(c.counts.places, 'finding', 'findings')}${c.counts.undecided ? `, <b>${c.counts.undecided} still to decide</b>` : ''}.</p>
-      ${c.groups.length ? `<table id="check-findings"><thead><tr><th>Found</th><th>Where</th><th></th></tr></thead><tbody>${c.groups.map((g, i) => `<tr data-finding="${i}">
-        <td><span class="chip ${g.undecided ? 'manual' : ''}">${esc(CHECK_WORDS[g.check] || g.check)}</span><br><b>${esc(g.value)}</b><div class="reason">${tags(g.what)}</div></td>
-        <td>${g.places.map(where).join('')}${g.more ? `<div class="reason">and ${g.more} more</div>` : ''}</td>
-        <td>${g.undecided ? `<div class="row">${g.fixable ? `${g.check === 'name' ? `<select class="merge" data-dc-kind="${i}" aria-label="Hide it as"><option value="PERSON" ${g.hideAs === 'PERSON' ? 'selected' : ''}>as a person</option><option value="COMPANY" ${g.hideAs === 'COMPANY' ? 'selected' : ''}>as a company</option><option value="OTHER" ${g.hideAs === 'OTHER' ? 'selected' : ''}>as something else</option></select>` : ''}<button class="btn small primary" data-dc-hide="${i}">Hide it</button>` : ''}<button class="btn small" data-dc-fine="${i}">It is fine</button></div>`
-    : `<span class="chip cloaked">Marked fine</span>${decided(g) ? `<div class="reason">by ${esc(decided(g).by)}<br>${esc(decided(g).whenText)}</div>` : ''}`}</td></tr>`).join('')}</tbody></table>` : '<div class="msg ok" id="check-clean">Nothing was found. Every file passes.</div>'}
-      <h2 class="mt-4">Each file</h2>
-      <table id="check-files"><thead><tr><th>File</th><th>Result</th><th class="num">Findings</th></tr></thead><tbody>${units.map((u) => `<tr>
-        <td>${esc(u.id)}<div class="reason">${esc(u.title)}</div></td>
-        <td>${u.status === 'pass' ? `<span class="chip cloaked">Passed</span>${u.findings ? ' <span class="small muted">every finding decided</span>' : ''}` : `<span class="chip partial">Failed</span> <span class="small">${plural(u.undecided, 'finding', 'findings')} to decide</span>`}</td>
-        <td class="num">${u.findings}</td></tr>`).join('')}</tbody></table>`);
+      <p id="check-summary" class="mb-3">${c.passed ? '<span class="chip cloaked">Passed</span>' : '<span class="chip partial">Not passed yet</span>'} Checked ${esc(c.whenText)} by ${esc(c.by)}: ${plural(c.counts.files, 'file', 'files')}, ${plural(c.counts.places, 'finding', 'findings')}${c.counts.undecided ? `, <b>${c.counts.undecided} still to decide</b>` : ''}.</p>
+      <div class="dc-stats"><div class="dc-stat"><span class="n">${num(c.counts.files)}</span><span class="l">files checked</span></div><div class="dc-stat good"><span class="n">${num(c.counts.files - failing)}</span><span class="l">passed</span></div><div class="dc-stat"><span class="n">${num(failing)}</span><span class="l">failed</span></div><div class="dc-stat${c.counts.undecided ? ' todo' : ''}"><span class="n">${num(c.counts.undecided)}</span><span class="l">findings still to decide</span></div></div>
+      <p class="show-real mb-3">${icon('eye', 'md')}The real words show on this screen only. Nothing here is exported.</p>
+      <div class="dc-layout"><aside class="dc-files" aria-label="Files"><div class="head"><span>Files</span><span>fails first</span></div>
+        <ul id="check-files">${units.map((u) => `<li data-unit="${esc(u.title)}"><span class="nm">${escL(u.id)}</span>${u.status === 'pass' ? '<span class="stamp pass">Pass</span>' : '<span class="stamp fail">Fail</span>'}<span class="sub2">${esc(u.title)}${u.status === 'pass' ? (u.findings ? ' · every finding decided' : '') : ` · ${plural(u.undecided, 'finding', 'findings')} to decide`}</span></li>`).join('')}</ul></aside>
+      <div id="check-findings">${c.groups.length ? c.groups.map((g, i) => `<article class="finding ${g.undecided ? 'is-open' : 'is-decided'}" data-finding="${i}" data-titles="${esc(JSON.stringify(g.places.map((p) => p.title)))}"><div class="top"><div class="what"><div class="value"><span class="chip ${g.undecided ? 'manual' : 'kind'}">${esc(CHECK_WORDS[g.check] || g.check)}</span><b class="serif">${escL(g.value)}</b></div>
+          <div class="why">${tags(g.what)}</div></div>
+          ${g.undecided ? `<div class="row tight">${g.fixable ? `${g.check === 'name' ? `<label class="vh" for="dck${i}">Hide it as</label><select class="merge" id="dck${i}" data-dc-kind="${i}"><option value="PERSON" ${g.hideAs === 'PERSON' ? 'selected' : ''}>as a person</option><option value="COMPANY" ${g.hideAs === 'COMPANY' ? 'selected' : ''}>as a company</option><option value="OTHER" ${g.hideAs === 'OTHER' ? 'selected' : ''}>as something else</option></select>` : ''}<button class="btn primary small" data-dc-hide="${i}" type="button">Hide it</button>` : ''}<button class="btn small" data-dc-fine="${i}" type="button">It is fine</button></div>`
+          : `<div class="receipt"><span class="chip pass">Marked fine</span>${decided(g) ? `<span><b>${esc(decided(g).by)}</b>, ${esc(decided(g).whenText)}</span>` : ''}</div>`}</div>
+        <div class="places">${g.places.map(where).join('')}${g.more ? `<div class="place"><div class="loc">and ${g.more} more</div></div>` : ''}</div></article>`).join('') : `<div id="check-clean">${empty('shield', 'Nothing was found', 'Nothing was found. Every file passes.')}</div>`}</div></div>`);
     on('[data-dc-hide]', 'click', (e) => {
       const i = +e.currentTarget.dataset.dcHide;
       decide(c.groups[i].key, 'hide', main.querySelector(`[data-dc-kind="${i}"]`)?.value);
     });
     on('[data-dc-fine]', 'click', async (e) => {
       const g = c.groups[+e.currentTarget.dataset.dcFine];
-      const yes = await confirmDialog({ title: 'Is this fine to send?', body: `<b>${esc(g.value)}</b> will go out as written in ${plural(g.undecided, 'place', 'places')}. The matter records that you decided this, and when.`, yes: 'Yes, it is fine' });
+      const yes = await confirmDialog({ title: 'Is this fine to send?', body: `<b>${esc(g.value)}</b> will go out as written in ${plural(g.undecided, 'place', 'places')}. The matter records that you decided this, and when.`, leaves: '<b>It will leave this computer</b> as written.', notes: [recorded()], yes: 'Yes, it is fine' });
       if (yes) decide(g.key, 'fine');
+    });
+    // A file in the list takes you to its first finding.
+    on('#check-files li', 'click', (e) => {
+      const title = e.currentTarget.dataset.unit;
+      main.querySelectorAll('#check-files li').forEach((li) => li.classList.toggle('is-current', li === e.currentTarget));
+      const hit = [...main.querySelectorAll('#check-findings .finding')].find((a) => JSON.parse(a.dataset.titles || '[]').includes(title));
+      hit?.scrollIntoView({ block: 'nearest' });
     });
   }
 
@@ -667,13 +860,13 @@
       ${tip('restore')}
       <p class="muted">Put the real details back into a draft that has tags in it. This runs on this computer only.</p>
       ${error ? message(error) : ''}
-      <div class="card">
-        <h2>1. The matter</h2>
-        <p class="muted small">Choose the folder that holds the matter's key, and open it with the password or the recovery code.</p>
-        <div class="row"><button class="btn" id="pick-matter">Choose matter folder…</button>${state.matterDir ? `<span class="path" id="matter-path">${esc(state.matterDir)}</span>` : ''}</div>
-        <div id="matter-form"></div>
+      <div class="card mt-4">
+        <h2><span class="step-no" aria-hidden="true">1</span>The matter</h2>
+        <p class="sub">Choose the folder that holds the matter's key, and open it with the password or the recovery code.</p>
+        <div class="row"><button class="btn" id="pick-matter" type="button">${icon('key', 'md')}Choose matter folder…</button>${state.matterDir ? `<span class="path" id="matter-path">${esc(state.matterDir)}</span>` : ''}</div>
+        <div id="matter-form" class="mt-3"></div>
       </div>
-      <div class="row"><button class="btn" id="back">Back</button></div>
+      <div class="row"><button class="btn" id="back" type="button">Back</button></div>
     </div>`);
     on('#back', 'click', async () => { if (pending) return; await call('closeMatter').catch(() => {}); matterClosed(); state.afterOpen = null; home(); });
     on('#pick-matter', 'click', async () => {
@@ -690,63 +883,123 @@
 
   const RESULT_WORDS = { pass: 'Passed', warn: 'Warnings', fail: 'Failed', skipped: 'Not run' };
   const RESULT_CHIP = { pass: 'cloaked', warn: 'manual', fail: 'partial', skipped: '' };
+  const RESULT_STAMP = { pass: 'pass', warn: 'warn', fail: 'fail', skipped: 'plain' };
+  const baseName = (p) => String(p || '').split(/[\\/]/).filter(Boolean).pop() || String(p || '');
+
+  // Paragraph by paragraph, the way the checks number them: an "N." at the start of a line, else the line. Put-back values are marked.
+  function draftPage(text, marks, flagged, asPasted) {
+    const out = [];
+    let current = null;
+    let pos = 0;
+    String(text).split('\n').forEach((line, i) => {
+      const start = pos;
+      pos += line.length + 1;
+      if (!line.trim()) return;
+      const m = /^\s*(\d+)\.\s/.exec(line);
+      if (m) current = Number(m[1]);
+      const key = m ? current : current ?? `line ${i + 1}`;
+      const skip = m ? m[0].length : 0;
+      let html = '';
+      let at = start + skip;
+      const piece = (a, b, cls) => { if (b <= a) return; const raw = text.slice(a, b); html += cls ? `<span class="${cls}">${esc(raw)}</span>` : esc(raw).replace(/\{\{([^}]+)\}\}/g, (x, c) => `<span class="flagged">${tagSafe(c)}</span>`); };
+      for (const [a, b] of marks.filter(([a, b]) => b > start + skip && a < start + line.length)) {
+        piece(at, Math.max(a, at), '');
+        piece(Math.max(a, at), Math.min(b, start + line.length), 'restored');
+        at = Math.min(b, start + line.length);
+      }
+      piece(at, start + line.length, '');
+      const id = `p-${String(key).replace(/\s+/g, '-')}`;
+      const bad = flagged.has(String(key));
+      out.push(`<div class="para${bad ? ' is-flagged' : ''}" id="${id}"><span class="pn">${esc(String(key).replace(/^line /, ''))}</span>${langRuns(html)}</div>`);
+    });
+    return out.join('');
+  }
 
   function restoreScreen(error) {
-    document.getElementById('matter-name').textContent = state.matter?.name || '';
     const r = state.restoreResult;
+    const tick = (ok) => (ok ? icon('check', 'lg') : '');
+    const hasDraft = !!state.draft.trim();
     show(`<div class="wide">
-      <h1>Restore a draft</h1>
+      ${pageHead('Restore a draft')}
       ${screenNote('draft')}
       ${error ? message(error) : ''}
-      <div class="card">
-        <h2>The draft</h2>
-        <p class="muted small">Paste the draft the AI wrote, with its tags, or choose a file (.txt, .md or .docx).</p>
-        <div class="field"><textarea id="draft" rows="10" aria-label="The draft" placeholder="Paste the draft here">${esc(state.draft)}</textarea></div>
-        <div class="row"><button class="btn" id="pick-draft">Choose a file…</button>
-          <button class="btn" id="pick-docs">Choose the documents folder…</button>${state.docsFolder ? `<span class="path" id="docs-path">${esc(state.docsFolder)}</span>` : '<span class="small muted">Optional: it lets Cloak check the draft against the documents. Without it, that check is skipped.</span>'}</div>
-        <div class="row mt-3"><button class="btn primary" id="do-restore">Check and restore</button><button class="btn" id="restore-back">Done</button></div>
+      <div class="matter-strip">
+        <div><span class="tick">${tick(true)}</span><span class="tx"><span class="lbl">The matter</span><span class="val">${esc(state.matter?.name || 'Open')}</span></span></div>
+        <div><span class="tick">${tick(hasDraft)}</span><span class="tx"><span class="lbl">The draft</span><span class="val">${hasDraft ? esc(state.draftName || 'Pasted into the box') : 'Not added yet'}</span></span></div>
+        <div><span class="tick">${tick(!!state.docsFolder)}</span><span class="tx"><span class="lbl">Documents folder</span><span class="val">${state.docsFolder ? esc(baseName(state.docsFolder)) : 'Optional'}</span></span></div>
       </div>
+      ${r ? '' : `<div class="card">
+        <h2>The draft</h2>
+        <p class="sub">Paste the draft the AI wrote, with its tags, or choose a file (.txt, .md or .docx).</p>
+        <div class="field"><label class="vh" for="draft">The draft</label><textarea id="draft" class="draft-input" rows="10" placeholder="Paste the draft here">${esc(state.draft)}</textarea></div>
+        <div class="row"><button class="btn" id="pick-draft" type="button">${icon('file', 'md')}Choose a file…</button>
+          <button class="btn" id="pick-docs" type="button">${icon('folder', 'md')}Choose the documents folder…</button>${state.docsFolder ? `<span class="path" id="docs-path">${esc(state.docsFolder)}</span>` : '<span class="small muted">Optional: it lets Cloak check the draft against the documents. Without it, that check is skipped.</span>'}</div>
+        <div class="row mt-4"><button class="btn primary" id="do-restore" type="button">Check and restore</button><button class="btn" id="restore-back" type="button">Done</button></div>
+      </div>`}
       <div id="restore-result">${r ? restoreResultHtml(r) : ''}</div>
+      ${r ? `<div class="row mt-4"><button class="btn" id="change-draft" type="button">Change the draft and check again</button><button class="btn" id="restore-back" type="button">Done</button></div>` : ''}
     </div>`);
-    on('#draft', 'input', (e) => { state.draft = e.target.value; });
+    on('#draft', 'input', (e) => { state.draft = e.target.value; state.draftName = ''; });
+    on('#change-draft', 'click', () => { state.restoreResult = null; restoreScreen(); });
     on('#restore-back', 'click', async () => {
       if (pending) return;
-      if (draftAtRisk() && !(await confirmDialog({ title: 'Finish with this draft?', body: `This closes the matter. ${DRAFT_NOT_KEPT}`, yes: 'Done' }))) return;
+      if (draftAtRisk() && !(await confirmDialog({ title: 'Finish with this draft?', small: true, body: `This closes the matter. ${DRAFT_NOT_KEPT}`, callout: { icon: 'save', html: '<b>The restored text has not been copied or saved.</b> Once you close the matter it cannot be made again without the draft.' }, no: 'Go back to the draft', yes: 'Done' }))) return;
       if (pending) return;
-      await call('closeMatter').catch(() => {}); matterClosed(); state.afterOpen = null; state.restoreResult = null; state.draft = ''; home(); });
+      await call('closeMatter').catch(() => {}); matterClosed(); state.afterOpen = null; state.restoreResult = null; state.draft = ''; state.draftName = ''; home(); });
     on('#pick-draft', 'click', async () => {
-      try { const f = await call('pickDraftFile'); if (f) { state.draft = f.text; restoreScreen(); } } catch (err) { restoreScreen(err.message); }
+      try { const f = await call('pickDraftFile'); if (f) { state.draft = f.text; state.draftName = f.name || ''; restoreScreen(); } } catch (err) { restoreScreen(err.message); }
     });
     on('#pick-docs', 'click', async () => {
+      state.draft = document.getElementById('draft').value;
       const p = await call('pickFolder', { title: 'Choose the folder of documents (for the source check)' });
       if (p) { state.docsFolder = p; restoreScreen(); }
     });
     on('#do-restore', 'click', async () => {
       state.draft = document.getElementById('draft').value;
       if (!state.draft.trim()) return restoreScreen('There is no draft to check yet. Paste the draft into the box, or choose a file.');
-      document.getElementById('restore-result').innerHTML = '<p><span class="spinner"></span> Checking…</p>';
+      document.getElementById('restore-result').innerHTML = '<p><span class="spinner" aria-hidden="true"></span> Checking…</p>';
       try { state.restoreResult = await call('restoreDraft', { draft: state.draft, folder: state.docsFolder }); restoreScreen(); } catch (err) { restoreScreen(err.message); }
     });
-    on('#copy-restored', 'click', async () => {
+    on('#copy-restored', 'click', async (e) => {
       const text = state.restoreResult.restored;
       try { await navigator.clipboard.writeText(text); } catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
-      document.getElementById('copy-restored').textContent = 'Copied';
+      e.currentTarget.innerHTML = `${icon('check')}Copied`;
     });
     on('#save-restored', 'click', async () => { try { await call('saveText', { text: state.restoreResult.restored, name: 'restored-draft.txt' }); } catch (err) { restoreScreen(err.message); } });
+    on('#other-matter', 'click', async () => {
+      if (pending) return;
+      await call('closeMatter').catch(() => {}); matterClosed(); state.restoreResult = null; restoreStart();
+    });
+    on('[data-para]', 'click', (e) => document.getElementById(e.currentTarget.dataset.para)?.scrollIntoView({ block: 'center' }));
   }
 
   function restoreResultHtml(r) {
     const rep = r.report;
-    const list = (items, n = 12) => `${items.slice(0, n).map((t) => `<span class="tag">{{${esc(String(t).replace(/^\{\{|\}\}$/g, ''))}}}</span>`).join(' ')}${items.length > n ? ` and ${items.length - n} more` : ''}`;
-    return `<div class="card white" id="restore-report">
-      <h2>Result <span class="chip ${RESULT_CHIP[r.result]}" id="restore-overall">${RESULT_WORDS[r.result]}</span></h2>
-      <p>${plural(rep.tagsRestored, 'tag', 'tags')} put back (${plural(rep.distinctTags, 'different tag', 'different tags')}).
-      ${rep.inKeyNotInDraft.length ? `<br>${plural(rep.inKeyNotInDraft.length, 'tag', 'tags')} in the key are not in the draft: ${list(rep.inKeyNotInDraft)}` : ''}
-      ${rep.notInKey.length ? `<br><b>Tag-like text that is not in the key:</b> ${list(rep.notInKey)}` : '<br>No tag-like text outside the key.'}</p>
-      ${r.checks.map((c) => `<h2 class="mt-4 h-minor">${esc(c.name)} <span class="chip ${RESULT_CHIP[c.result]}">${RESULT_WORDS[c.result]}</span></h2>${c.note ? `<p class="small muted">${esc(c.note)}</p>` : ''}${c.issues.length ? `<table><tbody>${c.issues.map((i) => `<tr><td class="num">${i.paragraph == null ? '' : `paragraph ${esc(String(i.paragraph))}`}</td><td><span class="chip ${i.level === 'fail' ? 'partial' : 'manual'}">${esc(i.level)}</span> ${esc(i.what)}</td></tr>`).join('')}</tbody></table>` : ''}`).join('')}
-      ${r.checks[0].translated?.length ? `<p class="small muted">${plural(r.checks[0].translated.length, 'form', 'forms')} put back in the language of their sentence (month names, job titles, court names).</p>` : ''}
-    </div>
-    <div class="card white"><h2>The restored draft</h2><pre class="filetext" id="restored-text">${esc(r.restored)}</pre><div class="row"><button class="btn primary" id="copy-restored">Copy</button><button class="btn" id="save-restored">Save as…</button></div></div>`;
+    const tagList = (items, n = 6) => `<div class="taglist">${items.slice(0, n).map((t) => tagHtml(String(t).replace(/^\{\{|\}\}$/g, ''))).join('')}${items.length > n ? `<span class="chip kind">and ${items.length - n} more</span>` : ''}</div>`;
+    const issues = r.checks.flatMap((c) => c.issues);
+    const fails = issues.filter((i) => i.level === 'fail').length;
+    const warns = issues.length - fails;
+    // A draft made from another matter: none of its tags are in this key.
+    const mismatch = r.result === 'fail' && rep.tagsRestored === 0 && rep.notInKey.length > 0;
+    const flagged = new Set(issues.filter((i) => i.paragraph != null).map((i) => String(i.paragraph)));
+    const headline = mismatch ? `<b>This draft does not match this matter's key.</b> None of its ${plural(rep.notInKey.length, 'tag', 'tags')} are in the key, so nothing was put back. The draft was probably made from another matter. Check the matter above, or open another one.`
+      : r.result === 'fail' ? `<b>Do not send this draft yet.</b> ${plural(fails, 'problem', 'problems')} to fix${warns ? `, and ${plural(warns, 'place', 'places')} that need${warns === 1 ? 's' : ''} your eye` : ''}. The checks beside the draft say where.`
+      : r.result === 'warn' ? `<b>${plural(warns, 'place', 'places')} need${warns === 1 ? 's' : ''} your eye.</b> No check failed.`
+      : '<b>No check found a problem.</b> Read the draft through yourself before it goes out.';
+    const fig = (n, cls) => `fig num${cls === 'bad' ? ' bad' : n === 0 ? ' zero' : cls ? ` ${cls}` : ''}`;
+    const para = (i) => (i.paragraph == null ? '' : `<button class="pchip${i.level === 'fail' ? ' bad' : ''}" type="button" data-para="p-${esc(String(i.paragraph).replace(/\s+/g, '-'))}">${/^line /.test(String(i.paragraph)) ? 'Line' : 'Paragraph'} ${esc(String(i.paragraph).replace(/^line /, ''))}</button>`);
+    const checks = mismatch ? r.checks.filter((c) => c.issues.length).slice(0, 1) : r.checks;
+    return `<div id="restore-report"><div class="verdict is-${r.result === 'skipped' ? 'warn' : r.result}"><div class="headline"><span class="stamp ${RESULT_STAMP[r.result]} lg" id="restore-overall">${RESULT_WORDS[r.result]}</span><p>${headline}</p></div>
+        <div><span class="${fig(rep.tagsRestored, mismatch ? 'bad' : '')}">${num(rep.tagsRestored)}</span><span class="figl">${plural(rep.tagsRestored, 'tag', 'tags')} put back<br>${plural(rep.distinctTags, 'different tag', 'different tags')}</span></div>
+        <div><span class="${fig(rep.inKeyNotInDraft.length, 'some')}">${num(rep.inKeyNotInDraft.length)}</span><span class="figl">${rep.inKeyNotInDraft.length === 1 ? 'tag' : 'tags'} in the key, not in the draft${rep.inKeyNotInDraft.length ? tagList(rep.inKeyNotInDraft) : ''}</span></div>
+        <div><span class="${fig(rep.notInKey.length, mismatch ? 'bad' : 'some')}">${num(rep.notInKey.length)}</span><span class="figl">${rep.notInKey.length ? 'Tag-like text that is not in the key' : 'No tag-like text outside the key'}${rep.notInKey.length ? tagList(rep.notInKey) : ''}</span></div></div>
+      <div class="restore-grid">
+        <section class="docpage" aria-labelledby="rd"><div class="docpage-head"><h2 id="rd">${mismatch ? 'The draft as you pasted it' : 'The restored draft'}</h2>
+          <span class="legend">${mismatch ? '<span><span class="flagged">Not in the key</span></span>' : '<span><span class="restored">Put back</span> from the key</span><span><span class="flagged">Flagged</span> by a check</span>'}</span>
+          <div class="row tight">${mismatch ? '<button class="btn small primary" id="other-matter" type="button">Choose another matter</button>' : `<button class="btn small primary" id="copy-restored" type="button">${icon('copy')}Copy</button><button class="btn small" id="save-restored" type="button">${icon('save')}Save as…</button>`}</div></div>
+          <div class="docpage-body" id="restored-text">${draftPage(r.restored, mismatch ? [] : r.marks || [], flagged)}</div></section>
+        <div class="checks">${checks.map((c, ci) => `<section class="check-card"><div class="hd"><span>${esc(c.name)}</span><span class="stamp ${RESULT_STAMP[c.result]}">${RESULT_WORDS[c.result]}</span></div>${c.note ? `<p class="note">${esc(c.note)}</p>` : ''}${ci === 0 && c.translated?.length ? `<p class="note">${plural(c.translated.length, 'form', 'forms')} put back in the language of their sentence (month names, job titles, court names).</p>` : ''}${c.issues.length ? `<ul class="issues">${c.issues.map((i) => `<li>${para(i)}<span>${tags(i.what)}</span></li>`).join('')}</ul>` : ''}${mismatch ? '<p class="note">The other checks were not run: they need the real values.</p>' : ''}</section>`).join('')}</div>
+      </div></div>`;
   }
 
   // ------------------------------------------------------------ first run
@@ -771,7 +1024,7 @@
   const tipsClosed = () => { try { return JSON.parse(localStorage.getItem(TIPS_KEY) || '[]'); } catch { return []; } };
   function tip(id) {
     if (!TIPS[id] || tipsClosed().includes(id)) return '';
-    return `<div class="tip" role="note" id="tip-${id}"><span>${TIPS[id]}</span><button class="link" data-tip-close="${id}">Got it</button></div>`;
+    return `<div class="tip" role="note" id="tip-${id}"><span>${TIPS[id]}</span><button class="link" type="button" data-tip-close="${id}">Got it</button></div>`;
   }
   function closeTip(id) {
     try { localStorage.setItem(TIPS_KEY, JSON.stringify([...new Set([...tipsClosed(), id])])); } catch { /* not remembered: it shows again next time */ }
@@ -788,8 +1041,7 @@
     return tip(id);
   }
 
-  const homeExtras = () => `<div class="try-sample"><div><b>New to Cloak?</b> Try it on a sample matter: ten made-up documents, ready in a few minutes.</div><button class="btn" id="go-sample" data-go-sample>Try a sample matter</button></div>
-      <p class="small help-links"><button class="link" data-help="how">How Cloak works</button> · <button class="link" data-help="data">Your data</button> · <button class="link" data-help="about">About</button></p>`;
+  const homeExtras = () => `<div class="try-sample"><span class="ico">${icon('book', 'lg')}</span><div><b>New to Cloak?</b> Try a sample matter: ten made-up documents, ready in a few minutes.</div><button class="btn" id="go-sample" data-go-sample type="button">Try a sample matter</button></div>`;
 
   // "Try a sample matter": where to put it and a password; Cloak does the rest.
   async function sampleScreen(error) {
@@ -800,19 +1052,19 @@
       <h1>Try a sample matter</h1>
       <p class="muted">${esc(s.about || '')} Cloak copies them into a new folder, creates a test matter for them with the people already filled in, and takes you through cloaking and the review.</p>
       ${error ? message(error) : ''}
-      <div class="card">
-        <h2>1. Where to put it</h2>
-        <p class="muted small">Cloak makes a new folder. Nothing already there is changed.</p>
-        <div class="row"><span class="path" id="sample-path">${esc(s.folder || '')}</span><button class="btn" id="sample-place">Choose another place…</button></div>
-        ${s.refused ? `<div class="msg warn" id="sample-refused">${esc(s.refused)}</div>` : ''}
+      <div class="card mt-4">
+        <h2><span class="step-no" aria-hidden="true">1</span>Where to put it</h2>
+        <p class="sub">Cloak makes a new folder. Nothing already there is changed.</p>
+        <div class="row"><span class="path" id="sample-path">${esc(s.folder || '')}</span><button class="btn" id="sample-place" type="button">${icon('folder', 'md')}Choose another place…</button></div>
+        ${s.refused ? `<div class="msg warn" id="sample-refused" role="status">${esc(s.refused)}</div>` : ''}
       </div>
       <div class="card">
-        <h2>2. A password for the sample matter</h2>
-        <p class="muted small">Every matter has its own password, 10 characters or more. You need it to open the matter again or to restore a draft. Cloak never saves it.</p>
-        <div class="field"><label for="sample-pw">Password</label><input type="password" id="sample-pw" autocomplete="new-password"></div>
-        <div class="field"><label for="sample-pw2">Type the password again</label><input type="password" id="sample-pw2" autocomplete="new-password"></div>
+        <h2><span class="step-no" aria-hidden="true">2</span>A password for the sample matter</h2>
+        <p class="sub">Every matter has its own password, 10 characters or more. You need it to open the matter again or to restore a draft. Cloak never saves it.</p>
+        <div class="pair"><div class="field"><label for="sample-pw">Password</label><input type="password" id="sample-pw" autocomplete="new-password"></div>
+        <div class="field"><label for="sample-pw2">Type it again</label><input type="password" id="sample-pw2" autocomplete="new-password"></div></div>
       </div>
-      <div class="row"><button class="btn" id="back">Back</button><button class="btn primary" id="sample-create" ${s.refused ? 'disabled' : ''}>Create the sample matter</button></div>
+      <div class="row"><button class="btn" id="back" type="button">Back</button><button class="btn primary" id="sample-create" type="button" ${s.refused ? 'disabled' : ''}>Create the sample matter</button></div>
     </div>`);
     on('#back', 'click', () => home());
     on('#sample-place', 'click', async () => {
@@ -838,16 +1090,16 @@
     show(`<div class="narrow">
       <h1>The sample matter is ready</h1>
       <p>Cloak made this folder:</p>
-      <div class="path" id="sample-folder">${esc(made.folder)}</div>
-      <ul class="small">
+      <div class="path mb-3" id="sample-folder">${esc(made.folder)}</div>
+      <ul class="small stack">
         <li><b>Documents</b>: the ten made-up files. Open them in Word, Excel or a PDF viewer to compare with the cloaked copies later.</li>
         <li><b>Matter key</b>: the matter, with its encrypted key, its cache and its log.</li>
         <li><b>Cloaked copies</b>: empty for now. Export the cloaked copies here at the end.</li>
       </ul>
-      <h2>The recovery code</h2>
+      <h2 class="mt-5">The recovery code</h2>
       <p class="small">Every matter gets a recovery code that opens it if the password is forgotten. It is shown only once. For a real matter, print it or write it down and keep it with the paper file. For the sample you do not need to keep it.</p>
       <div class="code" id="recovery-code">${esc(made.recoveryCode)}</div>
-      <div class="row"><button class="btn primary" id="sample-continue">Continue</button></div>
+      <div class="row"><button class="btn primary" id="sample-continue" type="button">Continue</button></div>
     </div>`);
     on('#sample-continue', 'click', () => setup());
   }
@@ -862,11 +1114,12 @@
     const o = document.createElement('div');
     o.className = 'overlay help-overlay';
     o.innerHTML = `<div class="dialog help" role="dialog" aria-modal="true" aria-label="Help">
-      <div class="help-head"><div class="tabs" role="tablist">${HELP_TABS.map(([id, label]) => `<button class="tab" role="tab" data-help="${id}" aria-selected="${tab === id}">${label}</button>`).join('')}</div><button class="btn" id="help-close">Close</button></div>
+      <div class="help-head"><div class="tabs in-dialog" role="tablist">${HELP_TABS.map(([id, label]) => `<button class="tab" type="button" role="tab" data-help="${id}" aria-selected="${tab === id}">${label}</button>`).join('')}</div><button class="btn small" id="help-close" type="button">Close</button></div>
       <div id="help-body"><p class="muted">Loading…</p></div></div>`;
     document.body.appendChild(o);
+    lockMain(true);
     const onKey = (e) => { if (e.key === 'Escape') closeHelp?.(); };
-    closeHelp = () => { document.removeEventListener('keydown', onKey); o.remove(); closeHelp = null; };
+    closeHelp = () => { document.removeEventListener('keydown', onKey); lockMain(false); o.remove(); closeHelp = null; };
     document.addEventListener('keydown', onKey);
     o.querySelector('#help-close').addEventListener('click', () => closeHelp?.());
     o.addEventListener('click', (e) => { if (e.target === o) closeHelp?.(); });
@@ -891,7 +1144,7 @@
     return `<h2>How Cloak works</h2>
       <p>Cloak hides client details in a folder of documents before they go to an AI tool, and puts them back into what the AI writes. Everything happens on this computer.</p>
       <ol class="steps">
-        <li><b>Cloak.</b> Choose a folder of documents. Cloak reads every part of every file (Word, PDF, Excel, emails, pictures and text files, with their headers, footnotes, comments, tracked changes and document details) and replaces names and numbers with tags such as ${code('{{PERSON_1}}')} or ${code('{{NRIC_2}}')}. The same person gets the same tag in every file. The originals are only read, never changed.</li>
+        <li><b>Cloak.</b> Choose a folder of documents. Cloak reads every part of every file (Word, PDF, Excel, emails, pictures and text files, with their headers, footnotes, comments, tracked changes and document details) and replaces names and numbers with tags such as ${tagHtml('PERSON_1')} or ${tagHtml('NRIC_2')}. The same person gets the same tag in every file. The originals are only read, never changed.</li>
         <li><b>Review.</b> Nothing leaves until a person has checked it. Decide each word Cloak was not sure about, confirm names it joined together, and read any file that needs a manual check. Then finish the review. Your name and the time are recorded.</li>
         <li><b>Double check.</b> A second, separate check of everything that would be exported: each cloaked copy, the context sheet, the chronology, the file names and the report. It looks again for every value in the key (dates and amounts in any format), for numbers that look like an NRIC, phone, account or case number, and for anything that still looks like a name, in every part of every file. Press <b>Run the double check</b> in the bar at the bottom of the review; it also runs by itself when you export. Each finding shows the words, the file and the line. Hide it, or say it is fine: your name and the time are kept in the matter, and only counts go in the log. Nothing is exported until every file passes or every finding is decided. No AI is used.</li>
         <li><b>Export.</b> Cloak writes the cloaked copies as plain text files to a folder you choose, with a report of what was read in each file and who reviewed and double-checked it. A Strict matter also gets a context sheet that explains the tags to the AI.</li>
@@ -914,7 +1167,7 @@
         <li><b>Facts Strict can miss:</b> places that are not on its list and have no word such as Taman or Mukim before them; amounts and dates written in words; relative dates ("14 days after the letter"); a month on its own ("in March").</li>
         <li><b>Not tested yet:</b> Outlook .msg files, scanned Tamil pages, and files kept only in the cloud by OneDrive or Google Drive.</li>
       </ul>
-      <p><button class="btn small" id="tips-again">Show the first-time tips again</button></p>`;
+      <p><button class="btn small" id="tips-again" type="button">Show the first-time tips again</button></p>`;
   }
 
   function helpData(p) {
@@ -960,12 +1213,13 @@
         <tr><td>Made by</td><td>Lawgistics</td></tr>
         <tr><td>Support</td><td>${esc(a.support || '')}</td></tr>
         <tr><td>Open-source parts</td><td>Cloak is built with open-source software, including the Electron window, the Tesseract OCR engine and its language data, and PDF.js. Their licences are listed in ${code(a.noticesName || 'THIRD-PARTY-NOTICES.txt')} in the folder where the file is kept${a.noticesFolder || a.installFolder ? `: <span class="path inline" id="notices-folder">${esc(a.noticesFolder || a.installFolder)}</span>` : ''}.${a.notices ? '' : ' <span class="muted" id="notices-missing">That file is not in this copy of Cloak.</span>'}</td></tr>
+        <tr><td>Fonts</td><td>Newsreader, Instrument Sans, IBM Plex Mono, Noto Sans Tamil and Noto Naskh Arabic, under the SIL Open Font Licence 1.1. Their licences are in the same file.</td></tr>
         <tr><td>Running on</td><td>${esc(a.system || '')}${a.electron ? ` · Electron ${esc(a.electron)}` : ''}</td></tr>
       </tbody></table>
       <h3>Save a support file</h3>
       <p>If something is not working, save a support file and send it to your supplier yourself. Cloak never sends it anywhere.</p>
       <p class="small">It holds the version, the operating system, a self-test (does the OCR engine start, does the open matter's key open) and the open matter's log, which records actions, counts and the names of the people who worked on the matter, but no client details. As a second guard, anything in it that matches a value in the matter key is replaced by its tag. ${a.matterOpen ? 'The open matter\'s log will be included.' : 'No matter is open, so no matter log will be included. If the problem is with one matter, open it first.'}</p>
-      <button class="btn primary" id="save-support">Save a support file…</button>
+      <button class="btn primary" id="save-support" type="button">${icon('save', 'md')}Save a support file…</button>
       <div id="support-result"></div>`;
   }
 
@@ -973,13 +1227,13 @@
     const btn = e.currentTarget;
     const box = document.getElementById('support-result');
     btn.disabled = true;
-    box.innerHTML = '<p class="small"><span class="spinner"></span> Choose where to save it. Cloak then checks the OCR engine and the matter key, which takes a few seconds.</p>';
+    box.innerHTML = '<p class="small"><span class="spinner" aria-hidden="true"></span> Choose where to save it. Cloak then checks the OCR engine and the matter key, which takes a few seconds.</p>';
     try {
       const r = await call('saveSupportFile');
       if (!r.saved) { box.innerHTML = '<p class="small muted">Not saved.</p>'; return; }
       const word = (t) => (t.ok === true ? ['cloaked', 'Passed'] : t.ok === false ? ['partial', 'Failed'] : ['', 'Not run']);
-      box.innerHTML = `<div class="msg ok" id="support-saved">Support file saved to <b>${esc(r.file)}</b>. Cloak has not sent it anywhere.${r.replaced ? ` ${plural(r.replaced, 'value', 'values')} from the matter key ${r.replaced === 1 ? 'was' : 'were'} found in it and replaced by tags.` : ''}</div>
-        <table id="self-test"><tbody>${r.test.map((t) => `<tr><td>${esc(t.check)}</td><td><span class="chip ${word(t)[0]}">${word(t)[1]}</span> ${esc(t.what)}</td></tr>`).join('')}</tbody></table>`;
+      box.innerHTML = `<div class="msg ok" id="support-saved" role="status">Support file saved to <b>${esc(r.file)}</b>. Cloak has not sent it anywhere.${r.replaced ? ` ${plural(r.replaced, 'value', 'values')} from the matter key ${r.replaced === 1 ? 'was' : 'were'} found in it and replaced by tags.` : ''}</div>
+        <table class="self-test" id="self-test"><tbody>${r.test.map((t) => `<tr><td>${esc(t.check)}</td><td><span class="chip ${word(t)[0]}">${word(t)[1]}</span> ${esc(t.what)}</td></tr>`).join('')}</tbody></table>`;
     } catch (err) {
       box.innerHTML = message(err.message);
     } finally {
@@ -998,7 +1252,7 @@
     closeHelp?.();
     if (!state.info?.fullName) return nameScreen();
     if (state.matter) {
-      const yes = await confirmDialog({ title: 'Go to the home screen?', body: 'This closes the matter. Everything you decided is saved in it. Cloaked copies you have not exported are not kept: to export them later, open the matter and cloak the folder again.' + (draftAtRisk() ? ` ${DRAFT_NOT_KEPT}` : ''), yes: 'Close the matter' });
+      const yes = await confirmDialog({ title: 'Go to the home screen?', small: true, body: 'This closes the matter. Everything you decided is saved in it. Cloaked copies you have not exported are not kept: to export them later, open the matter and cloak the folder again.' + (draftAtRisk() ? ` ${DRAFT_NOT_KEPT}` : ''), notes: [{ icon: 'check', html: '<b>Saved:</b> everything you decided, in the matter.' }, ...(state.review && !state.exported ? [{ icon: 'out', html: `<b>Not exported yet:</b> ${plural(state.review.files.filter((f) => f.willExport).length, 'cloaked copy', 'cloaked copies')}. They are not kept.` }] : [])], no: 'Stay in the matter', yes: 'Close the matter' });
       if (!yes) return;
       if (pending) return;
       await call('closeMatter').catch(() => {});
@@ -1008,8 +1262,7 @@
     home();
   }
 
-  // Home and Help in the top bar, and the clicks every screen shares.
-  document.querySelector('.bar-right')?.insertAdjacentHTML('afterbegin', '<button class="bar-link" id="bar-home" data-go-home>Home</button><button class="bar-link" id="bar-help" data-help="how">Help</button>');
+  // The clicks every screen shares: Home and Help in the top bar, tips, the sample matter.
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-tip-close], [data-help], [data-go-sample], [data-go-home]');
     if (!t) return;
@@ -1027,34 +1280,40 @@
   function licenceBar(v) {
     const el = document.getElementById('licence-bar');
     if (!el || !v) return;
-    el.textContent = v.licensed ? `Licensed to ${v.firm}` : 'Evaluation copy';
+    const ending = v.licensed && v.daysLeft <= 30;
+    el.className = `licence-bar${v.licensed ? (ending ? ' is-ending' : '') : ' is-eval'}`;
+    el.innerHTML = v.licensed ? `<span class="lead-in">Licensed to</span> <b>${esc(v.firm)}</b>${ending ? ` <span class="chip manual">${v.daysLeft ? `Ends in ${plural(v.daysLeft, 'day', 'days')}` : 'Ends today'}</span>` : ''}` : 'Evaluation copy';
     el.title = v.licensed ? `Licence ${v.id}. Ends ${v.expires}.` : 'No licence: cloaked copies can be exported only from test matters. Restoring drafts always works.';
   }
+  // Facts as a label and a value. The colon after each label is read out but not drawn.
+  const factList = (pairs) => `<dl class="code-meta">${pairs.map(([k, v]) => `<dt>${k}<span class="vh">:</span></dt> <dd>${v}</dd>`).join('')}</dl>`;
 
   async function licenceScreen(error, note) {
     let v = null;
     try { v = await call('licence'); } catch (err) { error = error || err.message; }
     licenceBar(v);
-    const ends = v?.licensed && v.daysLeft <= 30 ? ` <span class="chip manual">${v.daysLeft ? `in ${plural(v.daysLeft, 'day', 'days')}` : 'today'}</span>` : '';
+    const ending = v?.licensed && v.daysLeft <= 30;
+    const ends = ending ? ` <span class="chip manual">${v.daysLeft ? `in ${plural(v.daysLeft, 'day', 'days')}` : 'today'}</span>` : '';
     show(`<div class="narrow">
       <h1>Licence</h1>
       ${error ? message(error) : ''}${note ? message(note, 'ok') : ''}
+      ${ending ? `<div class="msg warn" role="status" id="licence-ending"><b>This licence ends ${v.daysLeft ? `in ${plural(v.daysLeft, 'day', 'days')}` : 'today'}.</b> Ask your supplier for a new licence, then paste it below. Cloak keeps working until the end date. After that it is an evaluation copy: cloaked copies can be exported only from test matters, and restoring drafts keeps working.</div>` : ''}
       ${v?.developmentKey ? message('This copy of Cloak was built for testing. It has the development licence key, so no licence will work in it. Ask your supplier for the copy built for sale.', 'warn') : ''}
       <div class="card" id="licence-status">${v?.licensed ? `
         <h2>Licensed to ${esc(v.firm)}</h2>
-        <p class="small">Licence ID: <b>${esc(v.id)}</b><br>Seats: <b>${esc(v.seats)}</b> <span class="muted">(for your records: Cloak does not count or limit seats)</span><br>Issued: ${esc(v.issued)}<br>Ends: <b>${esc(v.expires)}</b>${ends}</p>
+        ${factList([['Licence ID', `<b class="ink">${esc(v.id)}</b>`], ['Seats', `<b class="ink">${esc(v.seats)}</b> <span class="muted">(for your records: Cloak does not count or limit seats)</span>`], ['Issued', esc(v.issued)], ['Ends', `<b class="ink">${esc(v.expires)}</b>${ends}`]])}
         <p class="small muted">${v.where === 'computer' ? 'Installed for everyone on this computer.' : 'Kept in your own user folder on this computer.'} It was checked on this computer. Nothing is sent anywhere.</p>`
     : `<h2>Evaluation copy</h2>
         <p>Everything works, but cloaked copies can be exported only from matters ticked as made-up test documents. Restoring drafts always works, with or without a licence.</p>
-        ${v && v.status !== 'none' ? `<div class="msg warn" id="licence-problem">${esc(v.reason)}</div>` : ''}`}
+        ${v && v.status !== 'none' ? `<div class="msg ${v.status === 'expired' ? 'bad' : 'warn'}" id="licence-problem" role="status">${esc(v.reason)}</div>` : ''}`}
       </div>
       <div class="card">
         <h2>${v?.licensed ? 'Replace the licence' : 'Add the licence'}</h2>
-        <p class="muted small">Paste the licence text, from BEGIN CLOAK LICENCE to END CLOAK LICENCE, or choose the licence file. It is checked on this computer. Nothing is sent anywhere.</p>
-        <div class="field"><textarea id="licence-text" rows="7" aria-label="Licence text" autocomplete="off" spellcheck="false" placeholder="-----BEGIN CLOAK LICENCE-----"></textarea></div>
-        <div class="row"><button class="btn primary" id="licence-use">Use this licence</button><button class="btn" id="licence-file">Choose the licence file…</button></div>
+        <p class="sub">Paste the licence text, from BEGIN CLOAK LICENCE to END CLOAK LICENCE, or choose the licence file. It is checked on this computer. Nothing is sent anywhere.</p>
+        <div class="field"><label for="licence-text">Licence text</label><textarea id="licence-text" rows="5" class="mono" autocomplete="off" spellcheck="false" placeholder="-----BEGIN CLOAK LICENCE-----"></textarea></div>
+        <div class="row"><button class="btn primary" id="licence-use" type="button">Use this licence</button><button class="btn" id="licence-file" type="button">Choose the licence file…</button></div>
       </div>
-      <div class="row"><button class="btn" id="licence-back">Back</button>${v?.licensed && v.where === 'user' ? '<button class="link" id="licence-remove">Remove the licence from this computer</button>' : ''}</div>
+      <div class="row"><button class="btn" id="licence-back" type="button">Back</button>${v?.licensed && v.where === 'user' ? '<button class="link" id="licence-remove" type="button">Remove the licence from this computer</button>' : ''}</div>
     </div>`);
     const install = async (text) => {
       try {
@@ -1072,7 +1331,7 @@
     });
     on('#licence-back', 'click', () => home());
     on('#licence-remove', 'click', async () => {
-      const yes = await confirmDialog({ title: 'Remove the licence?', body: 'Cloak goes back to being an evaluation copy for you on this computer: cloaked copies can then be exported only from test matters. Restoring drafts keeps working.', yes: 'Remove the licence' });
+      const yes = await confirmDialog({ title: 'Remove the licence?', small: true, body: 'Cloak goes back to being an evaluation copy for you on this computer: cloaked copies can then be exported only from test matters. Restoring drafts keeps working.', notes: [{ icon: 'info', html: 'The licence stays valid. You can add it again from the licence file.' }], yes: 'Remove the licence' });
       if (!yes) return;
       try { await call('removeLicence'); licenceScreen(null, 'The licence was removed from this computer.'); } catch (err) { licenceScreen(err.message); }
     });
