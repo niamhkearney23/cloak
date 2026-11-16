@@ -81,7 +81,7 @@
         <button class="choice" id="go-restore"><b>Restore a draft</b>Put the real details back into a draft, and check it.</button>
       </div>
       ${homeExtras()}
-      <p class="small muted" style="margin-top:26px">Signed in as <b>${esc(state.info.who)}</b> · <button class="link" id="change-name">Change name</button> · <button class="link" id="go-licence">Licence</button></p>
+      <p class="signed">Signed in as <b>${esc(state.info.who)}</b> · <button class="link" id="change-name">Change name</button> · <button class="link" id="go-licence">Licence</button></p>
     </div>`);
     on('#go-cloak', 'click', () => { state.afterOpen = null; setup(); });
     on('#go-restore', 'click', () => restoreStart());
@@ -377,7 +377,7 @@
     panel(`<p class="muted small">The tool gave these the same tag because they look like the same person or company. Confirm each one, or split it off.</p>
       ${[...grouped].map((into) => { const list = groups.get(into); return `<div class="card white"><b>${plural(list.length, 'variant', 'variants')} of ${esc(list[0].intoValue)}</b> <span class="tag">{{${esc(into)}}}</span>
         <div class="small muted">These differ only in punctuation or spacing: ${list.map((m) => esc(m.value)).join(' · ')}</div>
-        <div class="row" style="margin-top:8px"><button class="btn small primary" data-group="${esc(into)}">Confirm all ${list.length} in this group</button></div></div>`; }).join('')}
+        <div class="row mt-2"><button class="btn small primary" data-group="${esc(into)}">Confirm all ${list.length} in this group</button></div></div>`; }).join('')}
       ${single.length || d.shortForms.length ? `<table><thead><tr><th>This</th><th>was joined to</th><th>Why</th><th></th></tr></thead><tbody>
       ${single.map((m) => `<tr><td><b>${esc(m.value)}</b><br><span class="tag">{{${esc(m.tag)}}}</span></td><td>${esc(m.intoValue)}<br><span class="tag">{{${esc(m.into)}}}</span></td><td class="small">${esc(m.reason)}</td>
         <td><div class="row"><button class="btn small primary" data-same="${esc(m.tag)}">Same</button><button class="btn small" data-split="${esc(m.tag)}">Different: split</button></div></td></tr>`).join('')}
@@ -468,7 +468,7 @@
         <div class="row"><button class="btn primary" id="hide-nl">Hide all non-Latin text in this file</button><button class="btn" id="close">Close</button></div>
         <details class="more"><summary>Approve it with the non-Latin text showing</summary>
           <p class="small">The text will go out as written. Only do this if you have read it and it identifies no one. Type <b>APPROVE</b> to confirm.</p>
-          <div class="row"><input type="text" id="typed" autocomplete="off" placeholder="APPROVE" style="max-width:200px"><button class="btn" id="approve" disabled>Approve this file</button></div></details>`
+          <div class="row"><input type="text" id="typed" autocomplete="off" placeholder="APPROVE" class="w-sm"><button class="btn" id="approve" disabled>Approve this file</button></div></details>`
     : approve ? `<label class="check"><input type="checkbox" id="checked"> I have read this file against the original and it is safe to export</label>
         <div class="row"><button class="btn" id="close">Close</button><button class="btn primary" id="approve" disabled>Approve this file</button></div>`
       : '<div class="row"><button class="btn" id="close">Close</button></div>'}</div>`;
@@ -548,14 +548,14 @@
     panel(`${error ? message(error) : ''}
       ${c.missing.length ? `<div class="msg warn" id="chrono-missing"><b>Events in these files are missing from this chronology.</b><ul>${c.missing.map((m) => `<li>${esc(m.file)} <span class="muted">(${esc(m.why)})</span></li>`).join('')}</ul></div>` : ''}
       <p class="muted small">${plural(c.dated, 'row', 'rows')} with a date${c.notUnderstood ? `, ${plural(c.notUnderstood, 'row', 'rows')} whose date Cloak could not read (read them by hand)` : ''}${c.conflicts ? `, ${plural(c.conflicts, 'row', 'rows')} that may conflict` : ''}. ${c.undated ? `${plural(c.undated, 'row', 'rows')} with no date ${state.showUndated ? 'are shown below' : 'are hidden'}. <button class="link" id="toggle-undated">${state.showUndated ? 'Hide them' : `Show the ${c.undated} rows with no date`}</button>` : ''}</p>
-      <div class="row" style="margin-bottom:10px"><button class="btn small" id="chrono-merge" disabled>Merge selected rows</button><button class="btn small" id="chrono-add">Add a row</button></div>
+      <div class="row mb-3"><button class="btn small" id="chrono-merge" disabled>Merge selected rows</button><button class="btn small" id="chrono-add">Add a row</button></div>
       <table id="chrono-table"><thead><tr><th></th><th>Date</th><th>What happened</th><th>People</th><th>Source</th><th></th></tr></thead><tbody>${c.rows.map((r) => `<tr data-row="${esc(r.id)}">
         <td><input type="checkbox" data-pick="${esc(r.id)}" aria-label="Select this row"></td>
         <td class="num">${r.date ? esc(r.date) : '<span class="muted">no date</span>'}${r.dateNote ? '<br><span class="chip partial">date not understood</span>' : ''}${r.precision === 'dm' ? '<br><span class="chip manual">no year</span>' : ''}${r.precision === 'range' ? '<br><span class="chip">range</span>' : ''}</td>
-        <td>${esc(r.event)}${r.group ? ` <span class="chip container">same event ${esc(r.group)}</span>` : ''}${r.conflict ? `<div class="chip partial" style="margin-top:4px">possible conflict: ${esc(r.conflict.why.join('; '))}</div>` : ''}${r.relative.length ? `<div class="small muted">relative date: ${esc(r.relative.join('; '))}</div>` : ''}</td>
+        <td>${esc(r.event)}${r.group ? ` <span class="chip container">same event ${esc(r.group)}</span>` : ''}${r.conflict ? `<div class="chip partial mt-2">possible conflict: ${esc(r.conflict.why.join('; '))}</div>` : ''}${r.relative.length ? `<div class="small muted">relative date: ${esc(r.relative.join('; '))}</div>` : ''}</td>
         <td class="small">${r.people.map(esc).join('<br>') || '<span class="muted">-</span>'}</td><td class="small">${r.source.map(esc).join('<br>')}</td>
         <td><div class="row"><button class="btn small" data-edit="${esc(r.id)}">Edit</button><button class="btn small danger" data-delete="${esc(r.id)}">Delete</button></div></td></tr>`).join('')}</tbody></table>
-      <div class="card" style="margin-top:14px" id="chrono-confirm">${c.confirmed ? `<span class="chip cloaked">Confirmed</span> by ${esc(c.confirmed.by)} on ${esc(c.confirmed.whenText)}. Any change takes the confirmation away.` : `<p>When the table is right, confirm it. The confirmed table is exported as its own cloaked document, and is the recommended thing to send for drafting.</p><button class="btn primary" id="chrono-confirm-go">Confirm the chronology</button>`}</div>`);
+      <div class="card mt-4" id="chrono-confirm">${c.confirmed ? `<span class="chip cloaked">Confirmed</span> by ${esc(c.confirmed.by)} on ${esc(c.confirmed.whenText)}. Any change takes the confirmation away.` : `<p>When the table is right, confirm it. The confirmed table is exported as its own cloaked document, and is the recommended thing to send for drafting.</p><button class="btn primary" id="chrono-confirm-go">Confirm the chronology</button>`}</div>`);
     on('#toggle-undated', 'click', () => { state.showUndated = !state.showUndated; panelChronology(); });
     const picked = () => [...main.querySelectorAll('[data-pick]:checked')].map((x) => x.dataset.pick);
     on('[data-pick]', 'change', () => { document.getElementById('chrono-merge').disabled = picked().length < 2; });
@@ -642,7 +642,7 @@
         <td>${g.places.map(where).join('')}${g.more ? `<div class="reason">and ${g.more} more</div>` : ''}</td>
         <td>${g.undecided ? `<div class="row">${g.fixable ? `${g.check === 'name' ? `<select class="merge" data-dc-kind="${i}" aria-label="Hide it as"><option value="PERSON" ${g.hideAs === 'PERSON' ? 'selected' : ''}>as a person</option><option value="COMPANY" ${g.hideAs === 'COMPANY' ? 'selected' : ''}>as a company</option><option value="OTHER" ${g.hideAs === 'OTHER' ? 'selected' : ''}>as something else</option></select>` : ''}<button class="btn small primary" data-dc-hide="${i}">Hide it</button>` : ''}<button class="btn small" data-dc-fine="${i}">It is fine</button></div>`
     : `<span class="chip cloaked">Marked fine</span>${decided(g) ? `<div class="reason">by ${esc(decided(g).by)}<br>${esc(decided(g).whenText)}</div>` : ''}`}</td></tr>`).join('')}</tbody></table>` : '<div class="msg ok" id="check-clean">Nothing was found. Every file passes.</div>'}
-      <h2 style="margin-top:18px">Each file</h2>
+      <h2 class="mt-4">Each file</h2>
       <table id="check-files"><thead><tr><th>File</th><th>Result</th><th class="num">Findings</th></tr></thead><tbody>${units.map((u) => `<tr>
         <td>${esc(u.id)}<div class="reason">${esc(u.title)}</div></td>
         <td>${u.status === 'pass' ? `<span class="chip cloaked">Passed</span>${u.findings ? ' <span class="small muted">every finding decided</span>' : ''}` : `<span class="chip partial">Failed</span> <span class="small">${plural(u.undecided, 'finding', 'findings')} to decide</span>`}</td>
@@ -704,7 +704,7 @@
         <div class="field"><textarea id="draft" rows="10" aria-label="The draft" placeholder="Paste the draft here">${esc(state.draft)}</textarea></div>
         <div class="row"><button class="btn" id="pick-draft">Choose a file…</button>
           <button class="btn" id="pick-docs">Choose the documents folder…</button>${state.docsFolder ? `<span class="path" id="docs-path">${esc(state.docsFolder)}</span>` : '<span class="small muted">Optional: it lets Cloak check the draft against the documents. Without it, that check is skipped.</span>'}</div>
-        <div class="row" style="margin-top:12px"><button class="btn primary" id="do-restore">Check and restore</button><button class="btn" id="restore-back">Done</button></div>
+        <div class="row mt-3"><button class="btn primary" id="do-restore">Check and restore</button><button class="btn" id="restore-back">Done</button></div>
       </div>
       <div id="restore-result">${r ? restoreResultHtml(r) : ''}</div>
     </div>`);
@@ -743,7 +743,7 @@
       <p>${plural(rep.tagsRestored, 'tag', 'tags')} put back (${plural(rep.distinctTags, 'different tag', 'different tags')}).
       ${rep.inKeyNotInDraft.length ? `<br>${plural(rep.inKeyNotInDraft.length, 'tag', 'tags')} in the key are not in the draft: ${list(rep.inKeyNotInDraft)}` : ''}
       ${rep.notInKey.length ? `<br><b>Tag-like text that is not in the key:</b> ${list(rep.notInKey)}` : '<br>No tag-like text outside the key.'}</p>
-      ${r.checks.map((c) => `<h2 style="margin-top:14px;font-size:15px">${esc(c.name)} <span class="chip ${RESULT_CHIP[c.result]}">${RESULT_WORDS[c.result]}</span></h2>${c.note ? `<p class="small muted">${esc(c.note)}</p>` : ''}${c.issues.length ? `<table><tbody>${c.issues.map((i) => `<tr><td class="num">${i.paragraph == null ? '' : `paragraph ${esc(String(i.paragraph))}`}</td><td><span class="chip ${i.level === 'fail' ? 'partial' : 'manual'}">${esc(i.level)}</span> ${esc(i.what)}</td></tr>`).join('')}</tbody></table>` : ''}`).join('')}
+      ${r.checks.map((c) => `<h2 class="mt-4 h-minor">${esc(c.name)} <span class="chip ${RESULT_CHIP[c.result]}">${RESULT_WORDS[c.result]}</span></h2>${c.note ? `<p class="small muted">${esc(c.note)}</p>` : ''}${c.issues.length ? `<table><tbody>${c.issues.map((i) => `<tr><td class="num">${i.paragraph == null ? '' : `paragraph ${esc(String(i.paragraph))}`}</td><td><span class="chip ${i.level === 'fail' ? 'partial' : 'manual'}">${esc(i.level)}</span> ${esc(i.what)}</td></tr>`).join('')}</tbody></table>` : ''}`).join('')}
       ${r.checks[0].translated?.length ? `<p class="small muted">${plural(r.checks[0].translated.length, 'form', 'forms')} put back in the language of their sentence (month names, job titles, court names).</p>` : ''}
     </div>
     <div class="card white"><h2>The restored draft</h2><pre class="filetext" id="restored-text">${esc(r.restored)}</pre><div class="row"><button class="btn primary" id="copy-restored">Copy</button><button class="btn" id="save-restored">Save as…</button></div></div>`;
