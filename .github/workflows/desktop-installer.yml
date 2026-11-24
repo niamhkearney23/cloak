@@ -43,7 +43,7 @@ jobs:
       - name: Tests
         shell: bash
         run: |
-          npm test > test.log 2>&1 || { echo "FAILED TESTS:"; grep -A40 '^not ok' test.log | grep -vE 'duration_ms|^\s+type:|^\s+---|^\s+\.\.\.' | head -150; tail -12 test.log; exit 1; }
+          npm test > test.log 2>&1 || { grep NETLOG-DIAG test.log | cut -c1-700 | head -120; echo "FAILED TESTS:"; grep -A40 '^not ok' test.log | grep -vE 'duration_ms|^\s+type:|^\s+---|^\s+\.\.\.' | head -150; tail -12 test.log; exit 1; }
           tail -12 test.log
       # The licences of exactly the packages installed on this system go into the installer.
       - name: Third-party notices
