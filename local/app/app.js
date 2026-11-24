@@ -463,16 +463,18 @@
     }
     const c = d.doubleCheck || { ran: false };
     const passed = c.ran && c.passed;
+    const undecided = c.ran && !c.passed ? c.counts.undecided : 0;
     const note = !c.ran ? '<span class="long" id="check-state">Next: the double check. It also runs when you export.</span>'
       : passed ? `<span class="chip cloaked" id="check-state">Double check passed</span><span class="long">${esc(c.whenText)}.${c.counts.places ? ` ${plural(c.counts.places, 'finding', 'findings')} marked fine by a person.` : ' Nothing left to decide.'}${c.hidden ? ` ${plural(c.hidden, 'finding', 'findings')} hidden during the check.` : ''}</span>`
-        : `<span class="chip partial" id="check-state">Double check: ${c.counts.undecided} to decide</span><span class="long">in ${plural(c.counts.filesFailing, 'file', 'files')}.</span>`;
+        : `<span class="long" id="check-state">Double check: ${c.counts.undecided} to decide.</span>`;
     const exporting = state.chrono?.confirmed
       ? `<button class="btn ${passed ? 'primary' : ''}" id="export-chrono" type="button">${icon('out')}<span class="c-full">Export the chronology only (recommended)</span><span class="c-short">Chronology only</span></button><button class="btn" id="export" type="button"><span class="c-full">Export all files…</span><span class="c-short">All files…</span></button>`
       : `<button class="btn ${passed ? 'primary' : ''}" id="export" type="button">${icon('out')}<span class="c-full">Export cloaked copies…</span><span class="c-short">Export…</span></button>`;
-    const lead = state.exported ? 'Exported' : 'Review finished';
-    const by = `<span class="long">by ${esc(d.complete.by)} on ${esc(d.complete.whenText)}. ${plural(willExport, 'file', 'files')} ready to export${blocked ? `, ${blocked} held back` : ''}.</span>`;
-    return `<div class="finish ${state.exported ? 'is-exported' : passed ? 'is-ready' : 'is-done'}">
-      <div class="finish-note" id="finish-note"><span class="finish-lead">${lead}</span>${by}${note}</div>
+    const lead = state.exported ? 'Exported' : undecided ? 'Export waits' : 'Review finished';
+    const by = state.exported || undecided || passed ? '' : `<span class="long">by ${esc(d.complete.by)} on ${esc(d.complete.whenText)}.</span>`;
+    const blockersHtml = undecided ? `<div class="blockers"><button class="blocker" type="button" data-blocker-tab="check" aria-label="${plural(undecided, 'finding', 'findings')} in ${plural(c.counts.filesFailing, 'file', 'files')} to decide"><b>${undecided}</b> ${undecided === 1 ? 'finding' : 'findings'} in ${plural(c.counts.filesFailing, 'file', 'files')}</button></div>` : '';
+    return `<div class="finish ${state.exported ? 'is-exported' : undecided ? 'is-blocked' : passed ? 'is-ready' : 'is-done'}">
+      <div class="finish-note" id="finish-note"><span class="finish-lead">${lead}</span>${by}${note}${blockersHtml}</div>
       ${leaves}
       <div class="row"><button class="btn ${passed ? '' : 'primary'}" id="run-check" type="button" ${state.checking ? 'disabled' : ''}>${c.ran ? 'Run the double check again' : 'Run the double check'}</button>${exporting}</div></div>`;
   }
@@ -481,6 +483,8 @@
 
   // The few words around the word to decide, with the word marked. The engine already cuts the excerpt to about 100 characters.
   function excerpt(text, word) {
+    // The engine cuts at a fixed length: a tag cut in half at either end is dropped.
+    text = text.replace(/\{\{[^}]*$/, '…').replace(/^…?[^{]*?\}\}/, (m) => (m.includes('{{') ? m : '…'));
     const at = text.indexOf(word);
     if (at < 0) return langRuns(tags(text));
     return langRuns(`${tags(text.slice(0, at))}<mark>${esc(word)}</mark>${tags(text.slice(at + word.length))}`);
@@ -1018,13 +1022,17 @@
   const SAMPLE_NOTES = {
     setup: '<b>This is the sample matter.</b> Everything is filled in for you: the ten made-up documents, the matter (already open) and the people in it. Look at what each part asks for, then press <b>Start cloaking</b> at the bottom.',
     review: '<b>Sample matter.</b> A few words on the <b>Not sure</b> list are names or part of an address: hide those, and mark the rest as fine. Confirm the joined names. On the <b>Files</b> tab, the WhatsApp chat needs a manual check because it has a line in Chinese. Then finish the review and export to the <b>Cloaked copies</b> folder inside the sample folder.',
-    draft: '<b>Trying the sample?</b> Open a file in the <b>Cloaked copies</b> folder, copy a few lines with their tags, paste them here and press <b>Check and restore</b>.',
+    draft: '<b>Trying the sample? Paste a few cloaked lines with their tags here.</b> Open a file in the <b>Cloaked copies</b> folder, copy them, paste them in the box and press <b>Check and restore</b>.',
   };
   const TIPS_KEY = 'cloak.tipsClosed';
   const tipsClosed = () => { try { return JSON.parse(localStorage.getItem(TIPS_KEY) || '[]'); } catch { return []; } };
+  // The tips for setup, review and restore (and the note on the sample restore screen) have no designed screen. They use the tip
+  // component; in a short window (860x600) only the bold first sentence shows, so the first rows of the list stay above the finish bar.
+  const compactTip = (text) => { const i = text.indexOf('</b>'); return i < 0 ? text : `${text.slice(0, i + 4)}<span class="tip-more">${text.slice(i + 4)}</span>`; };
   function tip(id) {
     if (!TIPS[id] || tipsClosed().includes(id)) return '';
-    return `<div class="tip" role="note" id="tip-${id}"><span>${TIPS[id]}</span><button class="link" type="button" data-tip-close="${id}">Got it</button></div>`;
+    const compact = id !== 'home';
+    return `<div class="tip${compact ? ' compact' : ''}" role="note" id="tip-${id}"><span>${compact ? compactTip(TIPS[id]) : TIPS[id]}</span><button class="link" type="button" data-tip-close="${id}">Got it</button></div>`;
   }
   function closeTip(id) {
     try { localStorage.setItem(TIPS_KEY, JSON.stringify([...new Set([...tipsClosed(), id])])); } catch { /* not remembered: it shows again next time */ }
@@ -1037,7 +1045,7 @@
     state.matter = null;
   }
   function screenNote(id) {
-    if (isSample() && SAMPLE_NOTES[id]) return `<div class="tip sample-note" role="note" id="sample-note-${id}"><span>${SAMPLE_NOTES[id]}</span></div>`;
+    if (isSample() && SAMPLE_NOTES[id]) return `<div class="tip sample-note${id === 'draft' ? ' compact' : ''}" role="note" id="sample-note-${id}"><span>${id === 'draft' ? compactTip(SAMPLE_NOTES[id]) : SAMPLE_NOTES[id]}</span></div>`;
     return tip(id);
   }
 

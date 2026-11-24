@@ -215,8 +215,8 @@ p { margin: 0 0 var(--sp-3); }
 .by { font: 400 var(--fs-micro)/1 var(--font-sans); letter-spacing: 0; color: var(--muted); border-left: 1px solid var(--rule-strong); padding-left: 10px; }
 .bar-matter { display: flex; align-items: center; gap: 10px; min-width: 0; padding-left: var(--sp-4); border-left: 1px solid var(--rule); height: 24px; }
 #matter-name { font: italic 450 16px/1.2 var(--font-serif); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.bar-right { margin-left: auto; display: flex; align-items: center; gap: var(--sp-3); min-width: 0; font-size: var(--fs-small); color: var(--muted); }
-.licence-bar { display: inline-flex; gap: 6px; align-items: baseline; white-space: nowrap; min-width: 0; }
+.bar-right { margin-left: auto; flex: none; display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-small); color: var(--muted); }
+.licence-bar { display: inline-flex; gap: 6px; align-items: baseline; white-space: nowrap; flex: none; }
 .licence-bar:empty { display: none; }
 .licence-bar b { color: var(--text); font-weight: 560; overflow: hidden; text-overflow: ellipsis; max-width: 260px; display: inline-block; vertical-align: bottom; }
 .version { font-size: var(--fs-micro); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -1057,3 +1057,9 @@ progress.thin { height: 4px; }
 .mb-0 { margin-bottom: 0; } .mb-3 { margin-bottom: var(--sp-3); }
 .w-sm { max-width: 200px; }
 .h-minor { font-size: var(--fs-body); }
+
+/* ---- First-run tips that have no designed screen (setup, review, restore): the tip component, compact in a short window ---- */
+@media (max-height: 700px) {
+  .tip.compact { padding: 5px 12px; margin-bottom: var(--sp-2); align-items: center; font-size: var(--fs-small); }
+  .tip.compact .tip-more { display: none; }
+}
