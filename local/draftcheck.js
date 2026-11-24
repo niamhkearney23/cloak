@@ -44,7 +44,7 @@ export function restoreCheck(matter, draft, { required = [] } = {}) {
     ...r.notes.map((n) => ({ level: 'warn', paragraph: where(n.text.slice(0, 12)) ?? null, what: `drafting note left in the draft: ${n.text.slice(0, 80)}` })),
     ...r.mixed.map((x) => ({ level: 'warn', paragraph: where(x.text), what: `"${x.text}" is in ${x.language === 'ms' ? 'Malay' : 'English'} inside a sentence in the other language` })),
   ];
-  return { name: 'Restore check', result: verdict(issues), issues, restored: r.text, worked: r.worked, translated: r.translated, kept: r.kept };
+  return { name: 'Restore check', result: verdict(issues), issues, restored: r.text, marks: r.marks, worked: r.worked, translated: r.translated, kept: r.kept };
 }
 
 /** Check 2. `sources` is the real text of every source file. */
@@ -141,5 +141,5 @@ export function checkDraft({ matter, draft, sources, required = [] }) {
   const source = sources ? sourceCheck(matter, restore.restored, sources) : { name: 'Source check', result: 'skipped', issues: [], note: 'Not run: no source files were given. Choose the documents folder to run it.' };
   const arithmetic = arithmeticCheck(restore.restored);
   const checks = [restore, source, arithmetic];
-  return { checks, result: verdict(checks.flatMap((c) => c.issues)), restored: restore.restored, report: restoreReport(matter, draft) };
+  return { checks, result: verdict(checks.flatMap((c) => c.issues)), restored: restore.restored, marks: restore.marks, report: restoreReport(matter, draft) };
 }
