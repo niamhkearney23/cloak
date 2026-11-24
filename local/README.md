@@ -157,8 +157,8 @@ Each matter has its own folder, kept on the firm's own drive:
   but drafts made with the old tags can no longer be restored automatically.
 - **Sharing:** a second lawyer opens the same matter folder and types the
   password. Only one person can have a matter open at a time.
-- **Matter settings** (the link on the setup screen's matter card, on the
-  review screen and on the restore screen, once a matter is open):
+- **Matter settings** (in the top bar beside the matter's name, on the setup,
+  review and restore screens once a matter is open):
   - **Change the password**, typed twice, 10 characters or more, for example
     when a lawyer leaves the matter or the firm. The old password stops
     opening the key at once, and so does the backup copy beside it

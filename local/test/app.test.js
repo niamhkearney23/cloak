@@ -583,11 +583,14 @@ test('matter settings: a new password, a new recovery code and an empty cache, f
     const shows = (sel, re) => page.waitForFunction(([s, r]) => new RegExp(r).test(document.querySelector(s)?.textContent || ''), [sel, re.source], { timeout: 30000 });
     const typeTwice = async (a, b = a) => { await page.fill('#s-pw', a); await page.fill('#s-pw2', b); await page.click('#s-change'); };
     const goHome = async () => { await page.click('#bar-home'); await page.click('#yes'); await page.waitForSelector('#go-restore'); };
+    // A short window, like a 1366 x 768 laptop: the window hides some of each screen's header at this height.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setContentSize(1180, 640));
     await page.waitForSelector('#full-name');
     await page.fill('#full-name', 'Reviewer Example');
     await page.click('#save-name');
     await page.waitForSelector('#go-cloak');
     canRemember = (await page.evaluate(() => window.cloak.call('info', {}))).ok.canRemember;
+    assert.equal(await page.isVisible('#bar-settings'), false, 'no matter is open yet');
 
     // A new matter, as usual.
     await page.click('#go-cloak');
@@ -604,9 +607,10 @@ test('matter settings: a new password, a new recovery code and an empty cache, f
     await page.check('#wrote');
     await page.click('#continue');
 
-    // Matter settings, from the matter card on the setup screen.
-    await page.click('#matter-form [data-matter-settings]');
+    // Matter settings, from the bar beside the matter's name, on the setup screen.
+    await page.click('#bar-settings');
     await page.waitForSelector('#matter-settings');
+    assert.equal(await page.isVisible('#bar-settings'), false, 'not offered on the settings screen itself');
     assert.equal(await page.textContent('#matter-name'), 'Made-up settings matter');
     assert.match(await page.textContent('label[for="s-pw"]'), /10 characters or more/);
     // Plain messages for each mistake, and nothing changes.
@@ -646,7 +650,7 @@ test('matter settings: a new password, a new recovery code and an empty cache, f
     await page.click('#start');
     await page.waitForSelector('.tabs', { timeout: 120000 });
     assert.ok((await readdir(path.join(matter, 'cache'))).length > 0, 'the run filled the cache');
-    await page.click('[data-matter-settings]');
+    await page.click('#bar-settings');
     await page.waitForSelector('#matter-settings');
     await page.click('#s-cache');
     await page.waitForSelector('.overlay #yes');
@@ -688,7 +692,7 @@ test('matter settings: a new password, a new recovery code and an empty cache, f
       await page.check('#m-remember');
       await page.click('#m-open');
       await page.waitForSelector('#draft');
-      await page.click('[data-matter-settings]');
+      await page.click('#bar-settings');
       await page.waitForSelector('#matter-settings');
       await typeTwice(P[3]);
       await shows('#settings-done', /The password remembered on this computer has been updated/);

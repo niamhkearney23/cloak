@@ -38,6 +38,9 @@
   const state = { info: null, folder: null, matterDir: null, matter: null, options: { dates: false, amounts: false, provisions: false }, progress: new Map(), review: null, tab: 'unsure', filter: '', busy: false, exported: null, manualSource: '', location: null, recovery: null, showAll: false, client: '', others: '', testMatter: false, level: 'strict', afterOpen: null, showUndated: false, chrono: null, draft: '', docsFolder: null, restoreResult: null, check: null, checking: false, fileFilter: 'all', fileSearch: '', showAllFiles: false, matterExists: null, openTag: null, draftName: '' };
 
   // The top bar names the open matter, its level and whether it holds made-up test documents.
+  // "Matter settings" in the bar: drawing a screen withdraws it, and each screen that can be come back to offers it
+  // again once it is drawn (offerSettings, with the way back).
+  let settingsReturn = null;
   function setBar() {
     const open = !!state.matter;
     document.getElementById('bar-matter').hidden = !open;
@@ -46,8 +49,10 @@
     level.hidden = !open;
     level.textContent = state.level === 'standard' ? 'Standard' : 'Strict';
     document.getElementById('matter-test').hidden = !(open && state.testMatter);
+    document.getElementById('bar-settings').hidden = !(open && settingsReturn);
   }
-  function show(html) { main.innerHTML = html; main.scrollTop = 0; setBar(); }
+  function show(html) { settingsReturn = null; main.innerHTML = html; main.scrollTop = 0; setBar(); }
+  function offerSettings(back) { settingsReturn = back; setBar(); }
   function on(selector, event, fn) { main.querySelectorAll(selector).forEach((el) => el.addEventListener(event, fn)); }
   const message = (text, kind = 'bad') => `<div class="msg ${kind}" role="${kind === 'bad' ? 'alert' : 'status'}">${esc(text)}</div>`;
   // The page behind a dialog cannot be reached while it is open.
@@ -240,9 +245,8 @@
   }
 
   function matterOpenNote() {
-    document.getElementById('matter-form').innerHTML = `<div class="msg ok">Matter open${state.matter.name ? `: <b>${esc(state.matter.name)}</b>` : ''}.</div><p class="small muted">${settingsLink()}: change the password, replace the recovery code, clear the cache.</p>`;
-    on('[data-matter-settings]', 'click', () => matterSettings({ back: () => setup() }));
-    setBar();
+    document.getElementById('matter-form').innerHTML = `<div class="msg ok">Matter open${state.matter.name ? `: <b>${esc(state.matter.name)}</b>` : ''}.</div>`;
+    offerSettings(() => setup());
   }
   // The foot bar of the setup screen says what is still missing.
   function refreshStartNote() {
@@ -409,7 +413,6 @@
     const meta = [`${icon('file')}${plural(d.files.length, 'file', 'files')} read in ${state.seconds.toFixed(1)} seconds`];
     if (d.source && d.source.label) meta.push(`${icon('cloud')}Source: ${esc(d.source.kind)}${d.source.workspace_path ? `, workspace path ${esc(d.source.workspace_path)}` : ''}, read only`);
     meta.push(state.exported ? `${icon('out')}Exported` : `${icon('out')}Nothing has been exported`);
-    meta.push(`${icon('lock')}${settingsLink()}`);
     show(`<div class="wide has-finish">
       ${pageHead('Review', stepper(at, count), meta)}
       ${screenNote('review')}
@@ -428,7 +431,7 @@
     </div>`);
     on('.tab', 'click', (e) => { state.tab = e.currentTarget.dataset.tab; review(); });
     on('[data-blocker-tab]', 'click', (e) => { state.tab = e.currentTarget.dataset.blockerTab; review(); });
-    on('[data-matter-settings]', 'click', () => matterSettings({ back: () => review() }));
+    offerSettings(() => review());
     const add = () => { const text = document.getElementById('add-text').value.trim(); if (text) act({ type: 'add', text, kind: document.getElementById('add-kind').value }); };
     on('#add-go', 'click', add);
     on('#add-text', 'keydown', (e) => { if (e.key === 'Enter') add(); });
@@ -932,7 +935,7 @@
     const tick = (ok) => (ok ? icon('check', 'lg') : '');
     const hasDraft = !!state.draft.trim();
     show(`<div class="wide">
-      ${pageHead('Restore a draft', '', [`${icon('lock')}${settingsLink()}`])}
+      ${pageHead('Restore a draft')}
       ${screenNote('draft')}
       ${error ? message(error) : ''}
       <div class="matter-strip">
@@ -953,7 +956,7 @@
     </div>`);
     on('#draft', 'input', (e) => { state.draft = e.target.value; state.draftName = ''; });
     on('#change-draft', 'click', () => { state.restoreResult = null; restoreScreen(); });
-    on('[data-matter-settings]', 'click', () => matterSettings({ back: () => restoreScreen() }));
+    offerSettings(() => restoreScreen());
     on('#restore-back', 'click', async () => {
       if (pending) return;
       if (draftAtRisk() && !(await confirmDialog({ title: 'Finish with this draft?', small: true, body: `This closes the matter. ${DRAFT_NOT_KEPT}`, callout: { icon: 'save', html: '<b>The restored text has not been copied or saved.</b> Once you close the matter it cannot be made again without the draft.' }, no: 'Go back to the draft', yes: 'Done' }))) return;
@@ -1017,13 +1020,9 @@
 
   // ------------------------------------------------------- matter settings
   //
-  // The open matter's password, recovery code and cache. Reached from the
-  // matter card on the setup screen, from the review and restore screens, and
-  // straight after a matter is opened with its recovery code.
-
-  function settingsLink() {
-    return '<button class="link" type="button" data-matter-settings>Matter settings</button>';
-  }
+  // The open matter's password, recovery code and cache. Reached from "Matter
+  // settings" in the bar, beside the matter's name (on the setup, review and
+  // restore screens), and straight after a matter is opened with its recovery code.
 
   function matterSettings({ back, recovered = false }) {
     let askForPassword = recovered; // the note asking for a new password, until one is set
@@ -1364,6 +1363,11 @@
   }
 
   // The clicks every screen shares: Home and Help in the top bar, tips, the sample matter.
+  // Matter settings, from the bar: not while a call is running or a dialog is open.
+  document.getElementById('bar-settings').addEventListener('click', () => {
+    if (pending || !settingsReturn || document.querySelector('.overlay')) return;
+    matterSettings({ back: settingsReturn });
+  });
   document.addEventListener('click', (e) => {
     const t = e.target.closest('[data-tip-close], [data-help], [data-go-sample], [data-go-home]');
     if (!t) return;

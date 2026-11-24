@@ -225,6 +225,7 @@ p { margin: 0 0 var(--sp-3); }
 .bar-link { background: none; border: 1px solid transparent; border-radius: var(--r-sm); padding: 4px 9px; color: var(--text); font-size: var(--fs-small); }
 .bar-link:hover { background: var(--hover); border-color: var(--rule); }
 .bar-sep { width: 1px; height: 18px; background: var(--rule); flex: none; }
+.bar-matter .bar-link { flex: none; white-space: nowrap; }
 
 /* The window scrolls inside main. The foot is one quiet line. */
 main { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; }
