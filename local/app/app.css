@@ -1063,3 +1063,24 @@ progress.thin { height: 4px; }
   .tip.compact { padding: 5px 12px; margin-bottom: var(--sp-2); align-items: center; font-size: var(--fs-small); }
   .tip.compact .tip-more { display: none; }
 }
+
+
+/* ============================================================ WELCOME (home)
+   Shown one piece at a time, once per session. Written without inline styles:
+   the delays are classes. Reduced motion, and coming back Home, show it at once. */
+.welcome { max-width: 720px; }
+.welcome h1 { font: 420 var(--fs-display)/1.08 var(--font-serif); letter-spacing: -0.02em; margin: var(--sp-5) 0 var(--sp-3); font-variation-settings: "opsz" 60; }
+.welcome .lead { font-size: 18px; color: var(--muted); max-width: 44ch; margin: 0 0 var(--sp-6); }
+.welcome .three { list-style: none; margin: 0 0 var(--sp-6); padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); }
+.welcome .three li { display: grid; gap: 4px; align-content: start; padding: 16px 18px; background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--r-md); font-size: var(--fs-small); color: var(--muted); }
+.welcome .three .n { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--rule-strong); font-size: var(--fs-micro); font-weight: 620; color: var(--ink); margin-bottom: 4px; }
+.welcome .three b { font: 480 20px/1.2 var(--font-serif); color: var(--ink); }
+.welcome .choices { grid-template-columns: 1fr 1fr; margin-bottom: var(--sp-5); }
+.welcome .signed { margin-top: var(--sp-4); }
+.reveal { opacity: 0; transform: translateY(8px); animation: reveal-rise 0.8s ease-out forwards; }
+.reveal.r1 { animation-delay: 0.1s; } .reveal.r2 { animation-delay: 0.7s; } .reveal.r3 { animation-delay: 1.3s; }
+.reveal.r4 { animation-delay: 1.8s; } .reveal.r5 { animation-delay: 2.3s; } .reveal.r6 { animation-delay: 3s; } .reveal.r7 { animation-delay: 3.5s; }
+.settled .reveal { animation: none; opacity: 1; transform: none; }
+@keyframes reveal-rise { to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; transform: none; } }
+@media (max-width: 760px) { .welcome .three, .welcome .choices { grid-template-columns: 1fr; } }

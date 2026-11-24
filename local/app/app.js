@@ -115,38 +115,26 @@
   // ------------------------------------------------------------------ home
 
   function home() {
-    show(`<div class="home">
+    // The welcome appears one piece at a time the first time in a session; coming back Home shows it at once.
+    const settled = state.homeSeen ? ' settled' : '';
+    state.homeSeen = true;
+    show(`<div class="home welcome${settled}">
       ${tip('home')}
-      <div class="home-grid">
-        <section class="home-hero" aria-labelledby="h">
-          <p class="kicker">${icon('lock')}Runs on this computer. Nothing is sent anywhere.</p>
-          <h1 id="h">Send the case to the AI, <em>not the client.</em></h1>
-          <p class="lead">Cloak hides names and numbers in a folder of documents, then puts them back into the AI's draft.</p>
-          <figure class="specimen" aria-label="An example of a sentence before and after cloaking">
-            <div class="part">
-              <div class="cap"><span>The original</span><span>stays on this computer</span></div>
-              <p lang="ms"><span class="real">Pada 12 Mac 2024</span>, <span class="real">Tan Ah Kow</span> membayar <span class="real">RM 48,500.00</span> kepada <span class="real">Gudang Lima Sdn Bhd</span>.</p>
-            </div>
-            <div class="cut">${icon('scissors')}<span>Cloak cuts here</span></div>
-            <div class="part">
-              <div class="cap"><span>Cloaked</span><span>what the AI sees</span></div>
-              <p lang="ms">Pada ${tagHtml('DATE_1')}, ${tagHtml('PERSON_1')} membayar ${tagHtml('AMOUNT_1')} kepada ${tagHtml('COMPANY_2')}.</p>
-            </div>
-          </figure>
-        </section>
-        <section aria-label="What would you like to do?">
-          <div class="choices">
-            <button class="choice primary" id="go-cloak" type="button"><span class="eyebrow">Before the AI</span><b>Cloak a folder</b><span class="desc">Hide names and numbers in a folder of documents.</span><span class="go">${icon('arrow', 'md')}</span></button>
-            <button class="choice" id="go-restore" type="button"><span class="eyebrow">After the AI</span><b>Restore a draft</b><span class="desc">Put the real details back into a draft, and check it.</span><span class="go">${icon('arrow', 'md')}</span></button>
-          </div>
-          ${homeExtras()}
-        </section>
+      <h1 class="reveal r1" id="h">Hi, welcome to Cloak.</h1>
+      <p class="lead reveal r2">Before you use an AI, Cloak hides the names and numbers in your documents. Afterwards it puts them back.</p>
+      <ol class="three" aria-label="How Cloak works">
+        <li class="reveal r3"><span class="n">1</span><b>Hide</b><span>names and numbers in your documents.</span></li>
+        <li class="reveal r4"><span class="n">2</span><b>Use the AI</b><span>it only sees tags like ${tagHtml('PERSON_1')}.</span></li>
+        <li class="reveal r5"><span class="n">3</span><b>Restore</b><span>the real details go back into its draft.</span></li>
+      </ol>
+      <div class="choices reveal r6" aria-label="What would you like to do?">
+        <button class="choice primary" id="go-cloak" type="button"><b>Cloak a folder</b><span class="desc">Hide names and numbers.</span><span class="go">${icon('arrow', 'md')}</span></button>
+        <button class="choice" id="go-restore" type="button"><b>Restore a draft</b><span class="desc">Put the real details back.</span><span class="go">${icon('arrow', 'md')}</span></button>
       </div>
-      <div class="flow" aria-label="What stays and what leaves">
-        <div class="stay"><h3>${icon('pc', 'md')}Stays on this computer</h3><p>Your documents, the encrypted key, the real names and numbers, and the log. Nothing is sent anywhere, ever.</p></div>
-        <div class="leave"><h3>${icon('out', 'md')}Leaves only when you export</h3><p>The cloaked copies, with tags instead of names, to a folder you choose. Nobody can export until a person has reviewed them.</p></div>
+      <div class="reveal r7">
+        ${homeExtras()}
+        <p class="signed help-links">Signed in as <b>${esc(state.info.who)}</b><span class="sep"></span><button class="link" id="change-name" type="button">Change name</button><span class="sep"></span><button class="link" id="go-licence" type="button">Licence</button><span class="sep"></span><button class="link" data-help="how" type="button">How Cloak works</button><span class="sep"></span><button class="link" data-help="data" type="button">Your data</button><span class="sep"></span><button class="link" data-help="about" type="button">About</button></p>
       </div>
-      <p class="signed help-links">Signed in as <b>${esc(state.info.who)}</b><span class="sep"></span><button class="link" id="change-name" type="button">Change name</button><span class="sep"></span><button class="link" id="go-licence" type="button">Licence</button><span class="sep"></span><button class="link" data-help="how" type="button">How Cloak works</button><span class="sep"></span><button class="link" data-help="data" type="button">Your data</button><span class="sep"></span><button class="link" data-help="about" type="button">About</button></p>
     </div>`);
     on('#go-cloak', 'click', () => { state.afterOpen = null; setup(); });
     on('#go-restore', 'click', () => restoreStart());
@@ -1013,7 +1001,7 @@
 
   // A short note on each main screen until it is closed. Closing it is remembered on this computer.
   const TIPS = {
-    home: '<b>Start here.</b> <b>Cloak a folder</b> hides client details in a folder of documents before they go to an AI tool. <b>Restore a draft</b> puts them back into what the AI wrote. New to Cloak? Try the sample matter first.',
+    home: '<b>Start here.</b> New to Cloak? Try the sample matter first.',
     setup: '<b>This screen sets up a cloaking run.</b> Choose the documents (they are only read, never changed), choose or create the matter that holds the encrypted key, and say who the parties are. Nothing is saved or sent until you finish the review and export.',
     review: '<b>Check what Cloak found before anything leaves.</b> Work through each tab with an amber number, read any file that needs a manual check, then press Finish review. Nothing has been exported yet.',
     restore: '<b>This puts the real details back into a draft.</b> Open the matter the draft was made from, then paste the draft. Cloak checks the draft as well. It all happens on this computer.',
@@ -1049,7 +1037,7 @@
     return tip(id);
   }
 
-  const homeExtras = () => `<div class="try-sample"><span class="ico">${icon('book', 'lg')}</span><div><b>New to Cloak?</b> Try a sample matter: ten made-up documents, ready in a few minutes.</div><button class="btn" id="go-sample" data-go-sample type="button">Try a sample matter</button></div>`;
+  const homeExtras = () => `<div class="try-sample"><span class="ico">${icon('book', 'lg')}</span><div>Try a sample matter: ten made-up documents.</div><button class="btn" id="go-sample" data-go-sample type="button">Try a sample matter</button></div>`;
 
   // "Try a sample matter": where to put it and a password; Cloak does the rest.
   async function sampleScreen(error) {
