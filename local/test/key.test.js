@@ -1,6 +1,7 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile, stat, utimes } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile, stat, utimes } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import { makeMatter, REAL_VALUES, REAL_EXACT } from './matter.js';
@@ -162,6 +163,22 @@ test('unchanged files come from the encrypted cache and are not read again', asy
   await s.close();
 });
 
+test('a reading made by an older version of the readers is not used: that file is read again', async () => {
+  const s = await openMatter({ dir, password: PASSWORD, user: 'lawyer-one' });
+  const first = (await s.cloakFolder({ folder: src })).report.totals.taken_from_cache;
+  // Make the cached reading of one file look as if an older reader made it.
+  const file = path.join(src, '21 New letter.txt');
+  const cached = path.join(dir, 'cache', `${s.crypto.name(createHash('sha256').update(await readFile(file)).digest('hex'))}.enc`);
+  const entry = s.crypto.decrypt(await readFile(cached));
+  assert.match(entry.reader, new RegExp(`^${escapeRe(VERSION)}/reader-\\d+$`), 'the cache records which reader made each reading');
+  entry.reader = `${VERSION}/reader-1`;
+  await writeFile(cached, s.crypto.encrypt(entry));
+  const again = await s.cloakFolder({ folder: src });
+  assert.equal(again.report.totals.taken_from_cache, first - 1, 'only the file with the old reading was read again');
+  assert.equal(s.crypto.decrypt(await readFile(cached)).reader, entry.reader.replace(/reader-1$/, `reader-${(await import('../extract.js')).READER_VERSION}`), 'the new reading replaced the old one');
+  await s.close();
+});
+
 test('nothing real is stored in the matter folder, the cache, the log or temp files', async () => {
   const files = await walk(dir);
   assert.ok(files.some((f) => f.includes(`${path.sep}cache${path.sep}`)), 'there is a cache');
@@ -247,8 +264,11 @@ test('a new password opens the matter; the old one no longer does, not even in t
   const old = S.password;
   // Before the change, the backup copy beside the key opens with the old password, like the key itself.
   await openKeyFile(`${keyFile}.bak`, { password: old });
-  // A copy left behind by a save that was cut short.
-  await copyFile(keyFile, `${keyFile}.4242.tmp`);
+  // A copy left behind by an earlier Cloak whose save was cut short, and one of this Cloak's own saves still under way.
+  const leftOver = `${keyFile}.${process.pid + 1}.0badc0de.tmp`;
+  const underWay = `${keyFile}.${process.pid}.5afe5afe.tmp`;
+  await copyFile(keyFile, leftOver);
+  await copyFile(keyFile, underWay);
   await withMatter({ password: old, user: 'partner' }, async (s) => {
     const before = await readFile(keyFile, 'utf8');
     await assert.rejects(s.changePassword('too short'), /at least 10 characters/);
@@ -261,8 +281,10 @@ test('a new password opens the matter; the old one no longer does, not even in t
     // the backup copy no longer opens with the old password, and the left-over copy is gone.
     await assert.rejects(openKeyFile(`${keyFile}.bak`, { password: old }), /password is not right/);
     await openKeyFile(`${keyFile}.bak`, { password: S.password });
-    await assert.rejects(stat(`${keyFile}.4242.tmp`), 'the left-over copy is removed');
+    await assert.rejects(stat(leftOver), 'the left-over copy is removed');
+    assert.ok(await stat(underWay), 'a save still under way keeps its own temporary file');
   });
+  await rm(underWay);
 
   await assert.rejects(openMatter({ dir, password: old, user: 'lawyer-who-left' }), /password is not right/);
   await assert.rejects(openKeyFile(`${keyFile}.bak`, { password: old }), /password is not right/);
@@ -356,4 +378,47 @@ test('if the old backup copy cannot be removed after a new password, the person 
   await writeFile(path.join(`${file}.bak`, 'in the way.txt'), 'x');
   await assert.rejects(setPassword(file, dataKey, 'made-up password 2'), /could not be removed from the matter folder and still opens with the old password/);
   await openKeyFile(file, { password: 'made-up password 2' }); // the new password itself is saved
+});
+
+test('closing the matter while a new password is being saved does not put the old one back', async () => {
+  const d = path.join(await mkdtemp(path.join(os.tmpdir(), 'cloak-closing-pw-')), 'matter');
+  const { session } = await createMatter({ testMatter: true, dir: d, password: 'made-up password 1', user: 'partner', kdf: FAST });
+  // The window is closed a moment after "Change the password" is pressed: closing saves the key file too.
+  const changing = session.changePassword('made-up password 2');
+  await session.close();
+  await changing;
+  await assert.rejects(openMatter({ dir: d, password: 'made-up password 1', user: 'someone' }), /password is not right/);
+  await (await openMatter({ dir: d, password: 'made-up password 2', user: 'partner' })).close();
+  // Once the matter is closed (its key wiped), nothing more can be locked with it.
+  const before = await readFile(path.join(d, KEY_FILE_NAME), 'utf8');
+  await assert.rejects(session.changePassword('made-up password 3'), /closed/);
+  await assert.rejects(session.newRecoveryCode(), /closed/);
+  assert.equal(await readFile(path.join(d, KEY_FILE_NAME), 'utf8'), before);
+});
+
+test('a new password is never locked up with a key that does not open the key file', async () => {
+  const d = await mkdtemp(path.join(os.tmpdir(), 'cloak-ownkey-'));
+  const file = path.join(d, KEY_FILE_NAME);
+  await createKeyFile(file, { password: 'made-up password 1', contents: { made: 'up' }, kdf: FAST });
+  const before = await readFile(file, 'utf8');
+  await assert.rejects(setPassword(file, Buffer.alloc(32), 'made-up password 2'), /Nothing was changed/);
+  await assert.rejects(setPassword(file, Buffer.alloc(32, 7), 'made-up password 2'), /Nothing was changed/);
+  assert.equal(await readFile(file, 'utf8'), before);
+  await openKeyFile(file, { password: 'made-up password 1' });
+});
+
+test('closing lets every write already asked for finish first, then refuses the rest: nothing is sealed with the wiped key', async () => {
+  const d = path.join(await mkdtemp(path.join(os.tmpdir(), 'cloak-closing-queue-')), 'matter');
+  const { session } = await createMatter({ testMatter: true, dir: d, password: 'made-up password 1', user: 'partner', kdf: FAST });
+  // Saves and a new password still being written when the window is closed, and a save asked for just after.
+  const before = [session.save(), session.changePassword('made-up password 2'), session.save(), session.save()];
+  const closing = session.close();
+  const settled = Promise.allSettled([...before, session.save()]);
+  await closing;
+  const results = await settled;
+  assert.deepEqual(results.map((r) => r.status), ['fulfilled', 'fulfilled', 'fulfilled', 'fulfilled', 'rejected']);
+  assert.match(results[4].reason.message, /closed/);
+  const again = await openMatter({ dir: d, password: 'made-up password 2', user: 'partner' });
+  assert.equal(again.matter.key().entries.length, 0, 'the key file opens and reads');
+  await again.close();
 });

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Stop hiding this? · Review · Cloak</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.8-1.2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.2l7.5 2.7v5.5c0 4.6-3.1 8.1-7.5 9.5-4.4-1.4-7.5-4.9-7.5-9.5V5.9z"/><path d="M8.9 12.1l2.2 2.2 4.1-4.2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h3.6a2 2 0 0 1 1.5.7l1.3 1.6h6.6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M13.5 3.5v5h5"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10"/><path d="M19.5 4.5l-8 8"/><path d="M18 13.5v4.5a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V7.5A1.5 1.5 0 0 1 6 6h4.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H5.5A1.5 1.5 0 0 1 4 19z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.7 9.5a2.4 2.4 0 0 1 4.6 1c0 1.6-2.3 2.1-2.3 3.6"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="7.5" rx="1.8"/><path d="M7.5 14h9v6h-9z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V5.5A1.5 1.5 0 0 0 14 4H5.5A1.5 1.5 0 0 0 4 5.5V14a1.5 1.5 0 0 0 1.5 1.5h3"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v10.5"/><path d="M7.5 10l4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><path d="M6 4v3.5a4.5 4.5 0 0 0 4.5 4.5H12m6-8v3.5a4.5 4.5 0 0 1-4.5 4.5H12m0 0v8.5"/><path d="M9 17.5l3 3 3-3"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M14.5 5.5l4 4L9 19H5v-4z"/><path d="M12.5 7.5l4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 4h4"/><path d="M7 7l.8 11.6A1.5 1.5 0 0 0 9.3 20h5.4a1.5 1.5 0 0 0 1.5-1.4L17 7"/><path d="M10.5 10.5v6M13.5 10.5v6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="3.6"/><path d="M10.6 13L19 4.5"/><path d="M15.5 8l2.6 2.6"/><path d="M17.3 6.2l2 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8.5V6.5a2.5 2.5 0 0 1 2.5-2.5h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2"/><path d="M8 10h8M8 14h5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><circle cx="12" cy="9.5" r="5.5"/><path d="M9 14.2L8 20.5l4-2 4 2-1-6.3"/><path d="M9.7 9.6l1.6 1.6 3-3"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 6.5L4.5 11 9 15.5"/><path d="M4.5 11H15a4.5 4.5 0 0 1 0 9h-3"/></symbol>
+  <symbol id="i-decide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.8" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-block" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6.2 17.8L17.8 6.2"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 4.6L2.9 17.5A2 2 0 0 0 4.6 20.5h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-fail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-bar" viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="6" rx="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-bar-doc" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><rect x="8" y="11" width="8" height="3" rx="0.8" fill="currentColor" stroke="none"/><path d="M8 17h5"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M8.5 12.5h7M8.5 16.5h4.5"/><path d="M13.5 3.5v5h5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9.5 3.5h5M10.5 3.5v5.2L5.6 17.4A2 2 0 0 0 7.4 20.5h9.2a2 2 0 0 0 1.8-3.1l-4.9-8.7V3.5"/><path d="M7.8 14h8.4"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.9-3 3-4.5 5.5-4.5s4.6 1.5 5.5 4.5"/><path d="M15.5 6a3 3 0 0 1 0 6M17 14.6c1.8.5 3 1.9 3.6 4.4"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5.5" y="5" width="13" height="15.5" rx="2"/><path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 11h6M9 15h4"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4l-2 16M16 4l-2 16"/></symbol>
+  <symbol id="i-door" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="1.8"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+</svg>
+<div class="app" inert>
+  <header class="topbar">
+    <a class="brand" href="home.html" aria-label="Cloak by Lawgistics: home"><svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x="0.5" y="0.5" width="27" height="27" rx="7.5"/><rect class="mark-bar" x="6" y="9.25" width="16" height="5.25" rx="1.3"/><rect class="mark-line" x="6" y="17.25" width="9.5" height="2.25" rx="1.1"/></svg><span class="wordmark">Cloak</span><span class="by">by Lawgistics</span></a>
+    <div class="crumb"><span class="crumb-sep" aria-hidden="true"></span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-lock"/></svg><span class="crumb-name">Seroja Kencana v Arus Gemilang</span></div>
+    <div class="topbar-right">
+      <span class="licence" title="Licence LG-2026-0142, 25 seats. Ends 31 Dec 2027. Checked on this computer."><svg class="ico ico-sm" aria-hidden="true"><use href="#i-seal"/></svg><span>Licensed to <b>Kenari Lim &amp; Partners</b></span></span>
+      <button class="tb-btn" type="button"><svg class="ico" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></button>
+      <button class="tb-btn" type="button"><svg class="ico" aria-hidden="true"><use href="#i-help"/></svg><span>Help</span></button>
+    </div>
+  </header>
+  <div class="frame">
+    <nav class="rail" aria-label="Cloaking steps">
+      <div class="rail-head">
+        <p class="eyebrow">This matter</p>
+        <div class="rail-chips"><span class="chip chip-outline"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-shield"/></svg>Strict</span><span class="chip chip-dashed">Test documents</span></div>
+        <p class="rail-key"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-key"/></svg><span>Key encrypted. Opened by you at 10:31 am.</span></p>
+      </div>
+      <ol class="steps">
+        <li class="step is-done">
+          <span class="node"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span class="step-text"><span class="step-name">Read</span><span class="step-note">214 of 214 files</span></span>
+        </li>
+        <li class="step is-current" aria-current="step">
+          <span class="node">2<span class="badge" aria-hidden="true">16</span></span>
+          <span class="step-text"><span class="step-name">Review</span><span class="step-note is-decide"><span class="dot"></span>16 to decide</span></span>
+        </li>
+        <li class="step">
+          <span class="node">3</span>
+          <span class="step-text"><span class="step-name">Double check</span><span class="step-note">After the review</span></span>
+        </li>
+        <li class="boundary" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-out"/></svg><span>Leaves this computer</span></li>
+        <li class="step step-out">
+          <span class="node"><svg class="ico" aria-hidden="true"><use href="#i-out"/></svg></span>
+          <span class="step-text"><span class="step-name">Export</span><span class="step-note">Nothing has left</span></span>
+        </li>
+      </ol>
+      <p class="rail-foot"><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg><span><b>On this computer only.</b>Nothing is sent anywhere. Only Export writes files for the AI tool.</span></p>
+    </nav>
+    <main class="sheet" id="main">
+      <div class="sheet-body">
+        <header class="page-head compact">
+          <div class="ph-main">
+            <h1>Review</h1>
+            <p class="ph-sum"><b>214</b> files read in 3 min 12 s. Nothing has been exported.</p>
+          </div>
+          <div class="page-meta">
+            <span class="meta-item"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>iManage Drive, read only</span>
+          </div>
+        </header>
+
+        <div class="addbar">
+          <label class="addbar-label" for="add-text"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span class="lbl-long">Add a word or name the tool missed</span><span class="lbl-short">Add a missed word</span></label>
+          <input class="input" id="add-text" type="text" placeholder="Type it exactly as it appears" autocomplete="off">
+          <select class="select" aria-label="What it is"><option>A person</option><option>A company</option><option>Something else</option></select>
+          <button class="btn btn-primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-bar"/></svg>Hide it in every file</button>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="What Cloak found">
+          <button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Not sure<span class="count count-decide">12</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Joined names<span class="count count-decide">4</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="true" aria-controls="panel">Everything replaced<span class="count">1,284</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Hidden facts<span class="count">342</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Chronology<span class="count">96</span></button>
+          <button class="tab" role="tab" type="button" aria-selected="false" tabindex="-1">Files<span class="count">214</span></button>
+        </div>
+
+        <section id="panel" role="tabpanel" aria-label="Everything replaced">
+          <div class="toolbar">
+            <div class="search"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg><input class="input" type="text" placeholder="Search by name or tag" aria-label="Search by name or tag" autocomplete="off"></div>
+            <span class="small muted">Showing 300 of 1,284, most places first. Search to find the rest, or <button class="link" type="button">show them all</button>.</span>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th scope="col">Tag</th><th scope="col">Real value</th><th scope="col">Found by</th><th scope="col" class="r">Places</th><th scope="col" class="r">Files</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>COMPANY_1<span class="b">}}</span></span></td>
+                <td><b>Seroja Kencana Engineering Sdn Bhd</b><button class="link forms-link" type="button">+ 3 other forms</button></td>
+                <td class="how">The client, from setup</td>
+                <td class="r">1,046</td>
+                <td class="r">188</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge Seroja Kencana Engineering Sdn Bhd into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>COMPANY_2<span class="b">}}</span></span></td>
+                <td><b>Arus Gemilang Builders Berhad</b><button class="link forms-link" type="button">+ 2 other forms</button></td>
+                <td class="how">Other party, from setup</td>
+                <td class="r">612</td>
+                <td class="r">141</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge Arus Gemilang Builders Berhad into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>PERSON_1<span class="b">}}</span></span></td>
+                <td><b>Lim Wei Jie</b><button class="link forms-link" type="button">+ 2 other forms</button></td>
+                <td class="how">Other party, from setup</td>
+                <td class="r">233</td>
+                <td class="r">64</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge Lim Wei Jie into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>PERSON_2<span class="b">}}</span></span></td>
+                <td><b>Kavitha a/p Raman</b><button class="link forms-link" type="button">+ 1 other form</button></td>
+                <td class="how">&ldquo;a/p&rdquo; in the name</td>
+                <td class="r">88</td>
+                <td class="r">23</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge Kavitha a/p Raman into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr class="is-focus">
+                <td class="tight"><span class="tag"><span class="b">{{</span>NRIC_1<span class="b">}}</span></span></td>
+                <td><b>751399-14-0021</b></td>
+                <td class="how">Looks like an NRIC number</td>
+                <td class="r">6</td>
+                <td class="r">4</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge 751399-14-0021 into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>PERSON_3<span class="b">}}</span></span></td>
+                <td><b>Mohd Faizal bin Abdullah</b><button class="link forms-link" type="button">+ 2 other forms</button></td>
+                <td class="how">&ldquo;bin&rdquo; in the name</td>
+                <td class="r">57</td>
+                <td class="r">19</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge Mohd Faizal bin Abdullah into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>COMPANY_3<span class="b">}}</span></span></td>
+                <td><b>Syarikat Pengangkutan Cahaya Timur Utara (M) Sdn Bhd</b><button class="link forms-link" type="button">+ 2 other forms</button></td>
+                <td class="how">Other party, from setup</td>
+                <td class="r">41</td>
+                <td class="r">12</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge Syarikat Pengangkutan Cahaya Timur Utara (M) Sdn Bhd into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>PHONE_1<span class="b">}}</span></span></td>
+                <td><b>012-345 6789</b></td>
+                <td class="how">Looks like a phone number</td>
+                <td class="r">9</td>
+                <td class="r">3</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge 012-345 6789 into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>ADDRESS_1<span class="b">}}</span></span></td>
+                <td><b>Lot 12, Jalan Perusahaan 3, Kawasan Perindustrian Seri Melur</b><button class="link forms-link" type="button">+ 1 other form</button></td>
+                <td class="how">Address pattern</td>
+                <td class="r">14</td>
+                <td class="r">9</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge Lot 12, Jalan Perusahaan 3, Kawasan Perindustrian Seri Melur into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              <tr>
+                <td class="tight"><span class="tag"><span class="b">{{</span>ACCOUNT_1<span class="b">}}</span></span></td>
+                <td><b>5140 0000 2231</b></td>
+                <td class="how">Looks like a bank account number</td>
+                <td class="r">4</td>
+                <td class="r">2</td>
+                <td class="tight"><div class="row"><button class="btn btn-sm btn-danger" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-eye"/></svg>Don&rsquo;t hide</button><select class="select select-sm" aria-label="Merge 5140 0000 2231 into another tag"><option>Same as&hellip;</option></select></div></td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div class="finish is-blocked" role="region" aria-label="Finish the review">
+        <div class="finish-in">
+          <div class="finish-state">
+            <span class="finish-ico"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg></span>
+            <div>
+              <p class="finish-title">Before you can finish</p>
+              <ul class="blockers">
+                <li><a href="#panel"><b>12</b> words on Not sure</a></li>
+                <li><a href="#panel"><b>3</b> joined names</a></li>
+                <li><a href="#panel"><b>1</b> short form to confirm</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="manifest" aria-label="On export">
+            <span class="manifest-cap">On export</span>
+            <span class="manifest-row out"><svg class="ico" aria-hidden="true"><use href="#i-out"/></svg>212 files leave</span>
+            <span class="manifest-row held"><svg class="ico" aria-hidden="true"><use href="#i-block"/></svg>2 held back</span>
+          </div>
+          <div class="finish-actions"><button class="btn btn-primary" type="button" disabled><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>Finish review</button></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="overlay">
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-desc">
+    <div class="dlg-top">
+      <span class="dlg-step"><span class="pips" aria-hidden="true"><i class="on"></i><i></i></span>Question 1 of 2</span>
+      <span class="chip chip-outline"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-hash"/></svg>Number or ID</span>
+    </div>
+    <h2 id="dlg-title">Stop hiding this?</h2>
+    <div class="reveal">
+      <span class="tag tag-lg"><span class="b">{{</span>NRIC_1<span class="b">}}</span></span>
+      <span class="reveal-arrow"><svg class="ico" aria-hidden="true"><use href="#i-arrow-r"/></svg></span>
+      <span class="reveal-value">751399-14-0021<span class="reveal-cap">shown as written</span></span>
+    </div>
+    <p id="dlg-desc"><b>751399-14-0021</b> will be shown as written in every place it appears: 6 places in 4 files.</p>
+    <div class="note note-out"><svg class="ico" aria-hidden="true"><use href="#i-out"/></svg><p><span class="note-title">It will leave this computer.</span> It will be in the exported copies that go to the AI tool.</p></div>
+    <p class="small muted dlg-more">Cloak found it because it looks like an NRIC number, which identifies a person. You will be asked once more.</p>
+    <div class="dlg-actions">
+      <button class="btn" type="button" autofocus>Cancel</button>
+      <button class="btn btn-primary" type="button">Yes, stop hiding it</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

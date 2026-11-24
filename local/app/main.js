@@ -5,7 +5,8 @@
 
 import { app, BrowserWindow, dialog, ipcMain, safeStorage, session as electronSession } from 'electron';
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { readFile, writeFile, mkdir, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +18,9 @@ import { formatDate } from '../dates.js';
 import { checkDraft } from '../draftcheck.js';
 import { extractFile } from '../extract.js';
 import { firstRunApi } from './firstrun.js';
+import { checkLicence, findLicence, keyFingerprint, licenceBlock, licenceFileText, licenceView, DEVELOPMENT_KEY_FINGERPRINT } from '../licence.js';
+import { LICENCE_PUBLIC_KEY } from '../licence-key.js';
+import { testHooksAllowed } from './testhooks.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -178,7 +182,17 @@ const api = {
     if (!f) throw new Error(NOT_IN_RUN);
     return { name: f.rel, text: f.cloaked || '', reasons: f.reasons };
   },
-  export: async ({ outDir, only }) => needMatter().export({ outDir, only: only === 'chronology' ? 'chronology' : 'all' }),
+  export: async ({ outDir, only }) => {
+    const m = needMatter();
+    m.licence = await loadLicence(); // an evaluation copy exports test matters only
+    return m.export({ outDir, only: only === 'chronology' ? 'chronology' : 'all' });
+  },
+
+  // The double check (feature 4): run it on what would be exported, show the last result, decide one finding.
+  // Its findings hold real text: they are shown in this window only.
+  doubleCheck: async () => { const m = needMatter(); m.licence = await loadLicence(); return m.doubleCheck(); }, // the report names the licensee, so it is checked too
+  doubleCheckView: async () => needMatter().checkView(),
+  decideFinding: async ({ key, decision, kind }) => needMatter().decideFinding({ key: String(key || ''), decision: decision === 'hide' ? 'hide' : decision === 'fine' ? 'fine' : '', kind }),
 
   // The chronology table.
   chronology: async ({ build, undated }) => {
@@ -224,6 +238,56 @@ const api = {
 // First run: the sample matter, the help screens and the support file (app/firstrun.js).
 const firstRun = firstRunApi({ app, dialog, getWin: () => win, getMatter: () => matter, setMatter: (s) => { matter = s; }, who, testPicks });
 Object.assign(api, firstRun.api);
+// ------------------------------------------------------------------ licence
+// A licence is checked here, on this computer, against the public key built
+// into the app (licence-key.js). Nothing is sent anywhere. A person's own
+// licence is kept in their user-data folder; IT can put one licence on the
+// computer for everyone (docs/it-deployment.md). No licence, or one that has
+// ended, means an evaluation copy. Restoring a draft never asks.
+
+// Test settings for the licence are honoured only in a copy run from the source folder, never in an installed one
+// (however its program file is named: see app/testhooks.js).
+function releaseMark() {
+  try { return JSON.parse(readFileSync(path.join(here, '..', 'package.json'), 'utf8')).cloakRelease === true; } catch { return true; }
+}
+const testHooks = testHooksAllowed({ isPackaged: app.isPackaged, defaultApp: process.defaultApp, appPath: app.getAppPath(), resourcesPath: process.resourcesPath, release: releaseMark() });
+
+const userLicenceFile = () => path.join(app.getPath('userData'), 'licence.txt');
+function machineLicenceFile() {
+  if (testHooks && process.env.CLOAK_TEST_USER_DATA) return path.join(process.env.CLOAK_TEST_USER_DATA, 'machine', 'licence.txt');
+  if (process.platform === 'win32') return path.join(process.env.ProgramData || 'C:\\ProgramData', 'Cloak', 'licence.txt');
+  if (process.platform === 'darwin') return '/Library/Application Support/Cloak/licence.txt';
+  return '/etc/cloak/licence.txt';
+}
+// Tests run from the source folder may check licences with their own key. An installed copy never can, whatever
+// its program file is called or how it is started (Electron decides isPackaged from the file name alone).
+const licenceKey = () => (testHooks && process.env.CLOAK_TEST_LICENCE_KEY) || LICENCE_PUBLIC_KEY;
+let licence = null; // what the last check found
+
+async function loadLicence() {
+  licence = await findLicence({ files: [{ file: userLicenceFile(), where: 'user' }, { file: machineLicenceFile(), where: 'computer' }], publicKey: licenceKey() });
+  return licence;
+}
+const licenceInfo = () => ({ ...licenceView(licence), developmentKey: keyFingerprint(licenceKey()) === DEVELOPMENT_KEY_FINGERPRINT });
+
+Object.assign(api, {
+  licence: async () => { await loadLicence(); return licenceInfo(); },
+  installLicence: async ({ text }) => {
+    const r = checkLicence(text, { publicKey: licenceKey() });
+    if (r.status !== 'valid') throw Object.assign(new Error(r.reason), { code: r.code });
+    await mkdir(path.dirname(userLicenceFile()), { recursive: true });
+    await writeFile(userLicenceFile(), licenceBlock(text), 'utf8');
+    await loadLicence();
+    return licenceInfo();
+  },
+  pickLicenceFile: async () => {
+    const file = testPicks ? testPicks.shift() : (await dialog.showOpenDialog(win, { title: 'Choose the licence file', properties: ['openFile'], filters: [{ name: 'Licence', extensions: ['txt', 'licence', 'lic'] }, { name: 'All files', extensions: ['*'] }] })).filePaths[0];
+    if (!file) return null;
+    if ((await stat(file)).size > 2 * 1024 * 1024) throw new Error('That file is too large to be a Cloak licence.');
+    return { text: licenceFileText(await readFile(file)) };
+  },
+  removeLicence: async () => { await rm(userLicenceFile(), { force: true }); await loadLicence(); return licenceInfo(); },
+});
 
 ipcMain.handle('cloak', async (event, name, args) => {
   // Only the app's own window may call in.
@@ -258,6 +322,11 @@ else {
   app.whenReady().then(async () => {
     await loadProfile();
     const ses = electronSession.defaultSession;
+    // Chromium's spell checker downloads a dictionary from Google when it
+    // starts, from outside the window, even with spellcheck off in the window.
+    // Switch it off for the whole session so that download is never tried.
+    // (Tested on Linux; on Windows and Mac a failure here must not stop the window.)
+    try { ses.setSpellCheckerEnabled(false); ses.setSpellCheckerLanguages([]); } catch { /* the name lookup block below still stops it */ }
     // Only the app's own files load. Everything else is refused.
     ses.webRequest.onBeforeRequest((details, done) => done({ cancel: !/^(?:file|devtools|chrome-devtools):/.test(details.url) }));
     ses.setPermissionRequestHandler((wc, permission, done) => done(false));

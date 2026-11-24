@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading the documents &middot; Cloak</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4.5 12.5l4.8 4.8L19.5 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3.5 3.5l17 17"/><path d="M10.6 5.6A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a17 17 0 0 1-2.6 3.4M6.3 6.9A16 16 0 0 0 2.5 12S6 18.5 12 18.5c1.6 0 3-.4 4.3-1.1"/><path d="M9.9 10a2.8 2.8 0 0 0 4 4"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6.5 3.5h7.2l4.3 4.3v11.5c0 .7-.5 1.2-1.2 1.2H6.5c-.7 0-1.2-.5-1.2-1.2V4.7c0-.7.5-1.2 1.2-1.2z"/><path d="M13.5 3.7v4.3h4.3"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="3.8"/><path d="M10.8 12.7 19 4.5M16.2 7.3l2.6 2.6M13.9 9.6l1.9 1.9"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4.5 12h15M13.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="1.6"/><path d="M8.2 10.5V8a3.8 3.8 0 0 1 7.6 0v2.5"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 7.5 5 11.5l4 4"/><path d="M5.5 11.5H14a5 5 0 0 1 0 10h-2.5"/></symbol>
+  <symbol id="i-computer" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="1.6"/><path d="M8.5 20h7M12 16.5V20"/><path d="M9.2 10.6l2 2 3.8-3.8"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><path d="M8 10h8M8 14h5"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.75"/><path d="M12 11v5.5"/><path d="M12 7.9v.1"/></symbol>
+</svg>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="home.html" aria-label="Cloak by Lawgistics, home">
+    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect class="mark__tablet" x="1" y="1" width="30" height="30" rx="7.5"/><rect class="mark__bar" x="7" y="13.6" width="14" height="5" rx=".8"/></svg>
+    <span class="wordmark">Cloak</span>
+    <span class="brand__by">by Lawgistics</span>
+  </a>
+  <div class="topbar__matter">
+    <span class="label">Matter</span>
+    <span class="topbar__matter-name">Teratai Kenanga v Bina Jaya</span>
+    <span class="stamp stamp--ink">Strict</span>
+  </div>
+  <div class="topbar__right">
+    <span class="offline"><svg class="i i--sm" aria-hidden="true"><use href="#i-computer"/></svg><span class="offline__text">On this computer only</span></span>
+    <span class="topbar__sep" aria-hidden="true"></span>
+    <span class="licence"><span class="licence__label">Licensed to</span><span class="licence__firm">Tetuan Adnan Ooi &amp; Raman</span></span>
+  </div>
+</header>
+
+<main id="main">
+  <div class="page">
+    <header class="pagehead">
+      <ol class="steps" aria-label="Progress">
+        <li class="step step--done"><span class="step__n"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg></span>Set up</li>
+        <li class="step step--now" aria-current="step"><span class="step__n">2</span>Read</li>
+        <li class="step"><span class="step__n">3</span>Review</li>
+        <li class="step"><span class="step__n">4</span>Double check</li>
+        <li class="step"><span class="step__n">5</span>Export</li>
+      </ol>
+      <h1 class="h1">Reading the documents</h1>
+      <p class="lead">Every part of every file is read: text, tables, headers, comments, tracked changes, pictures by OCR, and the file and folder names. A file that cannot be read in full is held back and listed.</p>
+    </header>
+    <div class="progress-head">
+      <div>
+        <p class="progress-figure tnum" aria-live="polite">128<small> of 214 files read</small></p>
+      </div>
+      <p class="small muted tnum">24 seconds so far</p>
+    </div>
+    <div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="214" aria-valuenow="128" aria-label="Files read"><div class="meter__fill w-60"></div></div>
+    <div class="sheet" id="progress-list">
+      <table class="table table--compact">
+        <thead><tr><th class="num">#</th><th>File</th><th>OCR</th><th>Progress</th></tr></thead>
+        <tbody>
+            <tr><td class="num tnum muted">125</td><td><span class="cell-title">03 Interim Payment Certificate No. 14.pdf</span></td><td><span class="stamp stamp--info"><svg class="i" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td><td><span class="stage stage--done"><svg class="i i--sm" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td></tr>
+            <tr><td class="num tnum muted">126</td><td><span class="cell-title">04 Surat Tuntutan 12.3.2024.pdf</span></td><td><span class="vh">No OCR</span></td><td><span class="stage stage--done"><svg class="i i--sm" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td></tr>
+            <tr><td class="num tnum muted">127</td><td><span class="cell-title">05 Minutes of Site Meeting 23.xlsx</span></td><td><span class="vh">No OCR</span></td><td><span class="stage stage--done"><svg class="i i--sm" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td></tr>
+            <tr><td class="num tnum muted">128</td><td><span class="cell-title">07 合同附件二 (Appendix 2).pdf</span></td><td><span class="stamp stamp--info"><svg class="i" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td><td><span class="stage stage--done"><svg class="i i--sm" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td></tr>
+            <tr><td class="num tnum muted">129</td><td><span class="cell-title">08 பணி ஆணை &ndash; Work Order 17.pdf</span></td><td><span class="stamp stamp--info"><svg class="i" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td><td><span class="stage stage--now"><span class="spinner" aria-hidden="true"></span>Reading page 4 of 9</span></td></tr>
+            <tr><td class="num tnum muted">130</td><td><span class="cell-title">11 Site photos\IMG_2231.jpg</span></td><td><span class="stamp stamp--info"><svg class="i" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td><td><span class="stage stage--now"><span class="spinner" aria-hidden="true"></span>Reading the picture</span></td></tr>
+            <tr><td class="num tnum muted">131</td><td><span class="cell-title">15 Without Prejudice Settlement Proposal from Bina Jaya Construction Sdn Bhd to Teratai Kenanga Development Sdn Bhd (final, signed).pdf</span></td><td><span class="vh">No OCR</span></td><td><span class="stage">Waiting</span></td></tr>
+            <tr><td class="num tnum muted">132</td><td><span class="cell-title">16 Surat lama (جاوي).rar</span></td><td><span class="vh">No OCR</span></td><td><span class="stage">Waiting</span></td></tr>
+            <tr><td class="num tnum muted">133</td><td><span class="cell-title">17 Bank Guarantee BG-77812.pdf</span></td><td><span class="vh">No OCR</span></td><td><span class="stage">Waiting</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note note--info" role="note">
+      <svg class="i" aria-hidden="true"><use href="#i-info"/></svg>
+      <div class="note__body"><p>Nothing is written anywhere until the review is finished. The cloaked text stays in this computer&rsquo;s memory.</p></div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

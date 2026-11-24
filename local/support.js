@@ -42,27 +42,46 @@ function testPicture(text) {
   return c.toBuffer('image/png');
 }
 
-/** Error messages can carry file paths, and paths often carry client names: they are left out. */
-const noPaths = (message, dir) => String(message || '')
+/**
+ * Error messages can carry file paths, and paths often carry client names (or a Windows profile name): they are left out.
+ * Some failures are plain strings, not Errors, so this takes either.
+ */
+export const noPaths = (message, dir) => String(message?.message ?? message ?? '')
   .split(dir || '\u0000').join('(the matter folder)')
+  // A Windows path may hold spaces and apostrophes (C:\Users\Siti Aminah\...): Node puts it last on its line, so the rest of the line goes.
+  .replace(/(?:[A-Za-z]:\\|\\\\)[^\n]*/g, '(path not shown)')
   .replace(/'[^']*[\\/][^']*'/g, '(path not shown)')
   .replace(/(?:[A-Za-z]:\\|\\\\|\/)[^\s'"]*[\\/][^\s'"]*/g, '(path not shown)');
+
+// How long the OCR check may take before the support file is written without it.
+const OCR_WAIT_MS = 60000;
+const TIMED_OUT = Symbol('timed out');
+const within = (promise, ms) => {
+  let timer;
+  const late = new Promise((resolve) => { timer = setTimeout(() => resolve(TIMED_OUT), ms); });
+  promise.catch(() => {}); // a failure that comes after the wait is over is not an uncaught error
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+};
 
 /**
  * Does the OCR engine start, and does the open matter's key open?
  * Each result: { check, ok (true, false, or null when not run), what }.
  */
-export async function selfTest({ session = null, ocr = ocrImage, stopOcr = closeOcr } = {}) {
+export async function selfTest({ session = null, ocr = ocrImage, stopOcr = closeOcr, ocrWaitMs = OCR_WAIT_MS } = {}) {
   const results = [];
   const started = Date.now();
   try {
-    const r = await ocr(testPicture('CLOAK SELF TEST 2468'));
-    const ok = /SELF\s*TEST/i.test(r.text) && /2468/.test(r.text);
-    results.push({ check: 'OCR engine', ok, what: ok ? `It started and read the test picture correctly (confidence ${Math.round(r.confidence)}%, ${((Date.now() - started) / 1000).toFixed(1)} seconds).` : `It started but misread the test picture (it read "${String(r.text).trim().slice(0, 60)}"). Scanned pages may not be read well on this computer.` });
+    const r = await within(Promise.resolve().then(() => ocr(testPicture('CLOAK SELF TEST 2468'))), ocrWaitMs);
+    if (r === TIMED_OUT) {
+      results.push({ check: 'OCR engine', ok: false, what: `It did not answer within ${Math.round(ocrWaitMs / 1000)} seconds. Scanned pages and pictures may not be read until this is fixed.` });
+    } else {
+      const ok = /SELF\s*TEST/i.test(r.text) && /2468/.test(r.text);
+      results.push({ check: 'OCR engine', ok, what: ok ? `It started and read the test picture correctly (confidence ${Math.round(r.confidence)}%, ${((Date.now() - started) / 1000).toFixed(1)} seconds).` : `It started but misread the test picture (it read "${String(r.text).trim().slice(0, 60)}"). Scanned pages may not be read well on this computer.` });
+    }
   } catch (err) {
-    results.push({ check: 'OCR engine', ok: false, what: `It did not start: ${noPaths(err.message)}. Scanned pages and pictures cannot be read until this is fixed.` });
+    results.push({ check: 'OCR engine', ok: false, what: `It failed: ${noPaths(err)}. Scanned pages and pictures cannot be read until this is fixed.` });
   } finally {
-    await stopOcr().catch(() => {});
+    await within(Promise.resolve().then(() => stopOcr()), ocrWaitMs).catch(() => {});
   }
   if (!session) {
     results.push({ check: 'Matter key', ok: null, what: 'Not checked: no matter was open. Open the matter first if the problem is with one matter.' });
@@ -73,14 +92,14 @@ export async function selfTest({ session = null, ocr = ocrImage, stopOcr = close
     const k = await checkKeyFile(keyFile, session.dataKey);
     results.push({ check: 'Matter key', ok: true, what: `It opened with this matter's key (${k.tags} tags; last saved by Cloak ${k.savedWith}).` });
   } catch (err) {
-    results.push({ check: 'Matter key', ok: false, what: noPaths(err.message, session.dir) });
+    results.push({ check: 'Matter key', ok: false, what: noPaths(err, session.dir) });
   }
   try {
     const b = await checkKeyFile(`${keyFile}.bak`, session.dataKey);
     results.push({ check: 'Backup of the matter key', ok: true, what: `matter.cloakkey.bak opened too (${b.tags} tags).` });
   } catch (err) {
     const none = /no matter key/i.test(err.message);
-    results.push({ check: 'Backup of the matter key', ok: none ? null : false, what: none ? 'There is no backup yet: Cloak makes one the next time it saves the matter.' : noPaths(err.message, session.dir) });
+    results.push({ check: 'Backup of the matter key', ok: none ? null : false, what: none ? 'There is no backup yet: Cloak makes one the next time it saves the matter.' : noPaths(err, session.dir) });
   }
   return results;
 }
@@ -110,10 +129,12 @@ export function keyValues(matter) {
   return out;
 }
 
-/** Replace every whole-word occurrence of a value (any letter case) with its tag. */
-export function redactText(text, values) {
-  if (!text || !values.length) return { text: String(text ?? ''), count: 0 };
-  const byFirst = new Map();
+// The first-token index of a list of values is built once per list (one support file passes the same array to every call).
+const indexes = new WeakMap();
+function indexOf(values) {
+  let byFirst = indexes.get(values);
+  if (byFirst) return byFirst;
+  byFirst = new Map();
   for (const v of values) {
     const tk = tokens(v.value).map((x) => x.t);
     if (!tk.length) continue;
@@ -121,6 +142,14 @@ export function redactText(text, values) {
     byFirst.get(tk[0]).push({ tk, token: v.token });
   }
   for (const list of byFirst.values()) list.sort((a, b) => b.tk.length - a.tk.length);
+  indexes.set(values, byFirst);
+  return byFirst;
+}
+
+/** Replace every whole-word occurrence of a value (any letter case) with its tag. */
+export function redactText(text, values) {
+  if (!text || !values.length) return { text: String(text ?? ''), count: 0 };
+  const byFirst = indexOf(values);
   const toks = tokens(text);
   let out = '';
   let at = 0;
@@ -139,10 +168,17 @@ export function redactText(text, values) {
 }
 
 /** The same for a JSON value: every string in it, at any depth. */
-function redactJson(value, values, tally) {
-  if (typeof value === 'string') { const r = redactText(value, values); tally.count += r.count; return r.text; }
-  if (Array.isArray(value)) return value.map((v) => redactJson(v, values, tally));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [redactJson(k, values, tally), redactJson(v, values, tally)]));
+// Cloak's own fields: times, the version, and the words it writes itself. They are not looked at, so a date or a
+// short form in the key (such as "Action") does not blank out the log's own times or field values.
+// Object keys are Cloak's own words too and are never changed.
+const OWN_FIELDS = new Set(['t', 'when', 'made', 'cloak_version', 'action', 'change', 'tag']);
+function redactJson(value, values, tally, key = '') {
+  if (typeof value === 'string') {
+    if (OWN_FIELDS.has(key)) return value;
+    const r = redactText(value, values); tally.count += r.count; return r.text;
+  }
+  if (Array.isArray(value)) return value.map((v) => redactJson(v, values, tally, key));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, redactJson(v, values, tally, k)]));
   return value;
 }
 
@@ -238,12 +274,14 @@ export async function supportFile({ session = null, test = [], system = systemIn
   const tally = { count: 0 };
   const info = redactJson({ made, cloak_version: VERSION, system, self_test: test, matter: session ? matterSummary(session) : null }, values, tally);
   replaced += tally.count;
+  // The README is built from the checked self-test, and checked once more as a whole. The time it was made, the
+  // version and the count are Cloak's own words: they go in after the check, and the count includes the README's own hits.
+  const text = redactText(readme({ made: '\u0001MADE\u0001', session, test: info.self_test, replaced: '\u0001COUNT\u0001' }), values);
+  replaced += text.count;
   files['support-info.json'] = `${JSON.stringify({ ...info, values_replaced_by_tags: replaced }, null, 2)}\n`;
-  // The README is built from the checked self-test, and checked once more as a whole.
-  const text = redactText(readme({ made, session, test: info.self_test, replaced }), values);
   // README first, so it is the first thing a person sees when they open the zip.
-  const ordered = { 'README.txt': text.text, ...files };
-  return { buffer: writeZip(ordered), names: Object.keys(ordered), replaced: replaced + text.count };
+  const ordered = { 'README.txt': text.text.split('\u0001MADE\u0001').join(made).split('\u0001COUNT\u0001').join(String(replaced)), ...files };
+  return { buffer: writeZip(ordered), names: Object.keys(ordered), replaced };
 }
 
 /** A file name for the support file: cloak-support-2026-11-15-0919.zip */

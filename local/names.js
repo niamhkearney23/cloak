@@ -74,6 +74,87 @@ export const GENERIC_TITLES = ['Mr', 'Mrs', 'Ms', 'Miss', 'Mdm', 'Madam', 'Encik
 // Honours that identify a person: hidden together with the name.
 export const HONOURS = ['Yang Amat Berhormat', 'Yang Berhormat', 'Yang Berbahagia', 'Yang Mulia', 'YAB', 'YBhg', 'YB', 'YM', 'Tan Sri', 'Puan Sri', 'Toh Puan', "Dato' Seri", "Dato' Sri", 'Dato Seri', 'Dato Sri', 'Datuk Seri', 'Datuk Sri', 'Datin Seri', 'Datin Sri', "Dato'", 'Dato’', 'Datuk', 'Datin', 'Dato', 'Tun', 'Toh'];
 
+// Informal titles written before a single name in Malaysian and Singapore
+// documents, chats and notes: family and respect words, Indonesian address
+// words, and the Chinese "Ah". Like the titles above they stay in the text
+// ("Kak {{PERSON_1}}", "Ah {{PERSON_2}}"). They only count as a title when the
+// word before them is not part of a name ("Tan Ah Kow" is one name).
+export const KIN_TITLES = ['Mak Cik', 'Makcik', 'Pak Cik', 'Pakcik', 'Kakak', 'Kak', 'Abang', 'Abg', 'Adik', 'Dik', 'Pak', 'Mak', 'Uncle', 'Aunty', 'Auntie', 'Ibu', 'Bu', 'Mbak', 'Inche', 'Ah'];
+// Birth-order words. After a family title they are part of the title ("Mak
+// Long" is the eldest aunt, "Pak Ngah" the second uncle), not a name.
+export const BIRTH_ORDER = words('Long Ngah Lang Teh Chik Cik Su Busu Usu Ucu Uda Andak Itam Uteh Along Angah Alang Achik Acik');
+
+// Names that are also ordinary English or Malay words. A known name in this
+// list is never hidden where it is written in lowercase as an ordinary word
+// ("grace period", "a joy", "dan", "bunga ros"), and a capitalised one at the
+// start of a sentence is only hidden when the words around it read as a name.
+// Such places go on the "not sure" list instead.
+export const ORDINARY = words(`
+  grace hope faith joy rose may june april august mark will bill ray sunny rich frank dawn summer autumn amber ruby pearl jade
+  crystal iris lily daisy holly ivy violet heather hazel olive sandy rusty chase chip clay cliff dale dean drew earl gene glen grant
+  guy hunter jack jean lance max miles pat penny rob rocky rod sky sterling stone wade win wolf woody bob bud carol chance christian
+  constance patience prudence charity mercy honor honour liberty destiny harmony melody serenity trinity precious princess baby angel
+  star king duke prince major noble hardy young white black brown green grey gray short small little strong wise bishop cook baker
+  mason carpenter fisher archer banks hill wood field ford brook rivers lake marsh park lane hall bell price lord rice
+  long see soon man sum kong hong wan tong chin pin sin fan pan kit hoe min teh tee tai chai sim wah loh mah along
+  indah murni intan permata mutiara cahaya bahagia selamat seri sri jaya bayu embun suria bulan bintang fajar senja kasih sayang
+  ayu manis dewi wira perkasa teguh setia tulus ikhlas iman amal ihsan hikmah rahmat nikmat salam hidayah syukur sabar hakim zahir
+  batin aman damai mulia budi budiman bunga mawar melati kenanga cempaka melur dahlia anggerik orkid ros kemboja seroja laut ombak
+  biru hijau merah putih hitam kuning ungu emas delima cinta rindu harapan ceria riang suka nur hari bala suri maya nila raja kala
+  mala ram guru bagus sentosa utama lestari amin sultan dan
+  said page case law bond day love fine wall bakar abu mat rahim puteri putri gill
+  low saw son sun wee woo hew lye ting yam sue chew chow
+`);
+
+// Words that often come straight after a person's name ("Mark said", "May is
+// preparing", "Will to remeasure"). A capitalised ordinary-word name at the
+// start of a sentence followed by one of these is read as a name.
+export const AFTER_NAME = words(`
+  said says told tells asked asks called calls confirmed confirms replied replies wrote writes agreed agrees promised promises
+  handled handles sent sends gave gives came comes went goes left leaves signed signs saw sees met meets knows knew thinks thought
+  wants wanted needs needed has had is was will would can could shall should must may might did does also from and to who
+  doesn't didn't won't can't isn't wasn't hasn't hadn't couldn't wouldn't
+  kata cakap bagitahu beritahu memberitahu minta suruh dah sudah akan tak tidak nak mahu cuti datang pergi ada kena boleh tolong pls
+`);
+// Words before a capitalised word that make it an ordinary word, not a name
+// ("the Bill of Quantities", "a Grace Period").
+export const DETERMINERS = words('the a an this that these those its our your their my his her every each no some any such another');
+
+// Words in a chat contact name or a signature line that describe the person
+// rather than name them ("Kala Manager", "Margono Dapur", "Mani Lorry").
+export const LABEL_WORDS = words(`
+  admin office manager mgr boss lorry driver nursery dapur kitchen agent accounts account acc finance hr staff team group site
+  supervisor store shop kedai restoran restaurant klinik clinic taxi grab mechanic contractor renovation reno plumber lawyer peguam
+  client customer supplier sales marketing ops operations work home rumah mobile hp personal new old baru lama landlord tenant cook
+  chef cleaner maid helper guard security worker foreman qs pm engineer architect hq branch company ent enterprise trading
+  property properties realty agency
+  delivery kantin legal support info helpdesk enquiries enquiry billing secretariat hello contact careers noreply postmaster webmaster service services reception
+  mention hearing trial incident transfer meeting call outgoing incoming missed visit appointment
+`);
+
+// Words for a person's role. "the lorry driver, Ah Seng," and "Joko, another
+// worker," name a person next to them. Only roles a company cannot have:
+// "our client, Seri Kembara" may be a company, so client, tenant, landlord,
+// supplier, contractor and the like are not here.
+export const ROLE_NOUNS = words(`
+  driver worker supervisor foreman cook chef clerk manager director agent accountant secretary colleague friend neighbour neighbor
+  husband wife son daughter brother sister father mother uncle aunt aunty auntie cousin nephew niece partner
+  assistant helper maid guard cleaner engineer surveyor officer inspector lawyer solicitor
+  employee boss witness nurse doctor teacher student pupil intern
+  technician mechanic plumber electrician coordinator executive representative salesman salesperson cashier waiter waitress
+  dishwasher rider courier messenger housekeeper caretaker gardener labourer laborer operator storekeeper storeman workers
+  pemandu pekerja penyelia pembantu pencuci pengurus kerani isteri suami anak jiran kawan rakan
+`);
+
+// Spreadsheet column headings and row labels whose cells hold people's names.
+export const PERSON_HEADERS = [
+  'name', 'names', 'full name', 'nama', 'nama penuh', 'employee', 'staff', 'worker', 'workers', 'pekerja', 'driver', 'pemandu',
+  'supervisor', 'penyelia', 'contact', 'contact person', 'pic', 'person in charge', 'prepared by', 'checked by', 'approved by',
+  'certified by', 'received by', 'collected by', 'signed by', 'issued by', 'requested by', 'verified by', 'witnessed by',
+  'disediakan oleh', 'disemak oleh', 'diluluskan oleh', 'diterima oleh', 'disahkan oleh', 'witness', 'saksi', 'attendee',
+  'tenant', 'landlord', 'occupant', 'penyewa',
+];
+
 // Capitalised words that are not names: legal roles, document words, places.
 export const NOT_NAMES = words(`
   hakim arif bandar pengerusi pengarah presiden setiausaha pendaftar peguam majistret pesuruhjaya sumpah timbalan penolong kanan
@@ -101,4 +182,15 @@ export const NOT_NAMES = words(`
   guaman sivil jenayah peguamcara peguambela anor ors advocates demand finance branch purchase sale payer payee account amount
   sessions suit mykad passport reminder correspondence english note refund deposit syarikat tuntutan balas pembelaan
   re ref no nos tel fax hp mobile email website tetuan messrs sirs menurut merujuk sila adalah bahawa
+  staff team group chat whatsapp telegram admin dapur kedai restoran kota bapa menteri polis klinik sekolah pejabat ibu
+  everyone everybody all colleagues there folks guys
+  aidilfitri aidiladha ramadan ramadhan raya deepavali diwali christmas krismas merdeka thaipusam wesak lunar
+  indonesian bangladeshi nepali nepalese filipino myanmar burmese thai vietnamese cambodian pakistani indian chinese malay
+  american australian japanese korean foreigner foreign undersigned bertandatangan later earlier meanwhile afterwards
+  tunggal beradik mati bendahari
+  bro sis akak bruh dude mate guys
+  tiada kosong illegible vacant nil none blank pending unknown
+  muslim buddhist hindu sikh catholic
+  thereupon hereupon whereupon alamak aiyo aiyoh aduh adoi
+  lot unit plot parcel
 `);

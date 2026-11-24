@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Restore a draft · Cloak</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.8-1.2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.2l7.5 2.7v5.5c0 4.6-3.1 8.1-7.5 9.5-4.4-1.4-7.5-4.9-7.5-9.5V5.9z"/><path d="M8.9 12.1l2.2 2.2 4.1-4.2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h3.6a2 2 0 0 1 1.5.7l1.3 1.6h6.6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M13.5 3.5v5h5"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10"/><path d="M19.5 4.5l-8 8"/><path d="M18 13.5v4.5a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V7.5A1.5 1.5 0 0 1 6 6h4.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H5.5A1.5 1.5 0 0 1 4 19z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.7 9.5a2.4 2.4 0 0 1 4.6 1c0 1.6-2.3 2.1-2.3 3.6"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="7.5" rx="1.8"/><path d="M7.5 14h9v6h-9z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V5.5A1.5 1.5 0 0 0 14 4H5.5A1.5 1.5 0 0 0 4 5.5V14a1.5 1.5 0 0 0 1.5 1.5h3"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v10.5"/><path d="M7.5 10l4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><path d="M6 4v3.5a4.5 4.5 0 0 0 4.5 4.5H12m6-8v3.5a4.5 4.5 0 0 1-4.5 4.5H12m0 0v8.5"/><path d="M9 17.5l3 3 3-3"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M14.5 5.5l4 4L9 19H5v-4z"/><path d="M12.5 7.5l4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 4h4"/><path d="M7 7l.8 11.6A1.5 1.5 0 0 0 9.3 20h5.4a1.5 1.5 0 0 0 1.5-1.4L17 7"/><path d="M10.5 10.5v6M13.5 10.5v6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="3.6"/><path d="M10.6 13L19 4.5"/><path d="M15.5 8l2.6 2.6"/><path d="M17.3 6.2l2 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8.5V6.5a2.5 2.5 0 0 1 2.5-2.5h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2"/><path d="M8 10h8M8 14h5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><circle cx="12" cy="9.5" r="5.5"/><path d="M9 14.2L8 20.5l4-2 4 2-1-6.3"/><path d="M9.7 9.6l1.6 1.6 3-3"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 6.5L4.5 11 9 15.5"/><path d="M4.5 11H15a4.5 4.5 0 0 1 0 9h-3"/></symbol>
+  <symbol id="i-decide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.8" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-block" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6.2 17.8L17.8 6.2"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 4.6L2.9 17.5A2 2 0 0 0 4.6 20.5h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-fail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-bar" viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="6" rx="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-bar-doc" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><rect x="8" y="11" width="8" height="3" rx="0.8" fill="currentColor" stroke="none"/><path d="M8 17h5"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M8.5 12.5h7M8.5 16.5h4.5"/><path d="M13.5 3.5v5h5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9.5 3.5h5M10.5 3.5v5.2L5.6 17.4A2 2 0 0 0 7.4 20.5h9.2a2 2 0 0 0 1.8-3.1l-4.9-8.7V3.5"/><path d="M7.8 14h8.4"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.9-3 3-4.5 5.5-4.5s4.6 1.5 5.5 4.5"/><path d="M15.5 6a3 3 0 0 1 0 6M17 14.6c1.8.5 3 1.9 3.6 4.4"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5.5" y="5" width="13" height="15.5" rx="2"/><path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 11h6M9 15h4"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4l-2 16M16 4l-2 16"/></symbol>
+  <symbol id="i-door" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="1.8"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+</svg>
+<div class="app">
+  <header class="topbar">
+    <a class="brand" href="home.html" aria-label="Cloak by Lawgistics: home"><svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x="0.5" y="0.5" width="27" height="27" rx="7.5"/><rect class="mark-bar" x="6" y="9.25" width="16" height="5.25" rx="1.3"/><rect class="mark-line" x="6" y="17.25" width="9.5" height="2.25" rx="1.1"/></svg><span class="wordmark">Cloak</span><span class="by">by Lawgistics</span></a>
+    <div class="crumb"><span class="crumb-sep" aria-hidden="true"></span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-lock"/></svg><span class="crumb-name">Seroja Kencana v Arus Gemilang</span></div>
+    <div class="topbar-right">
+      <span class="licence" title="Licence LG-2026-0142, 25 seats. Ends 31 Dec 2027. Checked on this computer."><svg class="ico ico-sm" aria-hidden="true"><use href="#i-seal"/></svg><span>Licensed to <b>Kenari Lim &amp; Partners</b></span></span>
+      <button class="tb-btn" type="button"><svg class="ico" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></button>
+      <button class="tb-btn" type="button"><svg class="ico" aria-hidden="true"><use href="#i-help"/></svg><span>Help</span></button>
+    </div>
+  </header>
+  <div class="frame">
+    <nav class="rail" aria-label="Restore steps">
+      
+      <ol class="steps">
+        <li class="step is-done">
+          <span class="node"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span class="step-text"><span class="step-name">Open the matter</span><span class="step-note">With the password</span></span>
+        </li>
+        <li class="step is-done">
+          <span class="node"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg></span>
+          <span class="step-text"><span class="step-name">The draft</span><span class="step-note">Pasted, 14 paragraphs</span></span>
+        </li>
+        <li class="step is-current" aria-current="step">
+          <span class="node">3<span class="badge" aria-hidden="true">4</span></span>
+          <span class="step-text"><span class="step-name">Check and restore</span><span class="step-note is-decide"><span class="dot"></span>4 warnings</span></span>
+        </li>
+        <li class="step">
+          <span class="node">4</span>
+          <span class="step-text"><span class="step-name">Copy or save</span><span class="step-note">Stays on this computer</span></span>
+        </li>
+      </ol>
+      <p class="rail-foot"><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg><span><b>Restoring stays here.</b>Nothing is sent anywhere. The restored draft holds real details again.</span></p>
+    </nav>
+    <main class="sheet" id="main">
+      <div class="sheet-body">
+        <header class="page-head">
+          <div>
+            <h1>Restore a draft</h1>
+            <p class="lede">The real details are back in the draft. Read the four warnings before you use it.</p>
+          </div>
+          <div class="page-meta"><span class="meta-item"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-clock"/></svg>Checked 15 Nov 2026, 2:41 pm</span></div>
+        </header>
+
+        <div class="draft-bar">
+          <span class="finish-ico"><svg class="ico" aria-hidden="true"><use href="#i-paste"/></svg></span>
+          <div class="draft-bar-text">
+            <p class="draft-bar-title"><span>Letter of demand to Arus Gemilang (AI draft v2)</span></p>
+            <p class="draft-bar-sub"><span>Pasted &middot; 14 paragraphs &middot; 412 words</span><span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-folder"/></svg> Checked against the documents in <b>Bundle</b></span></p>
+          </div>
+          <button class="btn btn-sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-edit"/></svg>Change the draft</button>
+          <button class="btn btn-sm btn-primary" type="button"><svg class="ico" aria-hidden="true"><use href="#i-refresh"/></svg>Check again</button>
+        </div>
+
+        <section class="verdict verdict-warn" aria-label="Result">
+          <span class="verdict-badge"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg></span>
+          <div>
+            <p class="verdict-title">Warnings <span class="chip chip-ok"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Every tag put back</span></p>
+            <p class="verdict-text">Nothing failed. Four places need your eye: two facts that are not in the documents, one date that does not add up, and a drafting note the AI left in.</p>
+          </div>
+          <div class="verdict-scale" aria-label="Possible results"><span class="vs">Passed</span><span class="vs on" aria-current="true">Warnings</span><span class="vs">Failed</span></div>
+        </section>
+
+        <div class="counts">
+          <div class="countbox"><p class="countbox-n">64 <small>tags put back</small></p><p class="countbox-l">29 different tags, each in the language of its sentence.</p></div>
+          <div class="countbox"><p class="countbox-n">12 <small>tags not in the draft</small></p><p class="tag-row"><span class="tag"><span class="b">{{</span>PERSON_5<span class="b">}}</span></span><span class="tag"><span class="b">{{</span>COMPANY_4<span class="b">}}</span></span><span class="tag"><span class="b">{{</span>DATE_17<span class="b">}}</span></span><span class="tag"><span class="b">{{</span>AMOUNT_7<span class="b">}}</span></span><span class="small muted">and 8 more</span></p></div>
+          <div class="countbox countbox-ok"><p class="countbox-n">0 <small>tag-like text not in the key</small></p><p class="countbox-l">No tag was made up or damaged.</p></div>
+        </div>
+
+        <div class="restore-grid">
+          <div class="checks">
+            <article class="check-card">
+              <header class="check-head"><span class="check-num">1</span><span class="check-name">Restore check</span><span class="chip chip-decide"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg>1 warning</span></header>
+              <p class="check-desc">No tag left over, none made up or damaged, no real value written in by the AI.</p>
+              <div class="issues"><div class="issue"><a class="para" href="#p11">&para; 11</a><p>A drafting note is still in the text: &ldquo;[FOR THE LAWYER: confirm the interest rate]&rdquo;.</p></div></div>
+            </article>
+            <article class="check-card">
+              <header class="check-head"><span class="check-num">2</span><span class="check-name">Source check</span><span class="chip chip-decide"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg>2 warnings</span></header>
+              <p class="check-desc">Every date, amount, reference, place and name looked for in the documents.</p>
+              <div class="issues"><div class="issue"><a class="para" href="#p9">&para; 9</a><p>&ldquo;Rashid&rdquo; is not in the documents.</p></div><div class="issue"><a class="para" href="#p10">&para; 10</a><p>RM 1,325,000.00 is not in the documents. If it is a total, check how it was worked out.</p></div></div>
+            </article>
+            <article class="check-card">
+              <header class="check-head"><span class="check-num">3</span><span class="check-name">Arithmetic and timeline</span><span class="chip chip-decide"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg>1 warning</span></header>
+              <p class="check-desc">Day counts, totals and balances, and dates that run backwards.</p>
+              <div class="issues"><div class="issue"><a class="para" href="#p6">&para; 6</a><p>28 days after 2 April 2025 is 30 April 2025, not 28 April 2025.</p></div></div>
+            </article>
+          </div>
+
+          <section class="doc" aria-label="The restored draft">
+            <header class="doc-head">
+              <h2>The restored draft</h2>
+              <button class="btn btn-sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-copy"/></svg>Copy</button>
+              <button class="btn btn-sm" type="button"><svg class="ico" aria-hidden="true"><use href="#i-save"/></svg>Save as&hellip;</button>
+            </header>
+            <div class="doc-body">
+              <div class="doc-p" id="p1"><span class="doc-n">1</span><p><span class="caps">WITHOUT PREJUDICE</span></p></div>
+              <div class="doc-p" id="p2"><span class="doc-n">2</span><p><span class="restored">Arus Gemilang Builders Berhad</span>, <span class="restored">Lot 12, Jalan Perusahaan 3, Kawasan Perindustrian Seri Melur</span></p></div>
+              <div class="doc-p" id="p3"><span class="doc-n">3</span><p><span class="caps">Letter of demand: subcontract for the <span class="restored">Seri Melur Logistics Hub</span></span></p></div>
+              <div class="doc-p" id="p4"><span class="doc-n">4</span><p>We act for <span class="restored">Seroja Kencana Engineering Sdn Bhd</span> (&ldquo;our client&rdquo;). Under the subcontract dated <span class="restored">3 March 2025</span>, our client is owed <span class="restored">RM 1,250,000.00</span> for work done up to Progress Claim No. 7.</p></div>
+              <div class="doc-p" id="p5"><span class="doc-n">5</span><p>Our client submitted Progress Claim No. 7 to you on <span class="restored">2 April 2025</span>, with the valuation certified by your quantity surveyor, <span class="restored">Puan Kavitha a/p Raman</span>.</p></div>
+              <div class="doc-p is-flag" id="p6"><span class="doc-n">6</span><p>Under clause 14.2 of the subcontract, payment was due 28 days after the claim, that is by <span class="restored">28 April 2025</span>. Nothing has been paid.</p></div>
+              <div class="doc-p" id="p7"><span class="doc-n">7</span><p>At the site meeting on <span class="restored">14 March 2025</span>, <span class="restored">Mr Lim Wei Jie</span> accepted variation order VO-14 for the additional piling works on your behalf.</p></div>
+              <div class="doc-p" id="p8"><span class="doc-n">8</span><p>Your own minutes of that meeting, and the email of your quantity surveyor of the same day, confirm that acceptance.</p></div>
+              <div class="doc-p is-flag" id="p9"><span class="doc-n">9</span><p>Encik Rashid of your contracts department has since written that VO-14 is disputed.</p></div>
+              <div class="doc-p is-flag" id="p10"><span class="doc-n">10</span><p>Our client therefore demands payment of RM 1,325,000.00, being the claim and the standby charges, within 14 days of this letter.</p></div>
+              <div class="doc-p is-flag" id="p11"><span class="doc-n">11</span><p>Interest will run at [FOR THE LAWYER: confirm the interest rate] a year from <span class="restored">28 April 2025</span> until payment.</p></div>
+              <div class="doc-p" id="p12"><span class="doc-n">12</span><p>If payment is not made, our client will refer the dispute to adjudication under the Construction Industry Payment and Adjudication Act 2012 without further notice.</p></div>
+              <div class="doc-p" id="p13"><span class="doc-n">13</span><p>Yours faithfully,</p></div>
+              <div class="doc-p" id="p14"><span class="doc-n">14</span><p><span class="restored">Kenari Lim &amp; Partners</span></p></div>
+            </div>
+            <footer class="doc-foot"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg><span>This text holds real client details again. Keep it with the matter&rsquo;s documents.</span></footer>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

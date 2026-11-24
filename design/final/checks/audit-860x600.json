@@ -1,0 +1,1954 @@
+{
+ "dialog-confirm-id.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 1201,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "dialog": {
+    "top": 150,
+    "bottom": 450,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 1201,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "dialog": {
+    "top": 150,
+    "bottom": 450,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-confirm.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 1201,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "dialog": {
+    "top": 63,
+    "bottom": 537,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 1201,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "dialog": {
+    "top": 63,
+    "bottom": 537,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-delete-row.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 588,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 2,
+   "dialog": {
+    "top": 153,
+    "bottom": 447,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 588,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 2,
+   "dialog": {
+    "top": 153,
+    "bottom": 447,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-export.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 565,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 32,
+    "bottom": 568,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 565,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 32,
+    "bottom": 568,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-fine.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 694,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 150,
+    "bottom": 450,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 694,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 150,
+    "bottom": 450,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-finish-draft.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 929,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 166,
+    "bottom": 434,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 929,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 166,
+    "bottom": 434,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-form.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 628,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 1,
+   "dialog": {
+    "top": 123,
+    "bottom": 477,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 628,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 1,
+   "dialog": {
+    "top": 123,
+    "bottom": 477,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-home.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 479,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "dialog": {
+    "top": 163,
+    "bottom": 437,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 479,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "dialog": {
+    "top": 163,
+    "bottom": 437,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-remove-licence.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 91,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 179,
+    "bottom": 421,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 91,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 179,
+    "bottom": 421,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-typed.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 609,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 29,
+    "bottom": 571,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 609,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 29,
+    "bottom": 571,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-viewer-scripts.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 609,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 46,
+    "bottom": 554,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 609,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 46,
+    "bottom": 554,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "dialog-viewer.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 609,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 56,
+    "bottom": 544,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 609,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "dialog": {
+    "top": 56,
+    "bottom": 544,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "doublecheck-passed.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 222,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 222,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  }
+ },
+ "doublecheck.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 694,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 694,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "msgs": []
+  }
+ },
+ "help-about.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 24,
+    "bottom": 576,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 24,
+    "bottom": 576,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "help-data.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 24,
+    "bottom": 576,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 24,
+    "bottom": 576,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "help-how.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 24,
+    "bottom": 576,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 24,
+    "bottom": 576,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "help-support.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 24,
+    "bottom": 576,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 24,
+    "bottom": 576,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "home-first-run.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 103,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 103,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "home.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 37,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "licence-ending.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 221,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 221,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "licence-evaluation.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 167,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 167,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "licence-expired.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 153,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 153,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "licence.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 116,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 116,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "name.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "progress-flags.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 236,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 236,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "progress-start.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "progress.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 211,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 211,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "recovery-print.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "recovery.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "restore-empty.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 159,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 159,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "restore-failed.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 893,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 893,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "restore-key-mismatch.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 424,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 424,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "restore-result.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 929,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 929,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "restore-start.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "review-chrono-empty.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "review-chrono.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 588,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 2,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 588,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 2,
+   "msgs": []
+  }
+ },
+ "review-exported.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 652,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 652,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "msgs": []
+  }
+ },
+ "review-facts.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 255,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 255,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  }
+ },
+ "review-files-blocked.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 481,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 2,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 481,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 2,
+   "msgs": []
+  }
+ },
+ "review-files.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 609,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 609,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "msgs": []
+  }
+ },
+ "review-joined.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 185,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 185,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  }
+ },
+ "review-ready.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "review-reviewed.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 565,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 565,
+   "finishVisible": {
+    "top": 549,
+    "h": 51,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 4,
+   "msgs": []
+  }
+ },
+ "review-terms.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 1201,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 1201,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  }
+ },
+ "review-unsure-sample.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 578,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 2,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 578,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 2,
+   "msgs": []
+  }
+ },
+ "review-unsure-undo.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 479,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 479,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  }
+ },
+ "review-unsure.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 479,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 479,
+   "finishVisible": {
+    "top": 546,
+    "h": 54,
+    "bottom": 600,
+    "vh": 600
+   },
+   "rowsAbove": 3,
+   "msgs": []
+  }
+ },
+ "sample-ready.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "sample.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 14,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 14,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "setup-error.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 444,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 444,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "setup-existing-code.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 358,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 358,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "setup-existing-password.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 358,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 358,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "setup-existing.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 371,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 371,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "setup-new.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 358,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 358,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "setup-sample.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 450,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 450,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "setup-stubs.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 555,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 26,
+    "bottom": 574,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 555,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "dialog": {
+    "top": 26,
+    "bottom": 574,
+    "vh": 600,
+    "fits": true,
+    "scrollable": "auto"
+   },
+   "msgs": []
+  }
+ },
+ "setup-synced.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 555,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 555,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "states-empty.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 997,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 997,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "states-error.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 0,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ },
+ "states-loading.html": {
+  "light": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 396,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  },
+  "dark": {
+   "overflowX": 0,
+   "bodyScrollW": 0,
+   "clipped": [],
+   "small": [],
+   "contrast": [],
+   "mainScroll": 396,
+   "finishVisible": null,
+   "rowsAbove": null,
+   "msgs": []
+  }
+ }
+}

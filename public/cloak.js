@@ -84,7 +84,7 @@
   // Identifiers detected automatically, even if nobody typed them into the
   // parties list. Order matters: earlier patterns win on overlap.
   const DETECTORS = [
-    { type: 'EMAIL', re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
+    { type: 'EMAIL', re: /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
     { type: 'URL', re: /\bhttps?:\/\/[^\s<>"')\]]+/g },
 
     // Court case numbers. Malaysia: WA-22NCvC-123-01/2024, W-02(NCVC)(W)-1234-07/2023.
@@ -406,8 +406,11 @@
     const bump = (s) => counts.set(s, (counts.get(s) || 0) + 1);
     const plain = String(text || '').replace(TOKEN_RE, ' ');
 
-    // Title + capitalised word: a strong signal.
-    const titled = /\b(?:Mr|Mrs|Ms|Miss|Mx|Dr|Prof|Sir|Dame|Garda|Sgt|Inspector|Judge|Encik|En|Puan|Pn|Cik|Tuan|Datuk|Dato'?|Datin|Tan Sri|Puan Sri|Tengku|Tunku|Haji|Hajah|Hj|Madam|Mdm|ASP|DSP|Insp|Cpl|Kpl|Sjn)\.?\s+((?:[A-Z][\p{L}'’-]+)(?:\s+[A-Z][\p{L}'’-]+)*)/gu;
+    // Title + capitalised word: a strong signal. In the same sentence only: a dot
+    // may follow an abbreviation ("Mr.", "Dr.") but after a whole word it ends the
+    // sentence ("Thank you Puan. Cabinets done"). The name may start the next line:
+    // a title at the end of a wrapped line of a PDF or a scan ("witnessed by Encik" / "Saharudin").
+    const titled = /\b(?:(?:Mr|Mrs|Ms|Mx|Dr|Prof|Sgt|En|Pn|Hj|Mdm|ASP|DSP|Insp|Cpl|Kpl|Sjn)\.?|Miss|Sir|Dame|Garda|Inspector|Judge|Encik|Puan|Cik|Tuan|Datuk|Dato'?|Datin|Tan Sri|Puan Sri|Tengku|Tunku|Haji|Hajah|Madam)(?:[ \t]+|[ \t]*\r?\n[ \t]*)((?:[A-Z][\p{L}'’-]+)(?:[ \t]+[A-Z][\p{L}'’-]+)*)/gu;
     const titledNames = [...plain.matchAll(titled)].map((m) => m[1]);
 
     // Runs of capitalised words, skipping ones that start a sentence.
@@ -442,7 +445,7 @@
     return [...counts.entries()]
       .map(([t, count]) => ({ text: t, count }))
       .filter((s) => s.text.length > 1)
-      .filter((s) => !texts.some((o) => o !== s.text && o.length > s.text.length && new RegExp(`(^|\\s)${s.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`).test(o)))
+      .filter((s) => !texts.some((o) => o !== s.text && o.length > s.text.length && ` ${o} `.includes(` ${s.text} `)))
       .sort((a, b) => b.count - a.count || a.text.localeCompare(b.text));
   }
 

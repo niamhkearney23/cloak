@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Reading · Cloak</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></symbol>
+  <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="9.5" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 6.8-1.2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.2l7.5 2.7v5.5c0 4.6-3.1 8.1-7.5 9.5-4.4-1.4-7.5-4.9-7.5-9.5V5.9z"/><path d="M8.9 12.1l2.2 2.2 4.1-4.2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7a2 2 0 0 1 2-2h3.6a2 2 0 0 1 1.5.7l1.3 1.6h6.6a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M13.5 3.5v5h5"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10"/><path d="M19.5 4.5l-8 8"/><path d="M18 13.5v4.5a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V7.5A1.5 1.5 0 0 1 6 6h4.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="M9.5 6l6 6-6 6"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="M6 9.5l6 6 6-6"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H5.5A1.5 1.5 0 0 1 4 19z"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.7 9.5a2.4 2.4 0 0 1 4.6 1c0 1.6-2.3 2.1-2.3 3.6"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="7.5" rx="1.8"/><path d="M7.5 14h9v6h-9z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V5.5A1.5 1.5 0 0 0 14 4H5.5A1.5 1.5 0 0 0 4 5.5V14a1.5 1.5 0 0 0 1.5 1.5h3"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v10.5"/><path d="M7.5 10l4.5 4.5 4.5-4.5"/><path d="M5 19.5h14"/></symbol>
+  <symbol id="i-merge" viewBox="0 0 24 24"><path d="M6 4v3.5a4.5 4.5 0 0 0 4.5 4.5H12m6-8v3.5a4.5 4.5 0 0 1-4.5 4.5H12m0 0v8.5"/><path d="M9 17.5l3 3 3-3"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M14.5 5.5l4 4L9 19H5v-4z"/><path d="M12.5 7.5l4 4"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 4h4"/><path d="M7 7l.8 11.6A1.5 1.5 0 0 0 9.3 20h5.4a1.5 1.5 0 0 0 1.5-1.4L17 7"/><path d="M10.5 10.5v6M13.5 10.5v6"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.5" r="3.6"/><path d="M10.6 13L19 4.5"/><path d="M15.5 8l2.6 2.6"/><path d="M17.3 6.2l2 2"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1.2-3.3 3.9-5 7-5s5.8 1.7 7 5"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8.5V6.5a2.5 2.5 0 0 1 2.5-2.5h2M15.5 4h2A2.5 2.5 0 0 1 20 6.5v2M20 15.5v2a2.5 2.5 0 0 1-2.5 2.5h-2M8.5 20h-2A2.5 2.5 0 0 1 4 17.5v-2"/><path d="M8 10h8M8 14h5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+  <symbol id="i-seal" viewBox="0 0 24 24"><circle cx="12" cy="9.5" r="5.5"/><path d="M9 14.2L8 20.5l4-2 4 2-1-6.3"/><path d="M9.7 9.6l1.6 1.6 3-3"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 6.5L4.5 11 9 15.5"/><path d="M4.5 11H15a4.5 4.5 0 0 1 0 9h-3"/></symbol>
+  <symbol id="i-decide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.8" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-block" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M6.2 17.8L17.8 6.2"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M10.3 4.6L2.9 17.5A2 2 0 0 0 4.6 20.5h14.8a2 2 0 0 0 1.7-3L13.7 4.6a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-fail" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6"/></symbol>
+  <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-bar" viewBox="0 0 24 24"><rect x="3.5" y="9" width="17" height="6" rx="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-bar-doc" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><rect x="8" y="11" width="8" height="3" rx="0.8" fill="currentColor" stroke="none"/><path d="M8 17h5"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 24 24"><path d="M7 3.5h6.5l5 5V19a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 19V5A1.5 1.5 0 0 1 7 3.5z"/><path d="M8.5 12.5h7M8.5 16.5h4.5"/><path d="M13.5 3.5v5h5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4h-4"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9.5 3.5h5M10.5 3.5v5.2L5.6 17.4A2 2 0 0 0 7.4 20.5h9.2a2 2 0 0 0 1.8-3.1l-4.9-8.7V3.5"/><path d="M7.8 14h8.4"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r="0.9" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M3.5 19c.9-3 3-4.5 5.5-4.5s4.6 1.5 5.5 4.5"/><path d="M15.5 6a3 3 0 0 1 0 6M17 14.6c1.8.5 3 1.9 3.6 4.4"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="5.5" y="5" width="13" height="15.5" rx="2"/><path d="M9 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 11h6M9 15h4"/></symbol>
+  <symbol id="i-hash" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4l-2 16M16 4l-2 16"/></symbol>
+  <symbol id="i-door" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="1.8"/><circle cx="15" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+</svg>
+<div class="app">
+  <header class="topbar">
+    <a class="brand" href="home.html" aria-label="Cloak by Lawgistics: home"><svg class="mark" viewBox="0 0 28 28" aria-hidden="true"><rect class="mark-bg" x="0.5" y="0.5" width="27" height="27" rx="7.5"/><rect class="mark-bar" x="6" y="9.25" width="16" height="5.25" rx="1.3"/><rect class="mark-line" x="6" y="17.25" width="9.5" height="2.25" rx="1.1"/></svg><span class="wordmark">Cloak</span><span class="by">by Lawgistics</span></a>
+    <div class="crumb"><span class="crumb-sep" aria-hidden="true"></span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-lock"/></svg><span class="crumb-name">Seroja Kencana v Arus Gemilang</span></div>
+    <div class="topbar-right">
+      <span class="licence" title="Licence LG-2026-0142, 25 seats. Ends 31 Dec 2027. Checked on this computer."><svg class="ico ico-sm" aria-hidden="true"><use href="#i-seal"/></svg><span>Licensed to <b>Kenari Lim &amp; Partners</b></span></span>
+      <button class="tb-btn" type="button"><svg class="ico" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span></button>
+      <button class="tb-btn" type="button"><svg class="ico" aria-hidden="true"><use href="#i-help"/></svg><span>Help</span></button>
+    </div>
+  </header>
+  <div class="frame">
+    <nav class="rail" aria-label="Cloaking steps">
+      <div class="rail-head">
+        <p class="eyebrow">This matter</p>
+        <div class="rail-chips"><span class="chip chip-outline"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-shield"/></svg>Strict</span><span class="chip chip-dashed">Test documents</span></div>
+        <p class="rail-key"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-key"/></svg><span>Key encrypted. Opened by you at 10:31 am.</span></p>
+      </div>
+      <ol class="steps">
+        <li class="step is-current" aria-current="step">
+          <span class="node">1</span>
+          <span class="step-text"><span class="step-name">Read</span><span class="step-note">128 of 214 files</span></span>
+        </li>
+        <li class="step">
+          <span class="node">2</span>
+          <span class="step-text"><span class="step-name">Review</span><span class="step-note">Next</span></span>
+        </li>
+        <li class="step">
+          <span class="node">3</span>
+          <span class="step-text"><span class="step-name">Double check</span><span class="step-note">After the review</span></span>
+        </li>
+        <li class="boundary" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-out"/></svg><span>Leaves this computer</span></li>
+        <li class="step step-out">
+          <span class="node"><svg class="ico" aria-hidden="true"><use href="#i-out"/></svg></span>
+          <span class="step-text"><span class="step-name">Export</span><span class="step-note">Nothing has left</span></span>
+        </li>
+      </ol>
+      <p class="rail-foot"><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg><span><b>On this computer only.</b>Nothing is sent anywhere. Only Export writes files for the AI tool.</span></p>
+    </nav>
+    <main class="sheet" id="main">
+      <div class="sheet-body">
+        <header class="page-head">
+          <div>
+            <h1>Reading the documents</h1>
+            <p class="lede">Every part of every file is read, or the file is held back with the reason. Nothing is written anywhere until the review is finished.</p>
+          </div>
+        </header>
+        <div class="reading-head">
+          <p class="reading-count" aria-live="polite">128 <span>of 214 files read</span></p>
+          <p class="meta-item"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-scan"/></svg>46 scanned pages read by OCR so far</p>
+        </div>
+        <progress class="meter meter-lg" value="128" max="214" aria-label="Files read"></progress>
+        <div class="table-wrap reading-table">
+          <table class="table">
+            <thead><tr><th scope="col" class="r">#</th><th scope="col">File</th><th scope="col">OCR</th><th scope="col">Progress</th></tr></thead>
+            <tbody>
+                <tr>
+                  <td class="r tight"><span class="fnum">121</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">PDF</span><span class="fname-text">Surat Tuntutan - Arus Gemilang 18.08.2025.pdf</span></span></td>
+                  <td class="tight"></td>
+                  <td class="tight"><span class="stage is-done"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">122</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">XLSX</span><span class="fname-text">Payment schedule Q1-Q3 2025.xlsx</span></span></td>
+                  <td class="tight"></td>
+                  <td class="tight"><span class="stage is-done"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">123</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">PDF</span><span class="fname-text">会议记录 2025年3月 (minutes).pdf</span></span></td>
+                  <td class="tight"><span class="chip chip-sq"><svg class="ico" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td>
+                  <td class="tight"><span class="stage is-done"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">124</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">PDF</span><span class="fname-text">கடிதம் - திருமதி கவிதா ராமன்.pdf</span></span></td>
+                  <td class="tight"><span class="chip chip-sq"><svg class="ico" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td>
+                  <td class="tight"><span class="stage is-done"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">125</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">MSG</span><span class="fname-text">Email from Arus Gemilang re variation order.msg</span></span></td>
+                  <td class="tight"></td>
+                  <td class="tight"><span class="stage is-done"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">126</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">JPG</span><span class="fname-text">IMG_2231 receipt Kedai Besi.jpg</span></span></td>
+                  <td class="tight"><span class="chip chip-sq"><svg class="ico" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td>
+                  <td class="tight"><span class="stage is-done"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">127</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">DOCX</span><span class="fname-text">Perjanjian Kontraktor Kecil (Subcontract) - Syarikat Pengangkutan Cahaya Timur Utara (M) Sdn Bhd.docx</span></span></td>
+                  <td class="tight"></td>
+                  <td class="tight"><span class="stage is-done"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Done</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">128</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">PDF</span><span class="fname-text">Statement of Claim (sealed).pdf</span></span></td>
+                  <td class="tight"></td>
+                  <td class="tight"><span class="stage"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Read</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">129</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">PDF</span><span class="fname-text">Bundle of documents vol 2 (scanned, 300 pages).pdf</span></span></td>
+                  <td class="tight"><span class="chip chip-sq"><svg class="ico" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td>
+                  <td class="tight"><span class="stage"><span class="spinner" aria-hidden="true"></span>Reading&hellip;</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">130</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">TIF</span><span class="fname-text">Scanned cheque 2025-04-02.tif</span></span></td>
+                  <td class="tight"><span class="chip chip-sq"><svg class="ico" aria-hidden="true"><use href="#i-scan"/></svg>OCR</span></td>
+                  <td class="tight"><span class="stage"><span class="spinner" aria-hidden="true"></span>Reading&hellip;</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">131</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">XLSX</span><span class="fname-text">Site cost tracker 5,000 rows.xlsx</span></span></td>
+                  <td class="tight"></td>
+                  <td class="tight"><span class="stage"><span class="spinner" aria-hidden="true"></span>Reading&hellip;</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">132</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">ZIP</span><span class="fname-text">Site photos Jalan Perusahaan 3.zip</span></span></td>
+                  <td class="tight"></td>
+                  <td class="tight"><span class="stage is-wait">Waiting</span></td>
+                </tr>
+                <tr>
+                  <td class="r tight"><span class="fnum">133</span></td>
+                  <td class="fcell"><span class="fname"><span class="ftype">DOC</span><span class="fname-text">Site diary 2024.doc</span></span></td>
+                  <td class="tight"></td>
+                  <td class="tight"><span class="stage is-wait">Waiting</span></td>
+                </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

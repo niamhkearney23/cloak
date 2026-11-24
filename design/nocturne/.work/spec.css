@@ -1,0 +1,7 @@
+
+.spec main{display:block;padding:40px}
+.spec-row{display:flex;align-items:center;gap:36px}
+.spec-cell .mark{display:block}
+.s20 .mark{width:20px;height:20px}.s28 .mark{width:28px;height:28px}.s48 .mark{width:48px;height:48px}.s72 .mark{width:72px;height:72px}.s160 .mark{width:160px;height:160px}
+.spec-wm{font-size:64px}
+.spec-p{margin-top:30px;font-size:18px}

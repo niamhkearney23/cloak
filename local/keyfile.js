@@ -84,7 +84,7 @@ async function opens(s, secret, kdf) {
 const aadOf = (file) => Buffer.from(JSON.stringify([file.format, file.format_version, file.matter_id]), 'utf8');
 
 async function write(path, file, { newSecret = false } = {}) {
-  const tmp = `${path}.${process.pid}.tmp`;
+  const tmp = `${path}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   await writeFile(tmp, JSON.stringify(file, null, 1), { mode: 0o600 });
   // Keep the previous version beside it (also encrypted) in case a save is cut
   // short. Not after a new password or recovery code: the previous version
@@ -101,7 +101,9 @@ async function write(path, file, { newSecret = false } = {}) {
  */
 async function removeOldCopies(path) {
   const name = basename(path);
-  const old = (await readdir(dirname(path))).filter((n) => n === `${name}.bak` || (n.startsWith(`${name}.`) && n.endsWith('.tmp')));
+  // Temporary copies made by this process belong to saves still under way (each save has its own); the rest were left behind.
+  const leftOver = (n) => n.startsWith(`${name}.`) && n.endsWith('.tmp') && n.slice(name.length + 1).split('.')[0] !== String(process.pid);
+  const old = (await readdir(dirname(path))).filter((n) => n === `${name}.bak` || leftOver(n));
   const stuck = [];
   for (const n of old) await rm(join(dirname(path), n), { force: true }).catch(() => stuck.push(n));
   // A missing backup is simply made again at the next save.
@@ -181,21 +183,44 @@ export async function saveKeyFile(path, dataKey, contents) {
  */
 export async function setPassword(path, dataKey, password) {
   checkPassword(password);
-  const file = await load(path);
-  // The same password again would leave anyone who knows it able to open the matter.
-  const current = file.slots.find((s) => s.type === 'password');
-  if (current && (await opens(current, password, file.kdf))) throw Object.assign(new Error('That is the password this matter already has. Choose a different one, so that the old password stops working.'), { code: 'SAME_PASSWORD' });
-  file.slots = [await slot('password', password, dataKey, file.kdf), ...file.slots.filter((s) => s.type !== 'password')];
-  await write(path, file, { newSecret: true });
+  return withOwnKey(path, dataKey, async (file, key) => {
+    // The same password again would leave anyone who knows it able to open the matter.
+    const current = file.slots.find((s) => s.type === 'password');
+    if (current && (await opens(current, password, file.kdf))) throw Object.assign(new Error('That is the password this matter already has. Choose a different one, so that the old password stops working.'), { code: 'SAME_PASSWORD' });
+    file.slots = [await slot('password', password, key, file.kdf), ...file.slots.filter((s) => s.type !== 'password')];
+    await write(path, file, { newSecret: true });
+  });
 }
 
 /** Replace the recovery code. The old one stops working, for the backup copy too. */
 export async function replaceRecoveryCode(path, dataKey) {
-  const file = await load(path);
-  const recoveryCode = newRecoveryCode();
-  file.slots = [...file.slots.filter((s) => s.type !== 'recovery'), await slot('recovery', tidyCode(recoveryCode), dataKey, file.kdf)];
-  await write(path, file, { newSecret: true });
-  return recoveryCode;
+  return withOwnKey(path, dataKey, async (file, key) => {
+    const recoveryCode = newRecoveryCode();
+    file.slots = [...file.slots.filter((s) => s.type !== 'recovery'), await slot('recovery', tidyCode(recoveryCode), key, file.kdf)];
+    await write(path, file, { newSecret: true });
+    return recoveryCode;
+  });
+}
+
+/**
+ * A new password or recovery code locks up the data key, so it must be this
+ * key file's own: a slot holding any other key (one wiped when the matter
+ * closed, or another matter's) would make the new secret open nothing. Works
+ * on a copy, so closing the matter halfway through cannot wipe it.
+ */
+async function withOwnKey(path, dataKey, fn) {
+  const key = Buffer.from(dataKey);
+  try {
+    const file = await load(path);
+    try {
+      unseal(key, file.contents, aadOf(file));
+    } catch {
+      throw new Error('Nothing was changed: the open matter no longer matches the key file in its folder. Close the matter, open it again and try once more.');
+    }
+    return await fn(file, key);
+  } finally {
+    key.fill(0);
+  }
 }
 
 /**

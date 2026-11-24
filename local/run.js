@@ -37,12 +37,16 @@ function pool(size) {
   // The cores are shared out: with one reader (say, one big scanned PDF) it
   // gets all of them for OCR; with several readers each gets its share.
   const ocrThreads = Number(process.env.CLOAK_OCR_THREADS) || Math.max(1, Math.floor(os.availableParallelism() / size));
-  const workers = Array.from({ length: size }, () => new Worker(new URL('./extract-worker.js', import.meta.url), { workerData: { ocrThreads } }));
+  const workers = new Set(); // reader threads still alive
   const waiting = new Map();
-  const idle = [...workers];
+  const idle = [];
   const queue = [];
   let seq = 0;
+  let replacements = 0;
+  const failed = (rel, message) => [{ status: 'unreadable', type: 'unknown', parts: [], reasons: [`The file could not be opened (${message}).`], notes: [], rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }];
   const next = () => {
+    // With no reader left and none to be started, nothing queued can ever be read.
+    if (!workers.size) while (queue.length) { const job = queue.shift(); job.resolve({ results: failed(job.rel, 'the reading thread stopped'), ms: 0 }); }
     while (idle.length && queue.length) {
       const w = idle.pop();
       const job = queue.shift();
@@ -50,8 +54,10 @@ function pool(size) {
       w.postMessage({ id: job.id, file: job.file, rel: job.rel });
     }
   };
-  const failed = (rel, message) => [{ status: 'unreadable', type: 'unknown', parts: [], reasons: [`The file could not be opened (${message}).`], notes: [], rel, inside: null, proof: { unit: 'parts', found: 0, read: 0, characters: 0, ocr: [], unread: [] } }];
-  for (const w of workers) {
+  const start = () => {
+    const w = new Worker(new URL('./extract-worker.js', import.meta.url), { workerData: { ocrThreads } });
+    workers.add(w);
+    idle.push(w);
     w.on('message', (msg) => {
       const job = waiting.get(msg.id);
       waiting.delete(msg.id);
@@ -59,14 +65,23 @@ function pool(size) {
       job.resolve({ results: msg.results, ms: msg.ms });
       next();
     });
-    // A crashed reader must not lose a file: it is reported as unreadable.
+    // A crashed reader must not lose a file or stall the run: the file it was
+    // reading is reported as unreadable and a new reader takes its place (a
+    // limited number of times, so a fault that repeats cannot loop for ever).
     w.on('error', (err) => {
+      workers.delete(w);
+      const at = idle.indexOf(w);
+      if (at >= 0) idle.splice(at, 1);
       for (const [id, job] of waiting) if (job.w === w) { waiting.delete(id); job.resolve({ results: failed(job.rel, err.message), ms: 0 }); }
+      if (replacements++ < size * 5 + 5) start();
+      next();
     });
-  }
+    w.on('exit', () => { workers.delete(w); });
+  };
+  for (let i = 0; i < size; i++) start();
   return {
     run: (file, rel) => new Promise((resolve) => { queue.push({ id: ++seq, file, rel, resolve }); next(); }),
-    close: () => Promise.all(workers.map((w) => new Promise((resolve) => { w.once('exit', resolve); w.postMessage({ type: 'close' }); }))),
+    close: () => Promise.all([...workers].map((w) => new Promise((resolve) => { w.once('exit', resolve); w.postMessage({ type: 'close' }); }))),
   };
 }
 
@@ -151,6 +166,8 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
   const tLearn = Date.now();
   // The client and the other parties typed at setup are hidden in every form before anything is read.
   matter.addSetupParties();
+  // How words are written is counted for this folder only, once: cloaking the same folder again must give the same counts.
+  matter.resetSeen();
   const candidates = [];
   for (const f of readable) candidates.push(...matter.learn(whole(f)));
   for (const f of files) if (!f.parts.length) candidates.push(...matter.learn(nameText(f)));
@@ -198,6 +215,13 @@ export async function cloakFolder({ folder, outDir, options = {}, user = os.user
 export const nameText = (f) => f.rel.replace(/\.[A-Za-z0-9]{1,5}(?=\/|$)/g, '').replace(/[_/\\]+/g, ' ');
 
 /** Build the cloaked text of one file from what was read. */
+/** The "not sure" words of one cloaked file, with those in its file and folder names. */
+export function listUnsure(matter, f, safeWords = []) {
+  f.unsure = matter.unsure(f.cloaked, safeWords);
+  // Words in file and folder names go on the "not sure" list too.
+  for (const u of matter.unsureFromNames(f.name, safeWords)) if (!f.unsure.some((x) => x.text.toLowerCase() === u.text.toLowerCase())) f.unsure.push(u);
+}
+
 export function renderFile(matter, f, safeWords = []) {
   f.name = matter.apply(nameText(f));
   if (!f.parts.length) return;
@@ -207,9 +231,7 @@ export function renderFile(matter, f, safeWords = []) {
   const prepare = (t) => (f.hideNonLatin ? hidePassages(matter, t) : t);
   const body = f.parts.map((p) => (plainLabel(p) ? '' : `[${matter.apply(p.label)}]\n`) + matter.apply(prepare(p.text))).join('\n\n');
   f.cloaked = `File: ${f.name}.${f.type}\n\n${body}\n`;
-  f.unsure = matter.unsure(f.cloaked, safeWords);
-  // Words in file and folder names go on the "not sure" list too.
-  for (const u of matter.unsureFromNames(f.name, safeWords)) if (!f.unsure.some((x) => x.text.toLowerCase() === u.text.toLowerCase())) f.unsure.push(u);
+  listUnsure(matter, f, safeWords);
   f.tags = {};
   for (const m of f.cloaked.matchAll(TAG)) f.tags[`${m[1]}_${m[2]}`] = (f.tags[`${m[1]}_${m[2]}`] || 0) + 1;
 }
