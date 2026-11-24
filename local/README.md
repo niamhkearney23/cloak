@@ -157,6 +157,23 @@ Each matter has its own folder, kept on the firm's own drive:
   but drafts made with the old tags can no longer be restored automatically.
 - **Sharing:** a second lawyer opens the same matter folder and types the
   password. Only one person can have a matter open at a time.
+- **Matter settings** (in the top bar beside the matter's name, on the setup,
+  review and restore screens once a matter is open):
+  - **Change the password**, typed twice, 10 characters or more, for example
+    when a lawyer leaves the matter or the firm. The old password stops
+    opening the key at once, and so does the backup copy beside it
+    (`matter.cloakkey.bak`). The same password again is refused. A password
+    remembered on this computer is updated. On another computer, the
+    remembered one no longer works: Cloak says so, forgets it and asks for
+    the new one.
+  - **Replace the recovery code** if the printed code may have been seen or
+    has been used. Cloak asks first, then shows the new code once, with the
+    same Print button as when the matter was made. The old code stops working.
+  - **Clear the cache.** Nothing in the key or the review changes. The next
+    run reads every file again and puts scans and pictures through OCR again.
+  - A matter opened with the recovery code goes straight to Matter settings,
+    to set a new password.
+  - Each change is in the log (who and when), never the password or the code.
 - **Adding files** to a matter reuses the key: the same person keeps the same
   tag, and files keep their output numbers.
 - The matter folder must be outside the documents folder and outside the
@@ -171,6 +188,15 @@ Limits to know about:
 - A lock left behind by a crash clears itself after 12 hours.
 - Anyone who gets a copy of the key file can try passwords against it for as
   long as they like. A long password is what protects it.
+- A new password or recovery code locks the old one out of the key file in
+  the matter folder and its backup copy. It does not re-encrypt the matter
+  under a new key. Someone who kept an older copy of the key file (a copy of
+  the folder, or the firm's own backups) and knows the old password or code
+  can still open that copy, and could read later versions of the key and the
+  cache if they can still reach the matter folder. When someone leaves, also
+  remove their access to the firm's drive. If they may have taken a copy and
+  must not see what is added later, cloak the documents again into a new
+  matter.
 - While a matter is open, the key is in the computer's memory.
 
 ## Standard and Strict (fact blurring)

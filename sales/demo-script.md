@@ -110,7 +110,7 @@ Point to the network icon.
 
 > "So: Cloak hides client details before documents go to AI, makes a named person review them, keeps a record, and puts the details back on your own computer. It lowers the risk; it does not remove it.
 >
-> What's built today: cloaking, the encrypted key, the review, the double checker, Strict mode, restore, a sample matter, help screens and an offline licence. The installers are ready to be code-signed once we buy the certificates; until then Windows shows 'Unknown publisher'. Not built yet: a local connector for AI tools, email support inside the app, and screens to change a matter password or replace a recovery code. Exporting a real matter needs a licence from us, and we haven't made the licence key yet.
+> What's built today: cloaking, the encrypted key, the review, the double checker, Strict mode, restore, a sample matter, help screens, matter settings (change a matter password, replace a recovery code) and an offline licence. The installers are ready to be code-signed once we buy the certificates; until then Windows shows 'Unknown publisher'. Not built yet: a local connector for AI tools and email support inside the app. Exporting a real matter needs a licence from us, and we haven't made the licence key yet.
 >
 > I'd like to propose a 30-day pilot, starting on made-up documents your own team writes, so you can measure what it catches and what it misses. Here's our security statement, our FAQ and our research memo on the PDPA and Bar guidance, which is written for your own adviser to review. It isn't legal advice."
 

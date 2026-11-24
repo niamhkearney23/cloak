@@ -41,6 +41,7 @@ export const APPROVE_WORD = 'APPROVE';
 const NOT_IN_RUN = 'That file is not in this run. The list may be out of date: cloak the folder again to see the files as they are now.';
 const NOT_CLOAKED = 'No folder has been cloaked in this matter yet. Cloak the folder first, then come back to this step.';
 const TRY_AGAIN = 'Close Cloak, open it again and try once more. If it happens again, save a support file (Help, then About) and send it to your supplier.';
+const CLOSED = 'The matter is closed, so nothing more can be changed in it. Open it again first.';
 // A lock older than this is treated as left behind by a crash.
 const STALE_LOCK_MS = 12 * 60 * 60 * 1000;
 
@@ -112,6 +113,23 @@ class Session {
     this.matter = Matter.fromState(contents.state);
     this.crypto = cacheCrypto(dataKey);
     this.open = true;
+    this.writing = Promise.resolve(); // the last write to the key file (see keyFileWrite)
+  }
+
+  /**
+   * One write to the key file at a time. A new password or recovery code goes
+   * straight into the file, so a save that read the file before it (the one
+   * made when the window is closed halfway through, say) would put the old one
+   * back. Each write starts once the one before it has finished.
+   */
+  keyFileWrite(fn) {
+    const run = this.writing.then(() => {
+      // Once the matter is closed its key is zeroed: sealing or locking anything with it would make the matter unreadable.
+      if (!this.open) throw new Error(CLOSED);
+      return fn();
+    });
+    this.writing = run.catch(() => {});
+    return run;
   }
 
   contents() {
@@ -123,9 +141,7 @@ class Session {
   }
 
   async save() {
-    // Once the matter is closed its key is zeroed: sealing the file with it would make the matter unreadable.
-    if (!this.open) throw new Error('The matter is closed, so nothing more can be saved in it.');
-    await saveKeyFile(this.keyFile, this.dataKey, this.contents());
+    await this.keyFileWrite(() => saveKeyFile(this.keyFile, this.dataKey, this.contents()));
   }
 
   /** The same file always gets the same output number in this matter. */
@@ -656,29 +672,40 @@ class Session {
     }
   }
 
+  /** Set a new matter password. The old one stops working. The log records who, never the password. */
   async changePassword(newPassword) {
-    await setPassword(this.keyFile, this.dataKey, newPassword);
+    await this.keyFileWrite(() => setPassword(this.keyFile, this.dataKey, newPassword));
     await this.log('password-changed');
   }
 
-  /** Returns a new recovery code; the old one stops working. */
+  /** Returns a new recovery code; the old one stops working. The log records who, never the code. */
   async newRecoveryCode() {
-    const code = await replaceRecoveryCode(this.keyFile, this.dataKey);
+    const code = await this.keyFileWrite(() => replaceRecoveryCode(this.keyFile, this.dataKey));
     await this.log('recovery-code-replaced');
     return code;
   }
 
   /** Remove everything cached for this matter. */
   async clearCache() {
+    if (!this.open) throw new Error(CLOSED);
     await rm(path.join(this.dir, 'cache'), { recursive: true, force: true });
     await this.log('cache-cleared');
   }
 
   async close() {
+    if (this.closing) return this.closing;
     if (!this.open) return;
-    this.closing ??= (async () => {
+    this.closing = (async () => {
       try {
-        await this.save();
+        // The last save. The matter counts as closed the moment it ends, in the same turn of the
+        // key file queue, so no other write can start before the key is wiped below.
+        await this.keyFileWrite(async () => {
+          try {
+            await saveKeyFile(this.keyFile, this.dataKey, this.contents());
+          } finally {
+            this.open = false;
+          }
+        });
         await this.log('closed');
       } finally {
         // Even if the last save fails: let go of the lock and wipe the key.

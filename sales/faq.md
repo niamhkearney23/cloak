@@ -35,7 +35,7 @@ Cloak runs on your computers and the matter key stays on your drive. We never re
 
 Each matter has a password and a recovery code. The code is shown once when the matter is created, with a Print button: keep it with the paper file or in the safe. If the password is lost, the recovery code opens the matter. If both are lost, nobody can open the key, including us. There is no back door. Your original documents are untouched, so you can cloak the folder again under a new key, but drafts the AI wrote with the old tags can no longer be restored automatically.
 
-A current gap: there is no screen yet to change a matter's password or to replace its recovery code. The functions exist in the program's core, but the window does not offer them.
+A matter opened with its recovery code goes straight to Matter settings, which asks for a new password. The password can be changed there at any time, and the recovery code replaced: the new code is shown once, with the same Print button, and the old one stops working.
 
 ### "We'll just tell our people not to use AI."
 
@@ -170,7 +170,7 @@ Treat it under your firm's incident procedure. Cloak's log shows who reviewed an
 The log (who reviewed, approved, exported and restored, and when), the report in each export (what was read from each file, what was blocked, and who reviewed and double-checked) and a marker in each export naming the reviewer and the double-checker. They do not record what the lawyer does in the AI tool.
 
 **What happens when a lawyer leaves the firm?**
-Today, matter passwords are shared by the people on the matter, and the recovery code opens a matter too. Changing a password and replacing a recovery code are not on a screen yet. Even if they were, neither would lock out someone who kept a copy of the key file: that copy would still open with the old password or code. Plan who knows matter passwords and recovery codes, and who can reach matter folders, with this in mind. The interim step is to cloak the folder again as a new matter under a new password and keep the old matter folder locked away with your own access controls; drafts made under the old matter can then be restored only by opening the old matter. We have not set a date for the screens.
+Matter passwords are shared by the people on the matter, and the recovery code opens a matter too. Open each matter they worked on, change its password in Matter settings, and replace the recovery code there if they knew it. The old password and code stop opening the key file in the matter folder at once (its backup copy included), and a password remembered on another computer stops working too. Neither locks out someone who kept a copy of the key file: that copy still opens with the old password or code. So also remove their access to the matter folders. If they may have taken a copy and must not see what is added later, cloak the folder again as a new matter under a new password and keep the old matter folder locked away with your own access controls; drafts made under the old matter can then be restored only by opening the old matter.
 
 **How do we delete a matter?**
 Delete the matter folder (the key, cache and log) according to your retention policy, and delete the export folder and any restored drafts. If someone ticked "Remember the password on this computer", open the matter's screen on that computer and press "Forget it" first. Without the key, cloaked copies cannot be turned back into real names by Cloak. Cloak never changes or deletes the original documents.
