@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readdir, readFile, realpath, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -545,4 +545,197 @@ test('the licence screen: evaluation copy, refused licences, a licence from a fi
     for (const e of log.events.filter((x) => hot.has(x.source.id))) console.log(`NETLOG-DIAG ${e.source.id} ${srcTypes[e.source.type]} ${names[e.type]} ${phases[e.phase] || e.phase} ${JSON.stringify(e.params || {})}`);
   }
   assert.deepEqual(contact, [], `network activity in Chromium's log: ${[...new Set(contact)].join(', ')} ${[...new Set(urls)].join(' ')}`);
+});
+
+// Matter settings, driven like a person would on a made-up matter: a new
+// password when a lawyer leaves, a new recovery code, an empty cache, and
+// opening with the recovery code when the password is lost.
+// The "remember the password" part needs the system's protected store. On
+// Linux that means a keyring, for example:
+//   dbus-run-session -- sh -c 'echo -n test | gnome-keyring-daemon --unlock --components=secrets; XDG_CURRENT_DESKTOP=GNOME xvfb-run -a npm run test:app'
+// Without one, that part is skipped and the test says so.
+test('matter settings: a new password, a new recovery code and an empty cache, from the window', { skip: noDisplay && 'no display (run under xvfb-run)', timeout: 180000 }, async () => {
+  const { _electron: electron } = require('playwright-core');
+  const { openMatter } = await import('../matter.js');
+  const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-settings-app-'));
+  const docs = path.join(root, 'documents');
+  const matter = path.join(root, 'matter');
+  const userData = path.join(root, 'userdata');
+  await mkdir(docs);
+  await mkdir(matter);
+  await writeFile(path.join(docs, '01 Letter.txt'), 'Dear Sirs,\n\nWe act for Encik Ahmad bin Ismail (NRIC 800505-14-5521) in his claim against Maju Jaya Sdn Bhd.\n');
+  await writeFile(path.join(docs, '02 File note.txt'), 'Spoke to Tan Boon Huat (012-987 6543) about the site at Jalan Ampang.\n');
+  const P = ['first made-up password', 'second made-up password', 'third made-up password', 'fourth made-up password', 'fifth made-up password'];
+  const codes = [];
+  const me = `Reviewer Example (${os.userInfo().username})`;
+  const app = await electron.launch({
+    executablePath: require('electron'),
+    args: [local, '--no-sandbox'],
+    // Folder choosers, in order: the documents, the matter folder.
+    env: { ...process.env, CLOAK_TEST_PICKS: JSON.stringify([docs, matter]), CLOAK_TEST_USER_DATA: userData },
+  });
+  let canRemember = false;
+  try {
+    const page = await app.firstWindow();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    // Waits until the element says this (a message from an earlier try may still be showing).
+    const shows = (sel, re) => page.waitForFunction(([s, r]) => new RegExp(r).test(document.querySelector(s)?.textContent || ''), [sel, re.source], { timeout: 30000 });
+    const typeTwice = async (a, b = a) => { await page.fill('#s-pw', a); await page.fill('#s-pw2', b); await page.click('#s-change'); };
+    const goHome = async () => { await page.click('#bar-home'); await page.click('#yes'); await page.waitForSelector('#go-restore'); };
+    await page.waitForSelector('#full-name');
+    await page.fill('#full-name', 'Reviewer Example');
+    await page.click('#save-name');
+    await page.waitForSelector('#go-cloak');
+    canRemember = (await page.evaluate(() => window.cloak.call('info', {}))).ok.canRemember;
+
+    // A new matter, as usual.
+    await page.click('#go-cloak');
+    await page.click('#pick-folder');
+    await page.waitForSelector('#folder-path');
+    await page.click('#pick-matter');
+    await page.waitForSelector('#m-create');
+    await page.fill('#m-name', 'Made-up settings matter');
+    await page.fill('#m-pw', P[0]);
+    await page.fill('#m-pw2', P[0]);
+    await page.click('#m-create');
+    await page.waitForSelector('#recovery-code');
+    codes.push((await page.textContent('#recovery-code')).trim());
+    await page.check('#wrote');
+    await page.click('#continue');
+
+    // Matter settings, from the matter card on the setup screen.
+    await page.click('#matter-form [data-matter-settings]');
+    await page.waitForSelector('#matter-settings');
+    assert.equal(await page.textContent('#matter-name'), 'Made-up settings matter');
+    assert.match(await page.textContent('label[for="s-pw"]'), /10 characters or more/);
+    // Plain messages for each mistake, and nothing changes.
+    await typeTwice('a long new password', 'a long new pasword');
+    await shows('.msg.bad', /The two passwords do not match/);
+    await typeTwice('short');
+    await shows('.msg.bad', /at least 10 characters/);
+    await typeTwice(P[0]);
+    await shows('.msg.bad', /already has/);
+    // A lawyer has left: a new password.
+    await typeTwice(P[1]);
+    await shows('#settings-done', /The password has been changed\. The old password no longer opens this matter\./);
+    assert.equal(await page.inputValue('#s-pw'), '', 'the password boxes are emptied');
+
+    // A new recovery code: asked first, then shown once with the Print button.
+    await page.click('#s-recovery');
+    await page.waitForSelector('.overlay #yes');
+    assert.match(await page.textContent('.overlay'), /The old code stops working straight away/);
+    await page.click('#yes');
+    await page.waitForSelector('#old-code-gone');
+    assert.match(await page.textContent('h1'), /Write down the new recovery code/);
+    assert.match(await page.textContent('#old-code-gone'), /The old recovery code no longer works/);
+    codes.push((await page.textContent('#recovery-code')).trim());
+    assert.match(codes[1], /^[0-9A-Z]{4}(-[0-9A-Z]{4}){5}$/);
+    assert.notEqual(codes[1], codes[0]);
+    assert.equal(await page.locator('#print').count(), 1, 'the same Print button as when the matter was made');
+    assert.equal(await page.isDisabled('#continue'), true, 'must confirm the new code was written down');
+    await page.check('#wrote');
+    await page.click('#continue');
+    await shows('#settings-done', /The recovery code has been replaced/);
+    await page.click('#s-back');
+    await page.waitForSelector('#start');
+
+    // Cloak the folder, then clear the cache from the review screen.
+    await page.fill('#client-name', 'Maju Jaya Sdn Bhd');
+    await page.check('#test-matter');
+    await page.click('#start');
+    await page.waitForSelector('.tabs', { timeout: 120000 });
+    assert.ok((await readdir(path.join(matter, 'cache'))).length > 0, 'the run filled the cache');
+    await page.click('[data-matter-settings]');
+    await page.waitForSelector('#matter-settings');
+    await page.click('#s-cache');
+    await page.waitForSelector('.overlay #yes');
+    assert.match(await page.textContent('.overlay'), /every file is read again/);
+    await page.click('#yes');
+    await shows('#settings-done', /The cache has been cleared/);
+    await assert.rejects(stat(path.join(matter, 'cache')), 'the cache folder is gone');
+    await page.click('#s-back');
+    await page.waitForSelector('.tabs');
+
+    // The old password and the old recovery code no longer open the matter.
+    await goHome();
+    await page.click('#go-restore');
+    await page.waitForSelector('#m-secret');
+    await page.fill('#m-secret', P[0]);
+    await page.click('#m-open');
+    await shows('.msg.bad', /That password is not right/);
+    await page.click('#m-switch');
+    await page.fill('#m-secret', codes[0]);
+    await page.click('#m-open');
+    await shows('.msg.bad', /That recovery code is not right/);
+    // The password is lost: the new recovery code opens the matter, and Cloak asks for a new password first.
+    await page.fill('#m-secret', codes[1]);
+    await page.click('#m-open');
+    await page.waitForSelector('#recovered-note');
+    assert.match(await page.textContent('#recovered-note'), /You opened this matter with the recovery code/);
+    assert.equal((await page.textContent('#s-back')).trim(), 'Continue');
+    await typeTwice(P[2]);
+    await shows('#settings-done', /The password has been changed/);
+    assert.equal(await page.locator('#recovered-note').count(), 0);
+    await page.click('#s-back');
+    await page.waitForSelector('#draft');
+
+    if (canRemember) {
+      // "Remember the password on this computer", then a new password: the remembered one is updated.
+      await goHome();
+      await page.click('#go-restore');
+      await page.fill('#m-secret', P[2]);
+      await page.check('#m-remember');
+      await page.click('#m-open');
+      await page.waitForSelector('#draft');
+      await page.click('[data-matter-settings]');
+      await page.waitForSelector('#matter-settings');
+      await typeTwice(P[3]);
+      await shows('#settings-done', /The password remembered on this computer has been updated/);
+      await page.click('#s-back');
+      await page.waitForSelector('#draft');
+      await goHome();
+      await page.click('#go-restore');
+      await page.click('#m-open-remembered');
+      await page.waitForSelector('#draft');
+      await goHome();
+      // Another lawyer changes the password on their own computer. The one remembered here no longer works:
+      // Cloak says so, forgets it, and asks for the new one.
+      const other = await openMatter({ dir: matter, password: P[3], user: 'Another Lawyer (other)' });
+      await other.changePassword(P[4]);
+      await other.close();
+      await page.click('#go-restore');
+      await page.click('#m-open-remembered');
+      await shows('.msg.bad', /The password remembered on this computer no longer opens this matter\. Someone may have changed it/);
+      assert.equal(await page.locator('#m-open-remembered').count(), 0, 'it is forgotten');
+      await page.fill('#m-secret', P[4]);
+      await page.click('#m-open');
+      await page.waitForSelector('#draft');
+    } else {
+      console.log('      this computer cannot keep a password (no protected store): the "remember" part was not run');
+    }
+    assert.deepEqual(errors, []);
+  } finally {
+    await app.close();
+  }
+  await new Promise((r) => setTimeout(r, 800)); // the window's helper processes let go of their files
+
+  // The log: who did what, never a password or a recovery code.
+  const lines = (await readFile(path.join(matter, 'log.jsonl'), 'utf8')).trim().split('\n').map((l) => JSON.parse(l));
+  const done = (action) => lines.filter((l) => l.action === action).map((l) => l.by);
+  assert.deepEqual(done('password-changed'), canRemember ? [me, me, me, 'Another Lawyer (other)'] : [me, me]);
+  assert.deepEqual(done('recovery-code-replaced'), [me]);
+  assert.deepEqual(done('cache-cleared'), [me]);
+  assert.ok(lines.some((l) => l.action === 'opened' && l.with === 'recovery code' && l.by === me));
+  // No password or recovery code in plain text, in the matter folder or in Cloak's own folder on this computer.
+  // Regular files only (Chromium's one-window lock is a socket and symlinks).
+  const walk = async (dir, out = []) => { for (const e of await readdir(dir, { withFileTypes: true })) { const f = path.join(dir, e.name); if (e.isDirectory()) await walk(f, out); else if (e.isFile()) out.push(f); } return out; };
+  const secrets = [...P, ...codes, ...codes.map((c) => c.replace(/-/g, ''))].map((s) => s.toLowerCase());
+  for (const f of [...(await walk(matter)), ...(await walk(userData))]) {
+    // On Windows a file the window's engine still holds open cannot be read; Cloak's own files are closed at once.
+    const data = await readFile(f).catch((err) => (['EBUSY', 'EPERM'].includes(err.code) && !/(?:profile|remembered)\.json$|log\.jsonl$|\.cloakkey/.test(f) ? null : Promise.reject(err)));
+    if (!data) continue;
+    const raw = data.toString('latin1').toLowerCase();
+    for (const s of secrets) assert.ok(!raw.includes(s), `a password or recovery code in ${path.relative(root, f)}`);
+  }
 });

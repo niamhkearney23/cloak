@@ -22,12 +22,14 @@ function realValuesIn(text) {
   return found;
 }
 
+// Regular files only: they are what holds data. (While a window test runs at the same
+// time, Chromium keeps its one-window lock in temp as a socket and a symlink to nothing.)
 async function walk(dir, out = []) {
   // A folder another test removes while this one walks it has nothing left in it.
   const entries = await readdir(dir, { withFileTypes: true }).catch((err) => { if (err.code === 'ENOENT') return []; throw err; });
   for (const e of entries) {
     const full = path.join(dir, e.name);
-    if (e.isDirectory()) await walk(full, out); else out.push(full);
+    if (e.isDirectory()) await walk(full, out); else if (e.isFile()) out.push(full);
   }
   return out;
 }
@@ -178,7 +180,7 @@ test('nothing real is left in temp or cache locations', async () => {
     if (full === root) continue;
     const s = await stat(full).catch(() => null);
     if (!s) continue;
-    suspects.push(...(s.isDirectory() ? await walk(full) : [full]));
+    suspects.push(...(s.isDirectory() ? await walk(full) : s.isFile() ? [full] : []));
   }
   // Inside this test's own folder only the originals may hold real values.
   suspects.push(...(await walk(root)).filter((f) => !f.startsWith(src + path.sep)));

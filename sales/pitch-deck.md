@@ -90,7 +90,7 @@
 - The key is encrypted with AES-256-GCM, opened by a password or a printed recovery code (a person can let Windows or macOS remember the password for their own login). There is no back door.
 - A log records who did what and when, never a name or number from the documents (it does name the lawyers who used Cloak).
 
-**Speaker note:** Offer the security statement to IT. Be open about the limits: anyone with a copy of the key file can try passwords offline, so long passwords matter; if a person ticks "Remember the password on this computer", anyone using their Windows or macOS login can open that matter without typing it; the log is plain text, not tamper-proof; installers are not code-signed yet (signing is set up but waits for certificates to be bought, and has never been run). There is no screen yet to change a matter password or replace the recovery code.
+**Speaker note:** Offer the security statement to IT. Be open about the limits: anyone with a copy of the key file can try passwords offline, so long passwords matter; if a person ticks "Remember the password on this computer", anyone using their Windows or macOS login can open that matter without typing it; the log is plain text, not tamper-proof; installers are not code-signed yet (signing is set up but waits for certificates to be bought, and has never been run). Changing a matter password or replacing its recovery code (Matter settings) locks the old one out of the matter folder, not out of a copy of the key file someone already took.
 
 ---
 
@@ -107,7 +107,7 @@
 ## Slide 11: Where we are today
 
 - Built: cloaking, the encrypted key, the review screen, the double checker, Strict mode, the chronology table, restore with checks, a sample matter, help screens, a support file and an offline licence file.
-- In progress: a redesigned window. Installers are set up for code signing but are unsigned: no certificates have been bought. Not built: a local connector for AI tools, Outlook email support inside the app, and screens to change a matter password or replace a recovery code.
+- In progress: a redesigned window. Installers are set up for code signing but are unsigned: no certificates have been bought. Not built: a local connector for AI tools and Outlook email support inside the app.
 - Speed on one 4-core test machine: our own 20-file made-up matter inside 60 seconds; a 300-page scanned bundle about 9 minutes, almost all OCR; unchanged files are not read again.
 
 **Speaker note:** Be clear that exporting a real matter needs a licence file from Lawgistics. Without one, Cloak is an evaluation copy and exports only matters ticked as made-up test documents, and no licence can be issued until Lawgistics builds its own licence key into Cloak. Until then a pilot runs on made-up documents, which is also the fairest way for a firm to measure what Cloak misses.
