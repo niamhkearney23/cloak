@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readdir, readFile, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -269,7 +269,8 @@ test('first run: tips, help screens, the sample matter from the home screen to a
   const supportDir = path.join(root, 'support');
   await mkdir(documents);
   await mkdir(supportDir);
-  const sample = path.join(documents, 'Cloak sample matter');
+  // The app resolves links on purpose (macOS /var -> /private/var, Windows 8.3 names such as RUNNER~1).
+  const sample = path.join(await realpath(documents), 'Cloak sample matter');
   const out = path.join(sample, 'Cloaked copies');
   const leaks = (text) => [
     ...[...SAMPLE_REAL, ...SAMPLE_FACTS].filter((v) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(v)}(?![\\p{L}\\p{N}])`, 'iu').test(text)),
@@ -535,5 +536,13 @@ test('the licence screen: evaluation copy, refused licences, a licence from a fi
   assert.ok(log.events.length > 0, 'the network log was recorded');
   const contact = log.events.map((e) => names[e.type]).filter((n) => /^(URL_REQUEST_START_JOB|HOST_RESOLVER_MANAGER_REQUEST|SOCKET_ALIVE|TCP_CONNECT|UDP_CONNECT|SSL_CONNECT|QUIC_SESSION|CONNECT_JOB)$/.test(n));
   const urls = log.events.map((e) => e.params?.url).filter(Boolean);
+  if (contact.length) {
+    // Diagnostic: say exactly what each of these events is (source type, address, host, port, params).
+    const srcTypes = Object.fromEntries(Object.entries(log.constants.logSourceType).map(([name, n]) => [n, name]));
+    const phases = Object.fromEntries(Object.entries(log.constants.logEventPhase || {}).map(([name, n]) => [n, name]));
+    const hot = new Set(log.events.filter((e) => /^(HOST_RESOLVER_MANAGER_REQUEST|SOCKET_ALIVE|UDP_CONNECT|TCP_CONNECT|SSL_CONNECT|URL_REQUEST_START_JOB|CONNECT_JOB|QUIC_SESSION)$/.test(names[e.type])).map((e) => e.source.id));
+    console.log('NETLOG-DIAG events of the sources that contain a contact event (id source-type event-type phase params):');
+    for (const e of log.events.filter((x) => hot.has(x.source.id))) console.log(`NETLOG-DIAG ${e.source.id} ${srcTypes[e.source.type]} ${names[e.type]} ${phases[e.phase] || e.phase} ${JSON.stringify(e.params || {})}`);
+  }
   assert.deepEqual(contact, [], `network activity in Chromium's log: ${[...new Set(contact)].join(', ')} ${[...new Set(urls)].join(' ')}`);
 });

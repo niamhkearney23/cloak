@@ -35,7 +35,8 @@ test('the notices name every shipped package with its licence text, and the part
 });
 
 test('the THIRD-PARTY-NOTICES.txt in the repository is up to date', async () => {
-  const committed = await readFile(path.join(local, 'THIRD-PARTY-NOTICES.txt'), 'utf8');
+  // (A Windows checkout may have turned the line endings into CRLF: .gitattributes prevents it, and this is read either way.)
+  const committed = (await readFile(path.join(local, 'THIRD-PARTY-NOTICES.txt'), 'utf8')).replace(/\r\n/g, '\n');
   for (const p of shippedPackages().filter((x) => !perSystem(x.name))) {
     assert.ok(committed.includes(`\n${p.name} ${p.version}\nLicence: `), `${p.name} ${p.version} is not in THIRD-PARTY-NOTICES.txt: run node tools/third-party-notices.mjs`);
   }

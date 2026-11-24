@@ -72,12 +72,35 @@ async function slot(type, secret, dataKey, kdf) {
 // header makes the file fail to open.
 const aadOf = (file) => Buffer.from(JSON.stringify([file.format, file.format_version, file.matter_id]), 'utf8');
 
-async function write(path, file) {
+// Writes to one key file go one after the other. Two at once would both copy it to
+// ".bak" and rename over it; Windows refuses that while another handle is open
+// (EPERM, EBUSY), so a save made while another was running could fail.
+const writing = new Map();
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function renameOver(from, to) {
+  // Windows also refuses for a moment when a virus scanner or indexer has the file open.
+  for (let attempt = 0; ; attempt++) {
+    try { return await rename(from, to); } catch (err) {
+      if (attempt >= 8 || !['EPERM', 'EBUSY', 'EACCES'].includes(err.code)) throw err;
+      await sleep(25 * (attempt + 1));
+    }
+  }
+}
+
+async function writeOnce(path, file) {
   const tmp = `${path}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   await writeFile(tmp, JSON.stringify(file, null, 1), { mode: 0o600 });
   // Keep the previous version beside it (also encrypted) in case a save is cut short.
   await copyFile(path, `${path}.bak`).catch(() => {});
-  await rename(tmp, path);
+  await renameOver(tmp, path);
+}
+
+function write(path, file) {
+  const run = (writing.get(path) || Promise.resolve()).catch(() => {}).then(() => writeOnce(path, file));
+  writing.set(path, run);
+  run.then(() => {}, () => {}).then(() => { if (writing.get(path) === run) writing.delete(path); });
+  return run;
 }
 
 /**
