@@ -710,7 +710,8 @@ class Session {
       } finally {
         // Even if the last save fails: let go of the lock and wipe the key.
         this.open = false;
-        await rm(path.join(this.dir, LOCK_NAME), { force: true }).catch(() => {});
+        // (Windows can refuse for a moment while another handle on the file is closing: try again.)
+        await rm(path.join(this.dir, LOCK_NAME), { force: true, maxRetries: 10, retryDelay: 50 }).catch(() => {});
         this.dataKey.fill(0);
       }
     })();

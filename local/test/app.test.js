@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readdir, readFile, realpath, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -180,10 +180,10 @@ test('the app: one window, from folder to reviewed export', { skip: noDisplay &&
     assert.match(await page.textContent('#check-state'), /Next: the double check/);
     await page.click('#run-check');
     await page.waitForSelector('#check-findings');
-    assert.ok(await page.locator('#check-files tbody tr').count() >= 20, 'every file that would be written is listed');
-    assert.equal(await page.locator('#check-files tr:has(.chip.partial)').count(), 1, 'only the chronology fails');
-    assert.match(await page.textContent('#check-files tr:has(.chip.partial)'), /000-chronology\.cloaked\.txt/);
-    const finding = (text) => page.locator('#check-findings tbody tr', { has: page.locator('td > b', { hasText: new RegExp(`^${text}$`) }) });
+    assert.ok(await page.locator('#check-files li').count() >= 20, 'every file that would be written is listed');
+    assert.equal(await page.locator('#check-files li:has(.stamp.fail)').count(), 1, 'only the chronology fails');
+    assert.match(await page.textContent('#check-files li:has(.stamp.fail)'), /000-chronology\.cloaked\.txt/);
+    const finding = (text) => page.locator('#check-findings .finding', { has: page.locator('.value > b', { hasText: new RegExp(`^${text}$`) }) });
     assert.match(await finding('Rohani').textContent(), /Possible name.*Chronology \(confirmed\) · Chronology · line \d+/s, 'the word, the file and the line are shown');
     assert.match(await finding('Zubaidah').textContent(), /Possible name/);
     assert.match(await page.textContent('#check-state'), /Double check: 2 to decide/);
@@ -269,7 +269,8 @@ test('first run: tips, help screens, the sample matter from the home screen to a
   const supportDir = path.join(root, 'support');
   await mkdir(documents);
   await mkdir(supportDir);
-  const sample = path.join(documents, 'Cloak sample matter');
+  // The app resolves links on purpose (macOS /var -> /private/var, Windows 8.3 names such as RUNNER~1).
+  const sample = path.join(await realpath(documents), 'Cloak sample matter');
   const out = path.join(sample, 'Cloaked copies');
   const leaks = (text) => [
     ...[...SAMPLE_REAL, ...SAMPLE_FACTS].filter((v) => new RegExp(`(?<![\\p{L}\\p{N}])${escapeRe(v)}(?![\\p{L}\\p{N}])`, 'iu').test(text)),
@@ -361,10 +362,10 @@ test('first run: tips, help screens, the sample matter from the home screen to a
     // The Not sure list, decided as a careful reviewer would: names and address words hidden, the rest fine.
     await page.click('[data-tab="unsure"]');
     for (let n = await page.locator('[data-fine]').count(), guard = 0; n > 0 && guard < 40; n = await page.locator('[data-fine]').count(), guard++) {
-      const word = (await page.locator('#panel tbody tr:first-child td b').textContent()).trim();
+      const word = (await page.locator('#panel .decide-row .word b').first().textContent()).trim();
       const kind = sampleDecision(word);
-      await page.locator(kind ? `#panel tbody tr:first-child [data-hide][data-kind="${kind}"]` : '#panel tbody tr:first-child [data-fine]').click();
-      await page.waitForFunction(([before, first]) => document.querySelectorAll('[data-fine]').length < before || document.querySelector('#panel tbody tr td b')?.textContent.trim() !== first, [n, word], { timeout: 15000 });
+      await page.locator(kind ? `#panel .decide-row [data-hide][data-kind="${kind}"]` : '#panel .decide-row [data-fine]').first().click();
+      await page.waitForFunction(([before, first]) => document.querySelectorAll('[data-fine]').length < before || document.querySelector('#panel .decide-row .word b')?.textContent.trim() !== first, [n, word], { timeout: 15000 });
     }
     await page.click('[data-tab="joined"]');
     for (let n = await page.locator('[data-same], [data-short-ok], [data-group]').count(); n > 0; n = await page.locator('[data-same], [data-short-ok], [data-group]').count()) {
@@ -535,6 +536,14 @@ test('the licence screen: evaluation copy, refused licences, a licence from a fi
   assert.ok(log.events.length > 0, 'the network log was recorded');
   const contact = log.events.map((e) => names[e.type]).filter((n) => /^(URL_REQUEST_START_JOB|HOST_RESOLVER_MANAGER_REQUEST|SOCKET_ALIVE|TCP_CONNECT|UDP_CONNECT|SSL_CONNECT|QUIC_SESSION|CONNECT_JOB)$/.test(n));
   const urls = log.events.map((e) => e.params?.url).filter(Boolean);
+  if (contact.length) {
+    // Diagnostic: say exactly what each of these events is (source type, address, host, port, params).
+    const srcTypes = Object.fromEntries(Object.entries(log.constants.logSourceType).map(([name, n]) => [n, name]));
+    const phases = Object.fromEntries(Object.entries(log.constants.logEventPhase || {}).map(([name, n]) => [n, name]));
+    const hot = new Set(log.events.filter((e) => /^(HOST_RESOLVER_MANAGER_REQUEST|SOCKET_ALIVE|UDP_CONNECT|TCP_CONNECT|SSL_CONNECT|URL_REQUEST_START_JOB|CONNECT_JOB|QUIC_SESSION)$/.test(names[e.type])).map((e) => e.source.id));
+    console.log('NETLOG-DIAG events of the sources that contain a contact event (id source-type event-type phase params):');
+    for (const e of log.events.filter((x) => hot.has(x.source.id))) console.log(`NETLOG-DIAG ${e.source.id} ${srcTypes[e.source.type]} ${names[e.type]} ${phases[e.phase] || e.phase} ${JSON.stringify(e.params || {})}`);
+  }
   assert.deepEqual(contact, [], `network activity in Chromium's log: ${[...new Set(contact)].join(', ')} ${[...new Set(urls)].join(' ')}`);
 });
 

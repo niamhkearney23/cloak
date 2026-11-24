@@ -58,7 +58,7 @@ export function restoreDraft(matter, draft, { required = [] } = {}) {
     while (b < flat.length && !/[.!?\n]/.test(flat[b])) b++;
     return { start: a, text: flat.slice(a, b) };
   };
-  const restored = text.replace(TOKEN_RE, (m, token, mod, offset) => {
+  const put = (m, token, mod, offset) => {
     used.add(token.split('.')[0]);
     let value = byToken.get(token);
     if (value === undefined) {
@@ -87,6 +87,16 @@ export function restoreDraft(matter, draft, { required = [] } = {}) {
       }
     }
     return value;
+  };
+  // Where each put-back value sits in the restored text, so the window can mark it.
+  const marks = [];
+  let shift = 0;
+  const restored = text.replace(TOKEN_RE, (m, token, mod, offset) => {
+    const out = put(m, token, mod, offset);
+    const start = offset + shift;
+    shift += out.length - m.length;
+    if (out !== m) marks.push([start, start + out.length]);
+    return out;
   });
   // Tags with their braces lost or replaced: PERSON_1, [PERSON_1], {PERSON_1}, {{ person_1 }}.
   for (const m of text.matchAll(/(?<![{A-Za-z0-9_])(?:\[|\{|\(){1,2}\s*([A-Z]+(?:_[A-Z]+)*_\d+(?:\.[A-Z0-9_]+)?)\s*(?:\]|\}|\)){1,2}/g)) {
@@ -115,5 +125,5 @@ export function restoreDraft(matter, draft, { required = [] } = {}) {
     const quotes = (restoredFlat.slice(a, d.start).match(/["“”]/g) || []).length;
     if (lang !== sentenceLang && quotes % 2 === 0) mixed.push({ text: d.text, language: lang });
   }
-  return { text: restored, invented: [...invented], changed, dropped: [...new Set(dropped)], totals, worked, real, notes, translated, kept, mixed, clean: !invented.size && !changed.length && !dropped.length && !real.length };
+  return { text: restored, marks, invented: [...invented], changed, dropped: [...new Set(dropped)], totals, worked, real, notes, translated, kept, mixed, clean: !invented.size && !changed.length && !dropped.length && !real.length };
 }

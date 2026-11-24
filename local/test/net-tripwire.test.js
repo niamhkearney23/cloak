@@ -55,7 +55,7 @@ test('a local pipe is still let through', { timeout: 60000 }, async () => {
   await writeFile(log, '');
   await writeFile(script, `
 const net = require('node:net');
-const sock = require('node:path').join(${JSON.stringify(dir)}, 'p.sock');
+const sock = ${JSON.stringify(process.platform === 'win32' ? `\\\\.\\pipe\\cloak-tripwire-${path.basename(dir)}` : path.join(dir, 'p.sock'))};
 const server = net.createServer((c) => c.end('hi')).listen(sock, () => {
   net.connect(sock).on('data', () => { server.close(); process.exit(0); });
 });

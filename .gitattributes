@@ -1,0 +1,4 @@
+# Files that tests or the installer compare byte for byte must not be changed by a Windows checkout (CRLF).
+* text=auto eol=lf
+local/app/sample/documents/** -text
+local/THIRD-PARTY-NOTICES.txt -text

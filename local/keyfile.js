@@ -83,29 +83,52 @@ async function opens(s, secret, kdf) {
 // header makes the file fail to open.
 const aadOf = (file) => Buffer.from(JSON.stringify([file.format, file.format_version, file.matter_id]), 'utf8');
 
-async function write(path, file, { newSecret = false } = {}) {
+// Writes to one key file go one after the other. Two at once would both copy it to
+// ".bak" and rename over it; Windows refuses that while another handle is open
+// (EPERM, EBUSY), so a save made while another was running could fail.
+const writing = new Map();
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function renameOver(from, to) {
+  // Windows also refuses for a moment when a virus scanner or indexer has the file open.
+  for (let attempt = 0; ; attempt++) {
+    try { return await rename(from, to); } catch (err) {
+      if (attempt >= 8 || !['EPERM', 'EBUSY', 'EACCES'].includes(err.code)) throw err;
+      await sleep(25 * (attempt + 1));
+    }
+  }
+}
+
+async function writeOnce(path, file, { newSecret = false } = {}) {
   const tmp = `${path}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
   await writeFile(tmp, JSON.stringify(file, null, 1), { mode: 0o600 });
   // Keep the previous version beside it (also encrypted) in case a save is cut
   // short. Not after a new password or recovery code: the previous version
   // would still open with the old one.
   if (!newSecret) await copyFile(path, `${path}.bak`).catch(() => {});
-  await rename(tmp, path);
+  await renameOver(tmp, path);
   if (newSecret) await removeOldCopies(path);
+}
+
+function write(path, file, options) {
+  const run = (writing.get(path) || Promise.resolve()).catch(() => {}).then(() => writeOnce(path, file, options));
+  writing.set(path, run);
+  run.then(() => {}, () => {}).then(() => { if (writing.get(path) === run) writing.delete(path); });
+  return run;
 }
 
 /**
  * After a new password or recovery code, no copy of the key that Cloak keeps
  * beside it may still open with the old one: the backup becomes a copy of the
  * new version, and copies left behind by a save that was cut short are removed.
+ * (No other write to this key file is under way: they go one at a time.)
  */
 async function removeOldCopies(path) {
   const name = basename(path);
-  // Temporary copies made by this process belong to saves still under way (each save has its own); the rest were left behind.
-  const leftOver = (n) => n.startsWith(`${name}.`) && n.endsWith('.tmp') && n.slice(name.length + 1).split('.')[0] !== String(process.pid);
-  const old = (await readdir(dirname(path))).filter((n) => n === `${name}.bak` || leftOver(n));
+  const old = (await readdir(dirname(path))).filter((n) => n === `${name}.bak` || (n.startsWith(`${name}.`) && n.endsWith('.tmp')));
   const stuck = [];
-  for (const n of old) await rm(join(dirname(path), n), { force: true }).catch(() => stuck.push(n));
+  // (Windows can refuse for a moment while a virus scanner or indexer has the file open: try again.)
+  for (const n of old) await rm(join(dirname(path), n), { force: true, maxRetries: 10, retryDelay: 50 }).catch(() => stuck.push(n));
   // A missing backup is simply made again at the next save.
   if (!stuck.includes(`${name}.bak`)) await copyFile(path, `${path}.bak`).catch(() => {});
   if (stuck.length) throw new Error(`The change is saved, but ${stuck.join(' and ')} could not be removed from the matter folder and still opens with the old password or recovery code. Close any program that may have it open, then delete it from the matter folder.`);

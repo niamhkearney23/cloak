@@ -40,6 +40,18 @@ export const NOT_SHIPPED = [
 const globRe = (g) => new RegExp(`^${g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]*')}$`);
 const notShipped = (pkg, rel) => NOT_SHIPPED.some((x) => x.pkg === pkg && globRe(x.pattern).test(rel));
 
+// The fonts bundled in app/fonts (the design's own faces; the files came from
+// the Fontsource packages on npm). Each has its own SIL Open Font Licence file
+// next to the font files; the notices carry those texts too.
+export const FONTS = [
+  { name: 'Newsreader', use: 'serif text: the client\'s words and large titles', file: 'LICENSE-Newsreader-OFL.txt', source: 'https://github.com/productiontype/Newsreader', package: '@fontsource-variable/newsreader' },
+  { name: 'Instrument Sans', use: 'the interface text', file: 'LICENSE-InstrumentSans-OFL.txt', source: 'https://github.com/Instrument/instrument-sans', package: '@fontsource-variable/instrument-sans' },
+  { name: 'IBM Plex Mono', use: 'tags, paths and codes', file: 'LICENSE-IBMPlexMono-OFL.txt', source: 'https://github.com/IBM/plex', package: '@fontsource/ibm-plex-mono' },
+  { name: 'Noto Sans Tamil', use: 'Tamil text', file: 'LICENSE-NotoSansTamil-OFL.txt', source: 'https://github.com/notofonts/tamil', package: '@fontsource-variable/noto-sans-tamil' },
+  { name: 'Noto Naskh Arabic', use: 'Jawi and Arabic text', file: 'LICENSE-NotoNaskhArabic-OFL.txt', source: 'https://github.com/notofonts/arabic', package: '@fontsource-variable/noto-naskh-arabic' },
+];
+const FONT_DIR = path.join(local, 'app', 'fonts');
+
 // Libraries compiled into binary files, which no package.json names. Each is
 // listed only when its marker is found in the shipped file.
 const TESSERACT_CORE = [
@@ -319,6 +331,13 @@ export function buildNotices() {
     return [...head, ...body, ''].join('\n');
   });
 
+  for (const f of FONTS) {
+    const file = path.join(FONT_DIR, f.file);
+    if (!existsSync(file)) { warnings.push(`${f.name}: ${f.file} is not in app/fonts.`); continue; }
+    const text = readFileSync(file, 'utf8').replace(/\r\n?/g, '\n').trim();
+    blocks.push([rule(), `${f.name} (font, bundled in app/fonts)`, 'Licence: OFL-1.1 (SIL Open Font License 1.1)', `Source: ${f.source} (files from npm: ${f.package})`, '', `Used for ${f.use}.`, '', `--- app/fonts/${f.file} ---`, text, ''].join('\n'));
+  }
+
   const nodeLicences = new Set(packages.map((p) => licenceOf(p.pkg)));
   const mpl = [];
   const binaries = [canvasBinarySection(packages, warnings, mpl), tesseractCoreSection(packages, warnings)].filter(Boolean).join('\n\n');
@@ -337,7 +356,7 @@ export function buildNotices() {
     'lists the parts for that system.',
     '',
     '1. Electron (the app\'s runtime)',
-    `2. Packages shipped inside the app (${packages.length}): ${[...nodeLicences].sort().join(', ')}`,
+    `2. Packages shipped inside the app (${packages.length}): ${[...nodeLicences].sort().join(', ')}; and the ${FONTS.length} bundled fonts (${FONTS.map((f) => f.name).join(', ')}): OFL-1.1`,
     '3. Libraries compiled into binary files of those packages',
     '4. Standard licence texts',
     '',

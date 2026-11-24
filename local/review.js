@@ -174,7 +174,7 @@ export function reviewData(matter, files) {
   const unsure = new Map();
   for (const f of files) {
     for (const u of f.unsure || []) {
-      if (!unsure.has(u.text)) unsure.set(u.text, { text: u.text, places: 0, files: 0, examples: [] });
+      if (!unsure.has(u.text)) unsure.set(u.text, { text: u.text, places: 0, files: 0, examples: [], where: f.rel || '' });
       const item = unsure.get(u.text);
       item.places += u.count;
       item.files++;

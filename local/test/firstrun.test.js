@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readdir, readFile, stat } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, realpath, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createSampleMatter, planSample, SAMPLE_DIR } from '../sample.js';
@@ -55,7 +55,7 @@ test('a sample matter: a new folder with the documents, the matter and a place f
   const root = await mkdtemp(path.join(os.tmpdir(), 'cloak-sample-'));
   const made = await createSampleMatter({ parent: root, password: PASSWORD, user: 'Tester (t)', kdf: FAST });
   try {
-    assert.equal(made.folder, path.join(root, 'Cloak sample matter'));
+    assert.equal(made.folder, path.join(await realpath(root), 'Cloak sample matter')); // the sample resolves links on purpose
     assert.deepEqual(await listFiles(made.docs), Object.keys(sampleDocuments()).sort());
     assert.ok(await exists(path.join(made.matterDir, 'matter.cloakkey')));
     assert.deepEqual(await readdir(made.outDir), []);
@@ -73,7 +73,7 @@ test('a sample matter: a new folder with the documents, the matter and a place f
   }
   // A second sample never writes into the first one.
   const again = await createSampleMatter({ parent: root, password: PASSWORD, user: 'Tester (t)', kdf: FAST });
-  assert.equal(again.folder, path.join(root, 'Cloak sample matter 2'));
+  assert.equal(again.folder, path.join(await realpath(root), 'Cloak sample matter 2'));
   await again.session.close();
 });
 

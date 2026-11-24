@@ -1,6 +1,6 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile, stat, utimes } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readdir, readFile, writeFile, stat, utimes } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
@@ -264,11 +264,10 @@ test('a new password opens the matter; the old one no longer does, not even in t
   const old = S.password;
   // Before the change, the backup copy beside the key opens with the old password, like the key itself.
   await openKeyFile(`${keyFile}.bak`, { password: old });
-  // A copy left behind by an earlier Cloak whose save was cut short, and one of this Cloak's own saves still under way.
-  const leftOver = `${keyFile}.${process.pid + 1}.0badc0de.tmp`;
-  const underWay = `${keyFile}.${process.pid}.5afe5afe.tmp`;
-  await copyFile(keyFile, leftOver);
-  await copyFile(keyFile, underWay);
+  // Copies left behind by saves that were cut short, by an earlier Cloak and by this one (saves to a key file go one at
+  // a time, so none can still be under way while the password changes).
+  const leftOver = [`${keyFile}.${process.pid + 1}.0badc0de.tmp`, `${keyFile}.${process.pid}.5afe5afe.tmp`];
+  for (const f of leftOver) await copyFile(keyFile, f);
   await withMatter({ password: old, user: 'partner' }, async (s) => {
     const before = await readFile(keyFile, 'utf8');
     await assert.rejects(s.changePassword('too short'), /at least 10 characters/);
@@ -281,10 +280,8 @@ test('a new password opens the matter; the old one no longer does, not even in t
     // the backup copy no longer opens with the old password, and the left-over copy is gone.
     await assert.rejects(openKeyFile(`${keyFile}.bak`, { password: old }), /password is not right/);
     await openKeyFile(`${keyFile}.bak`, { password: S.password });
-    await assert.rejects(stat(leftOver), 'the left-over copy is removed');
-    assert.ok(await stat(underWay), 'a save still under way keeps its own temporary file');
+    for (const f of leftOver) await assert.rejects(stat(f), `the left-over copy ${path.basename(f)} is removed`);
   });
-  await rm(underWay);
 
   await assert.rejects(openMatter({ dir, password: old, user: 'lawyer-who-left' }), /password is not right/);
   await assert.rejects(openKeyFile(`${keyFile}.bak`, { password: old }), /password is not right/);
