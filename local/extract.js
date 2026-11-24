@@ -16,7 +16,8 @@
 // Cloaked copies are rebuilt from parts[] only. The original is never copied
 // or edited, so nothing hidden in it can carry over.
 
-import { readFile, mkdir, copyFile, stat } from 'node:fs/promises';
+import { readFile, mkdir, copyFile, rename, rm, stat } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,8 +32,10 @@ const require = createRequire(import.meta.url);
 // standard-CMap Chinese in PDFs, which version 1 read as empty pages. 3: PDF
 // pages whose pictures are 1-bit masks or faint grey are now read, a PDF page
 // that came out empty is flagged instead of counted as read, and a picture the
-// OCR engine cannot open fails its own file with a reason.
-export const READER_VERSION = 3;
+// OCR engine cannot open fails its own file with a reason. 4: every OCR worker
+// loads its languages in full (readers starting at the same moment could load
+// half a language file and read pictures without Malay or English).
+export const READER_VERSION = 4;
 
 const TEXT_TYPES = new Set(['.txt', '.md', '.csv', '.tsv', '.log', '.json', '.xml', '.ics', '.vcf']);
 const HTML_TYPES = new Set(['.html', '.htm']);
@@ -105,10 +108,20 @@ async function langDir() {
     langDirReady = (async () => {
       const dir = path.join(os.tmpdir(), 'cloak-ocr-lang');
       await mkdir(dir, { recursive: true });
+      // Other reader threads, and other Cloak processes, fill this folder at the same time. A file
+      // still being copied already exists, so each one is copied under a name of its own and renamed
+      // into place: a reader sees no file or a whole one, never half of one. A file of the wrong size
+      // (left by a copy that was cut short) is copied again.
+      const size = (f) => stat(f).then((s) => s.size, () => -1);
       for (const l of ['eng', 'msa', 'chi_sim', 'chi_tra', 'tam']) {
         const src = path.join(path.dirname(require.resolve(`@tesseract.js-data/${l}/package.json`)), '4.0.0', `${l}.traineddata.gz`);
         const dest = path.join(dir, `${l}.traineddata.gz`);
-        try { await stat(dest); } catch { await copyFile(src, dest); }
+        const want = await size(src);
+        if ((await size(dest)) === want) continue;
+        const tmp = `${dest}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
+        await copyFile(src, tmp);
+        // Windows refuses to rename over a file another reader has open: fine if that file is whole.
+        await rename(tmp, dest).catch(async (err) => { await rm(tmp, { force: true }); if ((await size(dest)) !== want) throw err; });
       }
       return dir;
     })();
@@ -122,7 +135,11 @@ async function ocrWorker(langs) {
   // Without an errorHandler tesseract.js throws from inside its message
   // handler when it cannot open a picture, which kills the whole reader
   // thread. With one, the failure comes back as a rejected recognize().
-  return createWorker(langs, 1, { langPath: dir, cachePath: dir, gzip: true, errorHandler: () => {} });
+  // cacheMethod 'none': tesseract.js would otherwise write the unpacked language file into the
+  // shared folder with a plain write, and another reader starting at that moment would load half
+  // of it ("Failed loading language"), losing Malay or English for that whole worker. Unpacking
+  // in memory each time costs a fraction of a second per worker.
+  return createWorker(langs, 1, { langPath: dir, gzip: true, cacheMethod: 'none', errorHandler: () => {} });
 }
 
 // A pool of OCR workers. It starts with one and only adds another when a
