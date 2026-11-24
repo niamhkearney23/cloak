@@ -30,6 +30,10 @@ app.commandLine.appendSwitch('disable-background-networking');
 app.commandLine.appendSwitch('disable-component-update');
 app.commandLine.appendSwitch('disable-sync');
 app.commandLine.appendSwitch('no-pings');
+// No proxy lookup either. On Windows Chromium otherwise tries to find a proxy by itself (WPAD): it asks the
+// network adapters' DHCP settings for a proxy script and then tries the name "wpad", and it probes whether
+// IPv6 is reachable with a UDP connect to a public DNS address. Seen in Chromium's network log on a Windows runner.
+app.commandLine.appendSwitch('no-proxy-server');
 app.commandLine.appendSwitch('disable-features', 'AutofillServerCommunication,OptimizationHints,MediaRouter,Translate,InterestFeedContentSuggestions');
 if (process.env.CLOAK_TEST_USER_DATA) app.setPath('userData', process.env.CLOAK_TEST_USER_DATA);
 if (process.env.CLOAK_TEST_DOCUMENTS) app.setPath('documents', process.env.CLOAK_TEST_DOCUMENTS);
